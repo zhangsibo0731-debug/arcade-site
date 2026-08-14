@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="数独" />
 <title>数独 · Sudoku</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
-<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=Fredoka:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="styles.css" />
 <link rel="manifest" href="../manifest.json" />
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
@@ -38,10 +38,20 @@
     </button>
   </header>
 
+  <section class="mode" id="modeSwitch" role="tablist" aria-label="模式选择">
+    <button class="mode__btn is-active" data-mode="classic" type="button" role="tab" aria-selected="true">原版</button>
+    <button class="mode__btn" data-mode="kids" type="button" role="tab" aria-selected="false">儿童版</button>
+  </section>
+
   <section class="difficulty" id="difficulty" role="tablist" aria-label="难度选择">
     <button class="difficulty__btn is-active" data-level="easy" type="button" role="tab" aria-selected="true">简单</button>
     <button class="difficulty__btn" data-level="medium" type="button" role="tab" aria-selected="false">中等</button>
     <button class="difficulty__btn" data-level="hard" type="button" role="tab" aria-selected="false">困难</button>
+  </section>
+
+  <section class="difficulty" id="sizeSwitch" role="tablist" aria-label="棋盘大小" hidden>
+    <button class="difficulty__btn is-active" data-size="4" type="button" role="tab" aria-selected="true">4宫</button>
+    <button class="difficulty__btn" data-size="6" type="button" role="tab" aria-selected="false">6宫</button>
   </section>
 
   <section class="stats" aria-label="游戏统计">
@@ -122,6 +132,9 @@
     </div>
   </div>
 </div>
+
+<div class="toast" id="toast" hidden></div>
+<div class="confetti" id="confetti" aria-hidden="true"></div>
 
 <script src="game.js"></script>
 </body>

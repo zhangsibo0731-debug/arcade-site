@@ -126,6 +126,37 @@ body::before {
   transform: scale(0.94);
 }
 
+/* ---------- 模式切换 ---------- */
+.mode {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  background: #dfe2e9;
+  padding: 4px;
+  border-radius: 14px;
+}
+.mode__btn {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 9px 0;
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+.mode__btn.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 2px 8px -2px rgba(20, 26, 38, 0.22);
+}
+.mode__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ---------- 难度切换 ---------- */
 .difficulty {
   display: grid;
@@ -225,7 +256,7 @@ body::before {
 
 .cell__num {
   font-family: var(--font-sans);
-  font-size: 5.4cqw;
+  font-size: var(--cell-font, 5.4cqw);
   font-weight: 600;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -234,7 +265,7 @@ body::before {
   font-family: var(--font-serif);
   font-weight: 400;
   color: var(--ink);
-  font-size: 5.8cqw;
+  font-size: var(--cell-font-given, 5.8cqw);
 }
 .cell--user .cell__num {
   color: var(--accent);
@@ -252,7 +283,7 @@ body::before {
 .cell__notes span {
   display: grid;
   place-items: center;
-  font-size: 2.1cqw;
+  font-size: var(--note-font, 2.1cqw);
   font-weight: 500;
   line-height: 1;
   color: var(--ink-soft);
@@ -498,6 +529,97 @@ body::before {
 @keyframes pop {
   from { opacity: 0; transform: translateY(12px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- 儿童模式卡通皮肤 ---------- */
+body.kids-mode {
+  --bg: #fff3d6;
+  --surface: #fffdf6;
+  --ink: #4a3421;
+  --ink-soft: #a0805f;
+  --line: #f0d9b0;
+  --line-strong: #8a6a48;
+  --accent: #ff6b4a;
+  --accent-deep: #e8512f;
+  --accent-soft: #ffd0c0;
+  --accent-tint: #ffe7dd;
+  --peer-tint: #fff3cf;
+  --error: #ff5a5a;
+  --error-tint: #ffe3e3;
+  --ok: #2fbf71;
+  --font-serif: "Fredoka", "PingFang SC", system-ui, sans-serif;
+  --font-sans: "Fredoka", "PingFang SC", system-ui, sans-serif;
+  --shadow: 0 24px 60px -24px rgba(138, 106, 72, 0.35);
+}
+body.kids-mode {
+  background:
+    radial-gradient(1000px 600px at 50% -10%, rgba(255, 214, 90, 0.5), transparent 60%),
+    radial-gradient(800px 500px at 90% 110%, rgba(255, 150, 180, 0.35), transparent 55%),
+    var(--bg);
+}
+body.kids-mode::before {
+  background-image: radial-gradient(var(--line) 2px, transparent 2.5px);
+  background-size: 22px 22px;
+  opacity: 0.55;
+}
+body.kids-mode .brand__title { font-family: var(--font-sans); font-weight: 700; }
+body.kids-mode .mode,
+body.kids-mode .difficulty { background: #ffe7c0; }
+body.kids-mode .board { border-radius: 14px; }
+body.kids-mode .board-wrap { border-radius: 22px; }
+body.kids-mode .numpad__btn { border-radius: 16px; }
+body.kids-mode .numpad__btn.is-done { background: #fff0d6; }
+body.kids-mode .stat,
+body.kids-mode .icon-btn { border-radius: 18px; }
+body.kids-mode .action { border-radius: 16px; }
+body.kids-mode .cell--given .cell__num { font-weight: 600; }
+
+/* ---------- 激励提示 ---------- */
+.toast {
+  position: fixed;
+  top: 16%;
+  left: 50%;
+  z-index: 70;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 26px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+  animation: toast-pop 1.2s ease forwards;
+}
+@keyframes toast-pop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.5); }
+  14% { opacity: 1; transform: translateX(-50%) scale(1.12); }
+  28% { transform: translateX(-50%) scale(1); }
+  78% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+}
+
+/* ---------- 撒花 ---------- */
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+}
+.confetti span {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 15px;
+  border-radius: 3px;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  from { transform: translateY(0) rotate(0deg); }
+  to { transform: translateY(112vh) rotate(720deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
