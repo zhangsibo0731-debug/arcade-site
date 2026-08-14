@@ -127,7 +127,30 @@
     return count;
   }
 
-  function generatePuzzle(size, br, bc, clues) {
+  // 只用「唯一数」（某格只能填一个数）就能解完——最适合初学者/儿童
+  function nakedSinglesSolvable(grid, size, br, bc) {
+    const g = grid.map((row) => row.slice());
+    for (;;) {
+      let progress = false;
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (g[r][c] !== 0) continue;
+          let cnt = 0, val = 0;
+          for (let n = 1; n <= size; n++) {
+            if (isValidPlacement(g, r, c, n, br, bc)) {
+              cnt++; val = n;
+              if (cnt > 1) break;
+            }
+          }
+          if (cnt === 0) return false;
+          if (cnt === 1) { g[r][c] = val; progress = true; }
+        }
+      }
+      if (!progress) return findEmpty(g) === null;
+    }
+  }
+
+  function generatePuzzle(size, br, bc, clues, easy) {
     const solution = Array.from({ length: size }, () => Array(size).fill(0));
     solveGrid(solution, br, bc, true);
 
@@ -146,7 +169,10 @@
       const backup = puzzle[r][c];
       puzzle[r][c] = 0;
       const copy = puzzle.map((row) => row.slice());
-      if (countSolutions(copy, br, bc, 2) === 1) {
+      const ok = easy
+        ? nakedSinglesSolvable(copy, size, br, bc)
+        : countSolutions(copy, br, bc, 2) === 1;
+      if (ok) {
         removed++;
       } else {
         puzzle[r][c] = backup;
@@ -203,7 +229,7 @@
 
   function makeGame(mode, size, level) {
     const s = SIZES[size];
-    const g = generatePuzzle(size, s.br, s.bc, clueCountFor(size, level));
+    const g = generatePuzzle(size, s.br, s.bc, clueCountFor(size, level), mode === 'kids');
     if (mode === 'kids') ensureEasyEntry(g.puzzle, g.solution, size, s.br, s.bc, size === 9 ? 3 : size === 6 ? 2 : 1);
     return {
       mode,
