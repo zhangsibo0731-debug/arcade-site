@@ -421,8 +421,8 @@
 
   function applyPowerup(type) {
     const now = performance.now();
-    if (type === 'wide') effects.wideUntil = now + 12000;
-    else if (type === 'slow') effects.slowUntil = now + 10000;
+    if (type === 'wide') { effects.wideUntil = now + 12000; effects.shrinkUntil = 0; }
+    else if (type === 'slow') { effects.slowUntil = now + 10000; effects.fastUntil = 0; }
     else if (type === 'life') lives = Math.min(lives + 1, 6);
     else if (type === 'multi') {
       const src = balls.slice();
@@ -439,10 +439,12 @@
       }
     } else if (type === 'shrink') {
       effects.shrinkUntil = now + 8000;
+      effects.wideUntil = 0;
     } else if (type === 'triangle') {
       effects.triangleUntil = now + 6000;
     } else if (type === 'fast') {
       effects.fastUntil = now + 10000;
+      effects.slowUntil = 0;
     }
     play(type === 'shrink' || type === 'triangle' || type === 'fast' ? 'debuff' : 'powerup');
     updateHud();
