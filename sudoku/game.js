@@ -127,23 +127,20 @@
     return count;
   }
 
-  // 只用「唯一数」（某格只能填一个数）就能解完——最适合初学者/儿童
-  function nakedSinglesSolvable(grid, size, br, bc) {
+  // 只用「某行/列/宫正好空 1 格」就能解完——最直观，最适合儿童
+  function lastEmptySolvable(grid, size, br, bc) {
     const g = grid.map((row) => row.slice());
     for (;;) {
       let progress = false;
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          if (g[r][c] !== 0) continue;
-          let cnt = 0, val = 0;
+      const units = buildUnits(size, br, bc);
+      for (const u of units) {
+        const empties = u.filter((p) => g[p[0]][p[1]] === 0);
+        if (empties.length === 1) {
+          const used = new Set(u.filter((p) => g[p[0]][p[1]] !== 0).map((p) => g[p[0]][p[1]]));
           for (let n = 1; n <= size; n++) {
-            if (isValidPlacement(g, r, c, n, br, bc)) {
-              cnt++; val = n;
-              if (cnt > 1) break;
-            }
+            if (!used.has(n)) { g[empties[0][0]][empties[0][1]] = n; break; }
           }
-          if (cnt === 0) return false;
-          if (cnt === 1) { g[r][c] = val; progress = true; }
+          progress = true;
         }
       }
       if (!progress) return findEmpty(g) === null;
@@ -170,7 +167,7 @@
       puzzle[r][c] = 0;
       const copy = puzzle.map((row) => row.slice());
       const ok = easy
-        ? nakedSinglesSolvable(copy, size, br, bc)
+        ? lastEmptySolvable(copy, size, br, bc)
         : countSolutions(copy, br, bc, 2) === 1;
       if (ok) {
         removed++;
