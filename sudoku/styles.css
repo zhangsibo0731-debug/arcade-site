@@ -539,16 +539,16 @@ body.kids-mode {
   --ink-soft: #a0805f;
   --line: #f0d9b0;
   --line-strong: #8a6a48;
-  --accent: #ff6b4a;
-  --accent-deep: #e8512f;
-  --accent-soft: #ffd0c0;
-  --accent-tint: #ffe7dd;
+  --accent: #22c55e;
+  --accent-deep: #15803d;
+  --accent-soft: #b5f0c9;
+  --accent-tint: #d8f8e6;
   --peer-tint: #fff3cf;
   --error: #ff5a5a;
   --error-tint: #ffe3e3;
   --ok: #2fbf71;
-  --font-serif: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Baloo 2", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Baloo 2", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   --shadow: 0 24px 60px -24px rgba(138, 106, 72, 0.35);
 }
 body.kids-mode {
@@ -583,15 +583,18 @@ body.kids-mode .cell--given .cell__num { font-weight: 600; }
   transform: translateX(-50%);
   background: var(--accent);
   color: #fff;
-  padding: 12px 26px;
+  padding: 13px 30px;
   border-radius: 999px;
   font-family: var(--font-sans);
-  font-size: 20px;
+  font-size: 23px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
   pointer-events: none;
-  animation: toast-pop 1.2s ease forwards;
+  animation: toast-pop 1.3s ease forwards;
+}
+.toast--soft {
+  background: #f59e0b;
 }
 @keyframes toast-pop {
   0% { opacity: 0; transform: translateX(-50%) scale(0.5); }
@@ -599,6 +602,17 @@ body.kids-mode .cell--given .cell__num { font-weight: 600; }
   28% { transform: translateX(-50%) scale(1); }
   78% { opacity: 1; }
   100% { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+}
+
+/* 填对的格子弹跳一下 */
+.cell--pop {
+  z-index: 1;
+  animation: cell-pop 0.45s ease;
+}
+@keyframes cell-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22); }
+  100% { transform: scale(1); }
 }
 
 /* ---------- 撒花 ---------- */

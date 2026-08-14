@@ -305,9 +305,10 @@
   }
 
   // ---------- 儿童激励 ----------
-  function toast(text) {
+  function toast(text, kind) {
     if (!text) return;
     toastEl.textContent = text;
+    toastEl.className = 'toast' + (kind === 'soft' ? ' toast--soft' : '');
     toastEl.hidden = false;
     toastEl.style.animation = 'none';
     void toastEl.offsetWidth;
@@ -316,13 +317,12 @@
   function burstConfetti() {
     const colors = ['#ff6b4a', '#ffd43b', '#22d3c5', '#4dabf7', '#f06595', '#69db7c'];
     const frag = document.createDocumentFragment();
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 50; i++) {
       const s = document.createElement('span');
       s.style.left = (Math.random() * 100) + '%';
       s.style.background = colors[i % colors.length];
-      s.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
+      s.style.animation = 'confetti-fall ' + (1.8 + Math.random() * 1.4) + 's linear forwards';
       s.style.animationDelay = (Math.random() * 0.4) + 's';
-      s.style.transform = 'rotate(' + Math.floor(Math.random() * 360) + 'deg)';
       frag.appendChild(s);
     }
     confettiEl.appendChild(frag);
@@ -363,9 +363,14 @@
       state.board[r][c] = n;
       if (n !== state.solution[r][c]) {
         state.mistakes++;
-        if (state.mode === 'kids') toast('再想想～');
+        if (state.mode === 'kids') toast('再想想～', 'soft');
       } else if (state.mode === 'kids') {
         toast(lineJustDone(r, c) ? pick(LINE_PRAISE) : pick(PRAISE));
+        const cellEl = boardEl.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
+        if (cellEl) {
+          cellEl.classList.add('cell--pop');
+          setTimeout(() => cellEl.classList.remove('cell--pop'), 450);
+        }
       }
     }
     render();
