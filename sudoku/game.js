@@ -17,8 +17,8 @@
   const BEST_KEY = 'sudoku_best_v1';
   const MAX_UNDO = 250;
   const HINT_LIMIT = 3;
-  const PRAISE = ['真棒！', '太厉害了！', '继续加油！', '你真聪明！', '对啦！'];
-  const LINE_PRAISE = ['连成一条线啦！', '完成一排，好厉害！', '哇，又填对啦！'];
+  const PRAISE = ['真棒！😊', '太厉害了！👏', '继续加油！💪', '你真聪明！🌟', '对啦！✨'];
+  const LINE_PRAISE = ['连成一条线啦！🎉', '完成一排啦！⭐', '哇，好厉害！🥳'];
 
   // ---------- DOM ----------
   const $ = (id) => document.getElementById(id);
@@ -155,6 +155,42 @@
     return { puzzle, solution };
   }
 
+  // 儿童版：保证开局至少有一行/列/宫只空 1 格（让第一步有明确落点）
+  function ensureEasyEntry(puzzle, solution, size, br, bc) {
+    const units = [];
+    for (let r = 0; r < size; r++) {
+      const u = [];
+      for (let c = 0; c < size; c++) u.push([r, c]);
+      units.push(u);
+    }
+    for (let c = 0; c < size; c++) {
+      const u = [];
+      for (let r = 0; r < size; r++) u.push([r, c]);
+      units.push(u);
+    }
+    for (let R = 0; R < size; R += br) {
+      for (let C = 0; C < size; C += bc) {
+        const u = [];
+        for (let rr = R; rr < R + br; rr++) {
+          for (let cc = C; cc < C + bc; cc++) u.push([rr, cc]);
+        }
+        units.push(u);
+      }
+    }
+    let best = null, bestEmpty = Infinity;
+    for (const u of units) {
+      const empties = u.filter((p) => puzzle[p[0]][p[1]] === 0);
+      if (empties.length === 1) return; // 已有正好空 1 格的单元
+      if (empties.length >= 2 && empties.length < bestEmpty) { bestEmpty = empties.length; best = empties; }
+    }
+    if (best) {
+      for (let i = 0; i < best.length - 1; i++) {
+        const r = best[i][0], c = best[i][1];
+        puzzle[r][c] = solution[r][c];
+      }
+    }
+  }
+
   // ---------- 一局新游戏 ----------
   function clueCountFor(size, level) {
     return size === 9 ? LEVELS[level].clues : SIZES[size].clues;
@@ -163,6 +199,7 @@
   function makeGame(mode, size, level) {
     const s = SIZES[size];
     const g = generatePuzzle(size, s.br, s.bc, clueCountFor(size, level));
+    if (mode === 'kids') ensureEasyEntry(g.puzzle, g.solution, size, s.br, s.bc);
     return {
       mode,
       size,
@@ -363,7 +400,7 @@
       state.board[r][c] = n;
       if (n !== state.solution[r][c]) {
         state.mistakes++;
-        if (state.mode === 'kids') toast('再想想～', 'soft');
+        if (state.mode === 'kids') toast('再想想～🤔', 'soft');
       } else if (state.mode === 'kids') {
         toast(lineJustDone(r, c) ? pick(LINE_PRAISE) : pick(PRAISE));
         const cellEl = boardEl.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
