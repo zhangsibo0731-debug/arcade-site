@@ -11,7 +11,7 @@
   const SIZES = {
     4: { br: 2, bc: 2, clues: 10 },
     6: { br: 2, bc: 3, clues: 24 },
-    9: { br: 3, bc: 3, clues: 44 },
+    9: { br: 3, bc: 3, clues: 56 },
   };
   const STORAGE_KEY = 'sudoku_save_v1';
   const BEST_KEY = 'sudoku_best_v1';
@@ -155,8 +155,8 @@
     return { puzzle, solution };
   }
 
-  // 儿童版：保证开局至少有一行/列/宫只空 1 格（让第一步有明确落点）
-  function ensureEasyEntry(puzzle, solution, size, br, bc) {
+  // 儿童版：保证开局有若干行/列/宫只空 1 格（多个明显落点，降低起步难度）
+  function buildUnits(size, br, bc) {
     const units = [];
     for (let r = 0; r < size; r++) {
       const u = [];
@@ -177,13 +177,18 @@
         units.push(u);
       }
     }
-    let best = null, bestEmpty = Infinity;
-    for (const u of units) {
-      const empties = u.filter((p) => puzzle[p[0]][p[1]] === 0);
-      if (empties.length === 1) return; // 已有正好空 1 格的单元
-      if (empties.length >= 2 && empties.length < bestEmpty) { bestEmpty = empties.length; best = empties; }
-    }
-    if (best) {
+    return units;
+  }
+
+  function ensureEasyEntry(puzzle, solution, size, br, bc, target) {
+    for (let pass = 0; pass < target; pass++) {
+      const units = buildUnits(size, br, bc);
+      let best = null, bestEmpty = Infinity;
+      for (const u of units) {
+        const empties = u.filter((p) => puzzle[p[0]][p[1]] === 0);
+        if (empties.length >= 2 && empties.length < bestEmpty) { bestEmpty = empties.length; best = empties; }
+      }
+      if (!best) break;
       for (let i = 0; i < best.length - 1; i++) {
         const r = best[i][0], c = best[i][1];
         puzzle[r][c] = solution[r][c];
@@ -199,7 +204,7 @@
   function makeGame(mode, size, level) {
     const s = SIZES[size];
     const g = generatePuzzle(size, s.br, s.bc, clueCountFor(size, level));
-    if (mode === 'kids') ensureEasyEntry(g.puzzle, g.solution, size, s.br, s.bc);
+    if (mode === 'kids') ensureEasyEntry(g.puzzle, g.solution, size, s.br, s.bc, size === 9 ? 3 : size === 6 ? 2 : 1);
     return {
       mode,
       size,
