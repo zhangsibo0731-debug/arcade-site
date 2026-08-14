@@ -456,6 +456,7 @@
     // 逐个球更新
     for (let i = balls.length - 1; i >= 0; i--) {
       const b = balls[i];
+      const prevX = b.x, prevY = b.y;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
 
@@ -470,7 +471,7 @@
           b.y - b.r <= paddle.y + paddle.h &&
           b.x >= paddle.x && b.x <= paddle.x + paddle.w) {
         const rel = clamp((b.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2), -1, 1);
-        const ang = rel * (Math.PI / 3);
+        const ang = rel * (Math.PI / 3.6); // 最大约 50°，避免打到边缘时角度太平
         const sp = ballSpeed();
         b.vx = Math.sin(ang) * sp;
         b.vy = -Math.cos(ang) * sp;
@@ -478,14 +479,22 @@
         play('paddle');
       }
 
-      // 砖块
+      // 砖块（按上一帧位置判断从哪一面撞入，反弹更自然，并推出避免卡进砖里）
       for (const r of brickRects) {
         const cx = clamp(b.x, r.x, r.x + r.w);
         const cy = clamp(b.y, r.y, r.y + r.h);
         const dx = b.x - cx, dy = b.y - cy;
         if (dx * dx + dy * dy <= b.r * b.r) {
-          if (Math.abs(dx) > Math.abs(dy)) b.vx = -b.vx;
-          else b.vy = -b.vy;
+          const fromTop = prevY + b.r <= r.y + 0.5;
+          const fromBottom = prevY - b.r >= r.y + r.h - 0.5;
+          const fromLeft = prevX + b.r <= r.x + 0.5;
+          const fromRight = prevX - b.r >= r.x + r.w - 0.5;
+          if (fromTop) { b.vy = -Math.abs(b.vy); b.y = r.y - b.r - 0.5; }
+          else if (fromBottom) { b.vy = Math.abs(b.vy); b.y = r.y + r.h + b.r + 0.5; }
+          else if (fromLeft) { b.vx = -Math.abs(b.vx); b.x = r.x - b.r - 0.5; }
+          else if (fromRight) { b.vx = Math.abs(b.vx); b.x = r.x + r.w + b.r + 0.5; }
+          else if (Math.abs(dx) > Math.abs(dy)) { b.vx = -b.vx; }
+          else { b.vy = -b.vy; }
           hitBrick(r.b, r);
           break;
         }
