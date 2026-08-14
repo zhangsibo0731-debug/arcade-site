@@ -1,0 +1,314 @@
+:root {
+  --bg: #fff3d6;
+  --surface: #fffdf6;
+  --ink: #4a3421;
+  --ink-soft: #a0805f;
+  --line: #f0d9b0;
+  --accent: #4dabf7;
+  --accent-2: #8b7cf6;
+  --font-sans: "Space Grotesk", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background:
+    radial-gradient(1000px 600px at 50% -10%, rgba(255, 214, 90, 0.45), transparent 60%),
+    radial-gradient(800px 500px at 90% 110%, rgba(255, 150, 180, 0.3), transparent 55%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.app {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 16px 30px;
+}
+
+/* ---------- 顶栏 ---------- */
+.app__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.app__header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand__title {
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+.brand__sub {
+  margin-top: 5px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.back-btn,
+.icon-btn {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.back-btn svg,
+.icon-btn svg {
+  width: 19px;
+  height: 19px;
+}
+.back-btn:hover,
+.icon-btn:hover {
+  background: #eaf4ff;
+  border-color: var(--accent);
+}
+.back-btn:active,
+.icon-btn:active {
+  transform: scale(0.94);
+}
+
+/* ---------- 难度 ---------- */
+.difficulty {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  background: #ffe7c0;
+  padding: 4px;
+  border-radius: 14px;
+}
+.difficulty__btn {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+.difficulty__btn.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 2px 8px -2px rgba(74, 52, 33, 0.25);
+}
+
+/* ---------- 统计 ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 10px 8px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat__value {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.stat__label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+/* ---------- 棋盘 ---------- */
+.board {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.card {
+  aspect-ratio: 1 / 1;
+  perspective: 700px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.card__inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.4s ease;
+  transform-style: preserve-3d;
+}
+.card.flipped .card__inner {
+  transform: rotateY(180deg);
+}
+.card__face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border: 1px solid var(--line);
+}
+.card__face--down {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 16px -6px rgba(77, 171, 247, 0.5);
+}
+.card__face--down::after {
+  content: "?";
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 800;
+  font-size: 26px;
+}
+.card__face--up {
+  background: var(--surface);
+  font-size: 34px;
+  transform: rotateY(180deg);
+}
+.card.matched .card__face--up {
+  background: #e9f9ef;
+  border-color: #a8e6c1;
+  box-shadow: inset 0 0 0 2px #69db7c;
+}
+.card.matched .card__inner {
+  transform: rotateY(180deg);
+}
+
+/* ---------- 提示 ---------- */
+.hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.03em;
+}
+
+/* ---------- 弹层 ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(74, 52, 33, 0.5);
+  backdrop-filter: blur(5px);
+  animation: fade 0.25s ease;
+}
+.ov-card {
+  width: 100%;
+  max-width: 300px;
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 30px 24px 26px;
+  text-align: center;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.5);
+  animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ov-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.ov-sub {
+  font-size: 15px;
+  color: var(--ink-soft);
+  margin-bottom: 22px;
+}
+.ov-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 13px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: transform 0.1s ease, filter 0.14s ease;
+}
+.ov-btn:hover { filter: brightness(1.06); }
+.ov-btn:active { transform: scale(0.97); }
+
+/* ---------- 撒花 ---------- */
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+}
+.confetti span {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 15px;
+  border-radius: 3px;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  from { transform: translateY(0) rotate(0deg); }
+  to { transform: translateY(112vh) rotate(720deg); }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand__title { font-size: 22px; }
+  .card__face--up { font-size: 28px; }
+  .board { gap: 8px; }
+}

@@ -20,6 +20,9 @@ const ASSETS = [
   './2048/index.html',
   './2048/styles.css',
   './2048/game.js',
+  './memory/index.html',
+  './memory/styles.css',
+  './memory/game.js',
 ];
 
 self.addEventListener('install', (e) => {

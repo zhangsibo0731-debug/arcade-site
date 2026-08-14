@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#fff3d6" />
+<title>记忆翻牌 · Memory</title>
+<link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@500;600;700;800&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<main class="app">
+  <header class="app__header">
+    <div class="app__header-left">
+      <a class="back-btn" href="../" aria-label="返回游戏厅" title="返回游戏厅">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5" />
+          <path d="m12 19-7-7 7-7" />
+        </svg>
+      </a>
+      <div class="brand">
+        <h1 class="brand__title">记忆翻牌</h1>
+        <p class="brand__sub">MEMORY · 找出相同的一对</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="btnNew" type="button" aria-label="新游戏" title="新游戏">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 12a9 9 0 1 0 2.6-6.4" />
+        <path d="M3 3v5h5" />
+      </svg>
+    </button>
+  </header>
+
+  <section class="difficulty" id="difficulty" role="tablist" aria-label="难度选择">
+    <button class="difficulty__btn" data-pairs="4" type="button" role="tab" aria-selected="false">4对</button>
+    <button class="difficulty__btn is-active" data-pairs="6" type="button" role="tab" aria-selected="true">6对</button>
+    <button class="difficulty__btn" data-pairs="8" type="button" role="tab" aria-selected="false">8对</button>
+    <button class="difficulty__btn" data-pairs="10" type="button" role="tab" aria-selected="false">10对</button>
+  </section>
+
+  <section class="stats" aria-label="游戏统计">
+    <div class="stat">
+      <span class="stat__value" id="moves">0</span>
+      <span class="stat__label">步数</span>
+    </div>
+    <div class="stat">
+      <span class="stat__value" id="time">00:00</span>
+      <span class="stat__label">用时</span>
+    </div>
+    <div class="stat">
+      <span class="stat__value" id="best">--</span>
+      <span class="stat__label">最佳</span>
+    </div>
+  </section>
+
+  <section class="board" id="board" aria-label="翻牌棋盘"></section>
+
+  <p class="hint">翻开两张，找出相同的一对 · 4对适合小朋友</p>
+</main>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="ov-card" role="dialog" aria-modal="true">
+    <h2 class="ov-title" id="ovTitle">全配对啦！</h2>
+    <p class="ov-sub" id="ovSub">用了 0 步</p>
+    <button class="ov-btn" id="ovBtn" type="button">再来一局</button>
+  </div>
+</div>
+
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+
+<script src="game.js"></script>
+</body>
+</html>

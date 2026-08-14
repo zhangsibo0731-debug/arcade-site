@@ -20,7 +20,7 @@
   <header class="lobby__header">
     <p class="lobby__kicker">ARCADE</p>
     <h1 class="lobby__title">游戏厅</h1>
-    <p class="lobby__sub">四台街机，选一台开始玩</p>
+    <p class="lobby__sub">五台街机，选一台开始玩</p>
   </header>
 
   <section class="shelf">
@@ -129,6 +129,27 @@
         <span class="card__score" id="g2048Score">暂无记录</span>
       </div>
     </a>
+
+    <a class="card" href="memory/">
+      <div class="card__preview card__preview--memory" aria-hidden="true">
+        <svg viewBox="0 0 96 96" focusable="false">
+          <rect x="8" y="8" width="80" height="80" rx="6" fill="#fff3d6" />
+          <rect x="16" y="16" width="28" height="28" rx="5" fill="#4dabf7" />
+          <rect x="52" y="16" width="28" height="28" rx="5" fill="#fffdf6" stroke="#f0d9b0" />
+          <rect x="16" y="52" width="28" height="28" rx="5" fill="#fffdf6" stroke="#f0d9b0" />
+          <rect x="52" y="52" width="28" height="28" rx="5" fill="#8b7cf6" />
+          <text x="30" y="35" font-size="16" fill="#ffffff" text-anchor="middle" font-weight="700">?</text>
+          <text x="66" y="71" font-size="16" fill="#ffffff" text-anchor="middle" font-weight="700">?</text>
+          <circle cx="66" cy="30" r="7" fill="#ff6b4a" />
+          <circle cx="30" cy="66" r="7" fill="#69db7c" />
+        </svg>
+      </div>
+      <div class="card__body">
+        <h2 class="card__title">记忆翻牌</h2>
+        <p class="card__desc">翻牌配对 · 练记忆</p>
+        <span class="card__score" id="memoryScore">暂无记录</span>
+      </div>
+    </a>
   </section>
 
   <section class="tools">
@@ -173,6 +194,11 @@
     try {
       var g4 = parseInt(localStorage.getItem('g2048_best_v1'), 10);
       if (g4 > 0) set('g2048Score', '最高 ' + g4);
+    } catch (e) {}
+    try {
+      var mb = JSON.parse(localStorage.getItem('memory_best_v1') || '{}');
+      var mv = Object.keys(mb).map(function (k) { return mb[k]; }).filter(function (v) { return typeof v === 'number' && v > 0; });
+      if (mv.length) set('memoryScore', '最佳 ' + Math.min.apply(null, mv) + ' 步');
     } catch (e) {}
   })();
 </script>
