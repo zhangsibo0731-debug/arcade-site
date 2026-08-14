@@ -99,6 +99,7 @@ body {
 .card__preview--sudoku { background: #e7e9ee; }
 .card__preview--breakout { background: #171c38; }
 .card__preview--tetris { background: #161a30; }
+.card__preview--2048 { background: #faf8ef; }
 
 .card__body {
   display: flex;

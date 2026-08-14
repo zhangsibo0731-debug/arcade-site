@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#faf8ef" />
+<title>2048 · Merge Numbers</title>
+<link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@500;600;700;800&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<main class="app">
+  <header class="app__header">
+    <div class="app__header-left">
+      <a class="back-btn" href="../" aria-label="返回游戏厅" title="返回游戏厅">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5" />
+          <path d="m12 19-7-7 7-7" />
+        </svg>
+      </a>
+      <div class="brand">
+        <h1 class="brand__title">2048</h1>
+        <p class="brand__sub">MERGE · 合并到 2048</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="btnNew" type="button" aria-label="新游戏" title="新游戏">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 12a9 9 0 1 0 2.6-6.4" />
+        <path d="M3 3v5h5" />
+      </svg>
+    </button>
+  </header>
+
+  <section class="hud" aria-label="游戏数据">
+    <div class="scorebox">
+      <span class="scorebox__label">得分</span>
+      <span class="scorebox__value" id="score">0</span>
+    </div>
+    <div class="scorebox">
+      <span class="scorebox__label">最高</span>
+      <span class="scorebox__value" id="best">0</span>
+    </div>
+    <button class="ctl" id="btnUndo" type="button">撤销</button>
+  </section>
+
+  <section class="board" id="board" aria-label="2048 棋盘">
+    <div class="board__grid" aria-hidden="true">
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+      <div class="cell-bg"></div>
+    </div>
+  </section>
+
+  <p class="hint">滑动或方向键合并相同数字，凑出 2048</p>
+</main>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="ov-card" role="dialog" aria-modal="true">
+    <h2 class="ov-title" id="ovTitle">你赢了！</h2>
+    <p class="ov-sub" id="ovSub">成功凑出 2048</p>
+    <button class="ov-btn" id="ovBtn" type="button">继续挑战</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

@@ -20,7 +20,7 @@
   <header class="lobby__header">
     <p class="lobby__kicker">ARCADE</p>
     <h1 class="lobby__title">游戏厅</h1>
-    <p class="lobby__sub">三台街机，选一台开始玩</p>
+    <p class="lobby__sub">四台街机，选一台开始玩</p>
   </header>
 
   <section class="shelf">
@@ -97,12 +97,44 @@
         <span class="card__score" id="tetrisScore">暂无记录</span>
       </div>
     </a>
+
+    <a class="card" href="2048/">
+      <div class="card__preview card__preview--2048" aria-hidden="true">
+        <svg viewBox="0 0 96 96" focusable="false">
+          <rect x="8" y="8" width="80" height="80" rx="6" fill="#bbada0" />
+          <g>
+            <rect x="14" y="14" width="20" height="20" rx="3" fill="#eee4da" />
+            <rect x="38" y="14" width="20" height="20" rx="3" fill="#ede0c8" />
+            <rect x="62" y="14" width="20" height="20" rx="3" fill="#f2b179" />
+            <rect x="14" y="38" width="20" height="20" rx="3" fill="#f59563" />
+            <rect x="38" y="38" width="20" height="20" rx="3" fill="#f67c5f" />
+            <rect x="62" y="38" width="20" height="20" rx="3" fill="#edcf72" />
+            <rect x="14" y="62" width="20" height="20" rx="3" fill="#eee4da" />
+            <rect x="38" y="62" width="20" height="20" rx="3" fill="#f2b179" />
+            <rect x="62" y="62" width="20" height="20" rx="3" fill="#eee4da" />
+          </g>
+          <g font-family="Space Grotesk, sans-serif" font-weight="700" text-anchor="middle">
+            <text x="24" y="27" font-size="10" fill="#776e65">2</text>
+            <text x="48" y="27" font-size="10" fill="#776e65">4</text>
+            <text x="72" y="27" font-size="10" fill="#f9f6f2">8</text>
+            <text x="24" y="51" font-size="8" fill="#f9f6f2">16</text>
+            <text x="48" y="51" font-size="8" fill="#f9f6f2">32</text>
+            <text x="72" y="51" font-size="8" fill="#f9f6f2">64</text>
+          </g>
+        </svg>
+      </div>
+      <div class="card__body">
+        <h2 class="card__title">2048</h2>
+        <p class="card__desc">滑动合并 · 凑出 2048</p>
+        <span class="card__score" id="g2048Score">暂无记录</span>
+      </div>
+    </a>
   </section>
 
   <section class="tools">
     <div class="tools__info">
       <span class="tools__title">存档备份</span>
-      <span class="tools__hint">手动备份 / 恢复三个游戏的进度与纪录</span>
+      <span class="tools__hint">手动备份 / 恢复各游戏的进度与纪录</span>
     </div>
     <div class="tools__actions">
       <button class="tool-btn" id="btnExport" type="button">导出存档</button>
@@ -137,6 +169,10 @@
     try {
       var th = parseInt(localStorage.getItem('tetris_hi_v1'), 10);
       if (th > 0) set('tetrisScore', '最高 ' + th);
+    } catch (e) {}
+    try {
+      var g4 = parseInt(localStorage.getItem('g2048_best_v1'), 10);
+      if (g4 > 0) set('g2048Score', '最高 ' + g4);
     } catch (e) {}
   })();
 </script>

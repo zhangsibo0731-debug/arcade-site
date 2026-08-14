@@ -17,6 +17,9 @@ const ASSETS = [
   './tetris/index.html',
   './tetris/styles.css',
   './tetris/game.js',
+  './2048/index.html',
+  './2048/styles.css',
+  './2048/game.js',
 ];
 
 self.addEventListener('install', (e) => {
