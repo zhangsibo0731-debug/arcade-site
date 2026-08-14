@@ -262,8 +262,8 @@ body::before {
   font-variant-numeric: tabular-nums;
 }
 .cell--given .cell__num {
-  font-family: var(--font-serif);
-  font-weight: 400;
+  font-family: var(--font-sans);
+  font-weight: 700;
   color: var(--ink);
   font-size: var(--cell-font-given, 5.8cqw);
 }
