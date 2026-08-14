@@ -1,0 +1,9 @@
+.DS_Store
+arcade-site.zip
+arcade-site/
+
+# 数独目录里已废弃的旧文件（现在统一用根目录的 manifest/sw/icons）
+sudoku/manifest.json
+sudoku/sw.js
+sudoku/icons/
+sudoku/sudoku-offline.html

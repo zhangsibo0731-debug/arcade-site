@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#10142a" />
+<title>打砖块 · Breakout</title>
+<link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<main class="app">
+  <header class="app__header">
+    <div class="app__header-left">
+      <a class="back-btn" href="../" aria-label="返回游戏厅" title="返回游戏厅">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5" />
+          <path d="m12 19-7-7 7-7" />
+        </svg>
+      </a>
+      <div class="brand">
+        <h1 class="brand__title">打砖块</h1>
+        <p class="brand__sub">BREAKOUT · 砸碎每一块砖</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="hud" aria-label="游戏数据">
+    <div class="hud__item">
+      <span class="hud__label">得分</span>
+      <span class="hud__value" id="score">0</span>
+    </div>
+    <div class="hud__item">
+      <span class="hud__label">最高</span>
+      <span class="hud__value" id="hi">0</span>
+    </div>
+    <div class="hud__item">
+      <span class="hud__label">关卡</span>
+      <span class="hud__value" id="level">1</span>
+    </div>
+    <div class="hud__item">
+      <span class="hud__label">生命</span>
+      <span class="hud__value" id="lives">3</span>
+    </div>
+  </section>
+
+  <section class="stage" id="stage" aria-label="游戏区域">
+    <canvas id="game"></canvas>
+    <button class="pause-btn pause-btn--left" id="btnSound" type="button" aria-label="关闭声音">
+      <svg id="icSoundOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4Z" />
+        <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+        <path d="M18 6a8.5 8.5 0 0 1 0 12" />
+      </svg>
+      <svg id="icSoundOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+        <path d="M11 5 6 9H3v6h3l5 4Z" />
+        <path d="m16 9 5 6" />
+        <path d="m21 9-5 6" />
+      </svg>
+    </button>
+    <button class="pause-btn" id="btnPause" type="button" aria-label="暂停" hidden>
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="6" y="5" width="4" height="14" rx="1.5" />
+        <rect x="14" y="5" width="4" height="14" rx="1.5" />
+      </svg>
+    </button>
+    <div class="overlay" id="overlay" hidden>
+      <div class="ov-card">
+        <h2 class="ov-title" id="ovTitle">打砖块</h2>
+        <p class="ov-sub" id="ovSub">移动挡板接住球，砸碎所有砖块</p>
+        <button class="ov-btn" id="ovBtn" type="button">开始游戏</button>
+      </div>
+    </div>
+    <div class="overlay" id="resumeOverlay" hidden>
+      <div class="ov-card">
+        <h2 class="ov-title">继续上次的游戏？</h2>
+        <p class="ov-sub" id="resumeSub">得分 0 · 第 1 关 · 生命 ×3</p>
+        <div class="ov-actions">
+          <button class="ov-btn ov-btn--ghost" id="btnResumeNew" type="button">新开一局</button>
+          <button class="ov-btn" id="btnResumeContinue" type="button">继续上次</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="hint">拖动或鼠标移动挡板 · 空格发射 / 暂停</p>
+</main>
+
+<script src="game.js"></script>
+</body>
+</html>

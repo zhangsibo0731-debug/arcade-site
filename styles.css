@@ -1,0 +1,206 @@
+:root {
+  --bg: #15151c;
+  --card: #1f1f29;
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #f0f0f4;
+  --text-soft: #9a9aa6;
+  --accent: #ffb454;
+  --font-sans: "Space Grotesk", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--text);
+  background:
+    radial-gradient(1000px 560px at 50% -10%, rgba(255, 180, 84, 0.12), transparent 60%),
+    radial-gradient(900px 540px at 85% 115%, rgba(120, 130, 255, 0.10), transparent 55%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.lobby {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 48px 22px 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+}
+
+/* ---------- 头部 ---------- */
+.lobby__header {
+  text-align: center;
+}
+.lobby__kicker {
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+.lobby__title {
+  font-size: 44px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-top: 10px;
+}
+.lobby__sub {
+  margin-top: 10px;
+  font-size: 15px;
+  color: var(--text-soft);
+}
+
+/* ---------- 货架 ---------- */
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.card:hover, .card:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 22px 50px -20px rgba(0, 0, 0, 0.7);
+  outline: none;
+}
+
+.card__preview {
+  height: 118px;
+  display: grid;
+  place-items: center;
+}
+.card__preview svg {
+  width: 88px;
+  height: 88px;
+}
+.card__preview--sudoku { background: #e7e9ee; }
+.card__preview--breakout { background: #171c38; }
+.card__preview--tetris { background: #161a30; }
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px 18px;
+}
+.card__title {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.card__desc {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.card__score {
+  margin-top: 10px;
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  font-variant-numeric: tabular-nums;
+}
+
+.lobby__foot {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-soft);
+  letter-spacing: 0.03em;
+}
+
+/* ---------- 存档工具 ---------- */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.tools__info {
+  flex: 1 1 auto;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tools__title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.tools__hint {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.tools__actions {
+  display: flex;
+  gap: 8px;
+}
+.tool-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
+}
+.tool-btn:hover {
+  border-color: var(--accent);
+  background: rgba(255, 180, 84, 0.12);
+}
+.tool-btn:active {
+  transform: scale(0.96);
+}
+.tools__msg {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .lobby__title { font-size: 36px; }
+  .lobby { padding: 36px 18px 32px; gap: 26px; }
+}

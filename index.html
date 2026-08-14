@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#15151c" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="游戏厅" />
+<title>游戏厅 · Arcade</title>
+<link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+</head>
+<body>
+<main class="lobby">
+  <header class="lobby__header">
+    <p class="lobby__kicker">ARCADE</p>
+    <h1 class="lobby__title">游戏厅</h1>
+    <p class="lobby__sub">三台街机，选一台开始玩</p>
+  </header>
+
+  <section class="shelf">
+    <a class="card" href="sudoku/">
+      <div class="card__preview card__preview--sudoku" aria-hidden="true">
+        <svg viewBox="0 0 96 96" focusable="false">
+          <rect x="8" y="8" width="80" height="80" rx="6" fill="#f5f3ee" />
+          <g stroke="#2e4ee0" stroke-width="3" stroke-linecap="round">
+            <path d="M34 10v76" />
+            <path d="M62 10v76" />
+            <path d="M10 34h76" />
+            <path d="M10 62h76" />
+          </g>
+          <g fill="#2e4ee0" font-family="Space Grotesk, sans-serif" font-size="19" font-weight="700" text-anchor="middle">
+            <text x="21" y="31">1</text>
+            <text x="48" y="58">5</text>
+            <text x="75" y="85">9</text>
+          </g>
+        </svg>
+      </div>
+      <div class="card__body">
+        <h2 class="card__title">数独</h2>
+        <p class="card__desc">纸与墨 · 推理填数</p>
+        <span class="card__score" id="sudokuScore">暂无记录</span>
+      </div>
+    </a>
+
+    <a class="card" href="breakout/">
+      <div class="card__preview card__preview--breakout" aria-hidden="true">
+        <svg viewBox="0 0 96 96" focusable="false">
+          <rect x="8" y="8" width="80" height="80" rx="6" fill="#10142a" />
+          <g>
+            <rect x="14" y="17" width="20" height="8" rx="2" fill="#8b7cf6" />
+            <rect x="38" y="17" width="20" height="8" rx="2" fill="#4dabf7" />
+            <rect x="62" y="17" width="20" height="8" rx="2" fill="#22d3c5" />
+            <rect x="14" y="29" width="20" height="8" rx="2" fill="#ffc24b" />
+            <rect x="38" y="29" width="20" height="8" rx="2" fill="#ff7a59" />
+            <rect x="62" y="29" width="20" height="8" rx="2" fill="#f06595" />
+          </g>
+          <circle cx="48" cy="58" r="6" fill="#ffffff" />
+          <rect x="28" y="76" width="40" height="7" rx="3.5" fill="#eef0f8" />
+        </svg>
+      </div>
+      <div class="card__body">
+        <h2 class="card__title">打砖块</h2>
+        <p class="card__desc">霓虹街机 · 接球砸砖</p>
+        <span class="card__score" id="breakoutScore">暂无记录</span>
+      </div>
+    </a>
+
+    <a class="card" href="tetris/">
+      <div class="card__preview card__preview--tetris" aria-hidden="true">
+        <svg viewBox="0 0 96 96" focusable="false">
+          <rect x="8" y="8" width="80" height="80" rx="6" fill="#0f1222" />
+          <g>
+            <rect x="16" y="20" width="14" height="14" fill="#22d3ee" />
+            <rect x="16" y="37" width="14" height="14" fill="#22d3ee" />
+            <rect x="16" y="54" width="14" height="14" fill="#22d3ee" />
+            <rect x="16" y="71" width="14" height="14" fill="#22d3ee" />
+            <rect x="38" y="45" width="14" height="14" fill="#ffd43b" />
+            <rect x="55" y="45" width="14" height="14" fill="#ffd43b" />
+            <rect x="38" y="62" width="14" height="14" fill="#ffd43b" />
+            <rect x="55" y="62" width="14" height="14" fill="#ffd43b" />
+            <rect x="58" y="26" width="14" height="14" fill="#b784f6" />
+            <rect x="75" y="26" width="14" height="14" fill="#b784f6" />
+            <rect x="58" y="43" width="14" height="14" fill="#b784f6" />
+            <rect x="75" y="43" width="14" height="14" fill="#b784f6" />
+          </g>
+        </svg>
+      </div>
+      <div class="card__body">
+        <h2 class="card__title">俄罗斯方块</h2>
+        <p class="card__desc">经典落块 · 消行得分</p>
+        <span class="card__score" id="tetrisScore">暂无记录</span>
+      </div>
+    </a>
+  </section>
+
+  <section class="tools">
+    <div class="tools__info">
+      <span class="tools__title">存档备份</span>
+      <span class="tools__hint">手动备份 / 恢复三个游戏的进度与纪录</span>
+    </div>
+    <div class="tools__actions">
+      <button class="tool-btn" id="btnExport" type="button">导出存档</button>
+      <button class="tool-btn" id="btnImport" type="button">恢复存档</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden />
+    </div>
+    <p class="tools__msg" id="toolsMsg" hidden></p>
+  </section>
+
+  <p class="lobby__foot">可用 Tab 切换、回车进入 · 每个游戏内点左上角返回</p>
+</main>
+
+<script>
+  (function () {
+    function fmt(s) {
+      s = Math.max(0, Math.floor(s));
+      return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }
+    function set(id, txt) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = txt;
+    }
+    try {
+      var sb = JSON.parse(localStorage.getItem('sudoku_best_v1') || '{}');
+      var vals = Object.keys(sb).map(function (k) { return sb[k]; }).filter(function (v) { return typeof v === 'number' && v > 0; });
+      if (vals.length) set('sudokuScore', '最佳 ' + fmt(Math.min.apply(null, vals)));
+    } catch (e) {}
+    try {
+      var bh = parseInt(localStorage.getItem('breakout_hi_v1'), 10);
+      if (bh > 0) set('breakoutScore', '最高 ' + bh);
+    } catch (e) {}
+    try {
+      var th = parseInt(localStorage.getItem('tetris_hi_v1'), 10);
+      if (th > 0) set('tetrisScore', '最高 ' + th);
+    } catch (e) {}
+  })();
+</script>
+<script>
+  (function () {
+    var msg = document.getElementById('toolsMsg');
+    function showMsg(txt) {
+      msg.textContent = txt;
+      msg.hidden = false;
+      clearTimeout(showMsg._t);
+      showMsg._t = setTimeout(function () { msg.hidden = true; }, 3200);
+    }
+    function exportSave() {
+      var data = {};
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        data[k] = localStorage.getItem(k);
+      }
+      var payload = { app: 'arcade', version: 1, exportedAt: new Date().toISOString(), data: data };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      var d = new Date();
+      function p(n) { return ('0' + n).slice(-2); }
+      a.href = url;
+      a.download = 'arcade-save-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showMsg('已导出存档文件');
+    }
+    function importSave(file) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var payload = JSON.parse(reader.result);
+          var data = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+          var keys = Object.keys(data);
+          if (!keys.length) { showMsg('文件里没有可恢复的存档'); return; }
+          if (!window.confirm('将用文件覆盖当前 ' + keys.length + ' 项存档，确定恢复吗？')) return;
+          keys.forEach(function (k) { localStorage.setItem(k, data[k]); });
+          showMsg('已恢复 ' + keys.length + ' 项存档，正在刷新…');
+          setTimeout(function () { location.reload(); }, 800);
+        } catch (e) {
+          showMsg('文件格式不对，恢复失败');
+        }
+      };
+      reader.readAsText(file);
+    }
+    document.getElementById('btnExport').addEventListener('click', exportSave);
+    document.getElementById('btnImport').addEventListener('click', function () {
+      document.getElementById('importFile').click();
+    });
+    document.getElementById('importFile').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (f) importSave(f);
+      e.target.value = '';
+    });
+  })();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>
