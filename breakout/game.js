@@ -44,7 +44,7 @@
   let paddle = { x: 0, y: 0, w: 96, h: PADDLE_H };
   let powerups = [];
   let particles = [];
-  let effects = { wideUntil: 0, slowUntil: 0 };
+  let effects = { wideUntil: 0, slowUntil: 0, shrinkUntil: 0, triangleUntil: 0, fastUntil: 0 };
   let keys = { left: false, right: false };
   let shake = 0, flash = 0;
   let lastT = 0;
@@ -59,13 +59,18 @@
   function basePaddleW() { return clamp(W * 0.24, 72, 120); }
 
   function paddleW() {
-    return performance.now() < effects.wideUntil ? basePaddleW() * 1.55 : basePaddleW();
+    let w = basePaddleW();
+    if (performance.now() < effects.wideUntil) w *= 1.55;
+    if (performance.now() < effects.shrinkUntil) w *= 0.55;
+    return w;
   }
 
   function ballSpeed() {
     const base = 260 + (level - 1) * 24;
-    const slowed = performance.now() < effects.slowUntil ? 0.62 : 1;
-    return Math.min(base * slowed, 460);
+    let sp = base;
+    if (performance.now() < effects.slowUntil) sp *= 0.62;
+    if (performance.now() < effects.fastUntil) sp *= 1.3;
+    return Math.min(sp, 500);
   }
 
   function readHi() {
@@ -86,10 +91,20 @@
   }
 
   function powerColor(t) {
-    return t === 'wide' ? '#22d3c5' : t === 'slow' ? '#4dabf7' : t === 'life' ? '#ff7a59' : '#f06595';
+    if (t === 'wide') return '#22d3c5';
+    if (t === 'slow') return '#4dabf7';
+    if (t === 'life') return '#ff7a59';
+    if (t === 'multi') return '#f06595';
+    return '#ff4d6d'; // debuff（shrink / triangle / fast）统一红色
   }
   function powerLabel(t) {
-    return t === 'wide' ? '宽' : t === 'slow' ? '慢' : t === 'life' ? '+1' : '多';
+    if (t === 'wide') return '宽';
+    if (t === 'slow') return '慢';
+    if (t === 'life') return '+1';
+    if (t === 'multi') return '多';
+    if (t === 'shrink') return '窄';
+    if (t === 'triangle') return '尖';
+    return '快'; // fast
   }
   function pickType(types, w) {
     const r = Math.random();
@@ -127,12 +142,13 @@
       case 'life': freq = 200; dur = 0.4; type = 'sawtooth'; vol = 0.18; break;
       case 'clear': freq = 523; dur = 0.16; type = 'triangle'; vol = 0.16; break;
       case 'over': freq = 150; dur = 0.5; type = 'sawtooth'; vol = 0.18; break;
+      case 'debuff': freq = 320; dur = 0.3; type = 'sawtooth'; vol = 0.18; break;
     }
     const osc = ac.createOscillator();
     const gain = ac.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, now);
-    if (name === 'life' || name === 'over') osc.frequency.exponentialRampToValueAtTime(60, now + dur);
+    if (name === 'life' || name === 'over' || name === 'debuff') osc.frequency.exponentialRampToValueAtTime(60, now + dur);
     else if (name === 'powerup' || name === 'clear') osc.frequency.exponentialRampToValueAtTime(freq * 1.8, now + dur);
     gain.gain.setValueAtTime(vol, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
@@ -235,6 +251,9 @@
       powerups: powerups,
       wideRemain: effects.wideUntil > now ? effects.wideUntil - now : 0,
       slowRemain: effects.slowUntil > now ? effects.slowUntil - now : 0,
+      shrinkRemain: effects.shrinkUntil > now ? effects.shrinkUntil - now : 0,
+      triangleRemain: effects.triangleUntil > now ? effects.triangleUntil - now : 0,
+      fastRemain: effects.fastUntil > now ? effects.fastUntil - now : 0,
     };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(snap)); } catch (e) {}
   }
@@ -258,6 +277,9 @@
     const now = performance.now();
     effects.wideUntil = (s.wideRemain > 0) ? now + s.wideRemain : 0;
     effects.slowUntil = (s.slowRemain > 0) ? now + s.slowRemain : 0;
+    effects.shrinkUntil = (s.shrinkRemain > 0) ? now + s.shrinkRemain : 0;
+    effects.triangleUntil = (s.triangleRemain > 0) ? now + s.triangleRemain : 0;
+    effects.fastUntil = (s.fastRemain > 0) ? now + s.fastRemain : 0;
     balls = (s.balls && s.balls.length) ? s.balls : [makeBall(paddle.x + paddle.w / 2, paddle.y - BALL_R - 1)];
     updateHud();
   }
@@ -265,7 +287,7 @@
   function newGame() {
     score = 0;
     lives = LIVES_START;
-    effects = { wideUntil: 0, slowUntil: 0 };
+    effects = { wideUntil: 0, slowUntil: 0, shrinkUntil: 0, triangleUntil: 0, fastUntil: 0 };
     powerups = [];
     particles = [];
     buildLevel(1);
@@ -385,10 +407,16 @@
   }
 
   function maybeDrop(b, r) {
-    if (Math.random() >= 0.18) return;
-    const types = ['wide', 'slow', 'life', 'multi'];
-    const weights = [0.3, 0.25, 0.2, 0.25];
-    powerups.push({ x: r.x + r.w / 2, y: r.y + r.h / 2, type: pickType(types, weights), vy: 92 });
+    const roll = Math.random();
+    let type = null;
+    if (roll < 0.10) {
+      type = pickType(['wide', 'slow', 'life', 'multi'], [0.3, 0.25, 0.2, 0.25]);
+    } else if (roll < 0.20) {
+      type = pickType(['shrink', 'triangle', 'fast'], [0.4, 0.3, 0.3]);
+    }
+    if (type) {
+      powerups.push({ x: r.x + r.w / 2, y: r.y + r.h / 2, type: type, vy: 92 });
+    }
   }
 
   function applyPowerup(type) {
@@ -409,8 +437,14 @@
           vy: Math.sin(cur + a) * sp,
         });
       }
+    } else if (type === 'shrink') {
+      effects.shrinkUntil = now + 8000;
+    } else if (type === 'triangle') {
+      effects.triangleUntil = now + 6000;
+    } else if (type === 'fast') {
+      effects.fastUntil = now + 10000;
     }
-    play('powerup');
+    play(type === 'shrink' || type === 'triangle' || type === 'fast' ? 'debuff' : 'powerup');
     updateHud();
   }
 
@@ -470,11 +504,19 @@
           b.y + b.r >= paddle.y &&
           b.y - b.r <= paddle.y + paddle.h &&
           b.x >= paddle.x && b.x <= paddle.x + paddle.w) {
-        const rel = clamp((b.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2), -1, 1);
-        const ang = rel * (Math.PI / 3.6); // 最大约 50°，避免打到边缘时角度太平
         const sp = ballSpeed();
-        b.vx = Math.sin(ang) * sp;
-        b.vy = -Math.cos(ang) * sp;
+        if (performance.now() < effects.triangleUntil) {
+          // 三角形挡板：只有左/右两个固定出射角
+          const side = (b.x < paddle.x + paddle.w / 2) ? -1 : 1;
+          const ang = side * (Math.PI / 4);
+          b.vx = Math.sin(ang) * sp;
+          b.vy = -Math.cos(ang) * sp;
+        } else {
+          const rel = clamp((b.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2), -1, 1);
+          const ang = rel * (Math.PI / 3.6); // 最大约 50°
+          b.vx = Math.sin(ang) * sp;
+          b.vy = -Math.cos(ang) * sp;
+        }
         b.y = paddle.y - b.r - 0.5;
         play('paddle');
       }
@@ -584,12 +626,23 @@
       ctx.fillText(powerLabel(p.type), p.x, p.y + 0.5);
     }
 
-    // 挡板
-    ctx.fillStyle = '#eef0f8';
-    ctx.shadowColor = '#7fb4ff';
+    // 挡板（debuff 时变三角 / 变红，提示当前状态）
+    const tri = performance.now() < effects.triangleUntil;
+    const debuff = tri || performance.now() < effects.shrinkUntil;
+    ctx.shadowColor = debuff ? '#ff7a59' : '#7fb4ff';
     ctx.shadowBlur = 16;
-    roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7);
-    ctx.fill();
+    ctx.fillStyle = debuff ? '#ffd6cf' : '#eef0f8';
+    if (tri) {
+      ctx.beginPath();
+      ctx.moveTo(paddle.x + paddle.w / 2, paddle.y);
+      ctx.lineTo(paddle.x + paddle.w, paddle.y + paddle.h);
+      ctx.lineTo(paddle.x, paddle.y + paddle.h);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7);
+      ctx.fill();
+    }
     ctx.shadowBlur = 0;
 
     // 球（多球）
