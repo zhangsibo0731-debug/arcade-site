@@ -44,7 +44,7 @@
   let paddle = { x: 0, y: 0, w: 96, h: PADDLE_H };
   let powerups = [];
   let particles = [];
-  let effects = { wideUntil: 0, slowUntil: 0, shrinkUntil: 0, triangleUntil: 0, fastUntil: 0 };
+  let effects = { wideUntil: 0, slowUntil: 0, shrinkUntil: 0, triangleUntil: 0, fastUntil: 0, ironUntil: 0 };
   let keys = { left: false, right: false };
   let shake = 0, flash = 0;
   let lastT = 0;
@@ -95,6 +95,7 @@
     if (t === 'slow') return '#4dabf7';
     if (t === 'life') return '#ff7a59';
     if (t === 'multi') return '#f06595';
+    if (t === 'iron') return '#ffc24b';
     return '#ff4d6d'; // debuff（shrink / triangle / fast）统一红色
   }
   function powerLabel(t) {
@@ -102,6 +103,7 @@
     if (t === 'slow') return '慢';
     if (t === 'life') return '+1';
     if (t === 'multi') return '多';
+    if (t === 'iron') return '铁';
     if (t === 'shrink') return '窄';
     if (t === 'triangle') return '尖';
     return '快'; // fast
@@ -254,6 +256,7 @@
       shrinkRemain: effects.shrinkUntil > now ? effects.shrinkUntil - now : 0,
       triangleRemain: effects.triangleUntil > now ? effects.triangleUntil - now : 0,
       fastRemain: effects.fastUntil > now ? effects.fastUntil - now : 0,
+      ironRemain: effects.ironUntil > now ? effects.ironUntil - now : 0,
     };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(snap)); } catch (e) {}
   }
@@ -280,6 +283,7 @@
     effects.shrinkUntil = (s.shrinkRemain > 0) ? now + s.shrinkRemain : 0;
     effects.triangleUntil = (s.triangleRemain > 0) ? now + s.triangleRemain : 0;
     effects.fastUntil = (s.fastRemain > 0) ? now + s.fastRemain : 0;
+    effects.ironUntil = (s.ironRemain > 0) ? now + s.ironRemain : 0;
     balls = (s.balls && s.balls.length) ? s.balls : [makeBall(paddle.x + paddle.w / 2, paddle.y - BALL_R - 1)];
     updateHud();
   }
@@ -287,7 +291,7 @@
   function newGame() {
     score = 0;
     lives = LIVES_START;
-    effects = { wideUntil: 0, slowUntil: 0, shrinkUntil: 0, triangleUntil: 0, fastUntil: 0 };
+    effects = { wideUntil: 0, slowUntil: 0, shrinkUntil: 0, triangleUntil: 0, fastUntil: 0, ironUntil: 0 };
     powerups = [];
     particles = [];
     buildLevel(1);
@@ -388,8 +392,12 @@
   }
 
   // ---------- 碰撞与道具 ----------
-  function hitBrick(b, r) {
-    b.hp--;
+  function hitBrick(b, r, pierce) {
+    if (pierce) {
+      b.hp = 0;
+    } else {
+      b.hp--;
+    }
     if (b.hp <= 0) {
       const rows = rowsForLevel(level);
       score += (rows - b.row) * 10;
@@ -410,7 +418,7 @@
     const roll = Math.random();
     let type = null;
     if (roll < 0.10) {
-      type = pickType(['wide', 'slow', 'life', 'multi'], [0.3, 0.25, 0.2, 0.25]);
+      type = pickType(['wide', 'slow', 'life', 'multi', 'iron'], [0.22, 0.18, 0.16, 0.2, 0.24]);
     } else if (roll < 0.20) {
       type = pickType(['shrink', 'triangle', 'fast'], [0.4, 0.3, 0.3]);
     }
@@ -437,6 +445,8 @@
           vy: Math.sin(cur + a) * sp,
         });
       }
+    } else if (type === 'iron') {
+      effects.ironUntil = now + 8000;
     } else if (type === 'shrink') {
       effects.shrinkUntil = now + 8000;
       effects.wideUntil = 0;
@@ -529,6 +539,11 @@
         const cy = clamp(b.y, r.y, r.y + r.h);
         const dx = b.x - cx, dy = b.y - cy;
         if (dx * dx + dy * dy <= b.r * b.r) {
+          if (performance.now() < effects.ironUntil) {
+            // 铁球：打穿砖块、不反弹，继续前进
+            hitBrick(r.b, r, true);
+            break;
+          }
           const fromTop = prevY + b.r <= r.y + 0.5;
           const fromBottom = prevY - b.r >= r.y + r.h - 0.5;
           const fromLeft = prevX + b.r <= r.x + 0.5;
@@ -647,11 +662,23 @@
     }
     ctx.shadowBlur = 0;
 
-    // 球（多球）
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = '#ffffff';
+    // 球（多球，铁球带金色尾迹）
+    const iron = performance.now() < effects.ironUntil;
     ctx.shadowBlur = 20;
     for (const b of balls) {
+      if (iron) {
+        const m = Math.hypot(b.vx, b.vy) || 1;
+        for (let k = 3; k >= 1; k--) {
+          ctx.globalAlpha = 0.3 - k * 0.07;
+          ctx.fillStyle = '#ffc24b';
+          ctx.beginPath();
+          ctx.arc(b.x - (b.vx / m) * k * 9, b.y - (b.vy / m) * k * 9, b.r * (1 - k * 0.2), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = iron ? '#ffe08a' : '#ffffff';
+      ctx.shadowColor = iron ? '#ffc24b' : '#ffffff';
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
       ctx.fill();
