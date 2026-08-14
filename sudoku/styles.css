@@ -547,8 +547,8 @@ body.kids-mode {
   --error: #ff5a5a;
   --error-tint: #ffe3e3;
   --ok: #2fbf71;
-  --font-serif: "Fredoka", "PingFang SC", system-ui, sans-serif;
-  --font-sans: "Fredoka", "PingFang SC", system-ui, sans-serif;
+  --font-serif: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   --shadow: 0 24px 60px -24px rgba(138, 106, 72, 0.35);
 }
 body.kids-mode {
