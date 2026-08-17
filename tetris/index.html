@@ -26,37 +26,7 @@
     </div>
   </header>
 
-  <section class="hud" aria-label="游戏数据">
-    <div class="hud__item">
-      <span class="hud__label">得分</span>
-      <span class="hud__value" id="score">0</span>
-    </div>
-    <div class="hud__item">
-      <span class="hud__label">最高</span>
-      <span class="hud__value" id="hi">0</span>
-    </div>
-    <div class="hud__item">
-      <span class="hud__label">等级</span>
-      <span class="hud__value" id="level">1</span>
-    </div>
-    <div class="hud__item">
-      <span class="hud__label">行数</span>
-      <span class="hud__value" id="lines">0</span>
-    </div>
-  </section>
-
   <section class="play">
-    <div class="toprow">
-      <div class="panel panel--tap" id="holdPanel" title="暂存（按 C）">
-        <span class="panel__label">暂存</span>
-        <canvas id="holdCanvas"></canvas>
-      </div>
-      <div class="panel">
-        <span class="panel__label">下一块</span>
-        <canvas id="nextCanvas"></canvas>
-      </div>
-    </div>
-
     <div class="board-area">
       <div class="board-wrap" id="boardWrap">
         <canvas id="board"></canvas>
@@ -97,6 +67,38 @@
         </div>
       </div>
     </div>
+
+    <aside class="side" aria-label="游戏数据">
+      <div class="hud">
+        <div class="hud__item">
+          <span class="hud__label">得分</span>
+          <span class="hud__value" id="score">0</span>
+        </div>
+        <div class="hud__item">
+          <span class="hud__label">最高</span>
+          <span class="hud__value" id="hi">0</span>
+        </div>
+        <div class="hud__item">
+          <span class="hud__label">等级</span>
+          <span class="hud__value" id="level">1</span>
+        </div>
+        <div class="hud__item">
+          <span class="hud__label">行数</span>
+          <span class="hud__value" id="lines">0</span>
+        </div>
+      </div>
+
+      <div class="panels">
+        <div class="panel panel--tap" id="holdPanel" title="暂存（按 C）">
+          <span class="panel__label">暂存</span>
+          <canvas id="holdCanvas"></canvas>
+        </div>
+        <div class="panel">
+          <span class="panel__label">下一块</span>
+          <canvas id="nextCanvas"></canvas>
+        </div>
+      </div>
+    </aside>
   </section>
 
   <section class="controls" aria-label="触控操作">

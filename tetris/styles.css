@@ -106,23 +106,23 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ---------- 数据条 ---------- */
+/* ---------- 数据条（右侧信息栏，竖排） ---------- */
 .hud {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
 }
 .hud__item {
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 6px 7px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 10px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
-  text-align: center;
   overflow: hidden;
 }
 .hud__label {
@@ -131,11 +131,10 @@ body {
   color: var(--text-soft);
   font-weight: 500;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 auto;
 }
 .hud__value {
-  font-size: clamp(14px, 4.6vw, 19px);
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -143,19 +142,28 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ---------- 游戏区 ---------- */
+/* ---------- 游戏区（棋盘 + 右侧信息栏） ---------- */
 .play {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 10px;
 }
-.toprow {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
+.side {
+  flex: 0 0 108px;
+  width: 108px;
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+.panels {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .panel {
   min-width: 0;
@@ -176,21 +184,25 @@ body {
   white-space: nowrap;
 }
 .panel canvas {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
 }
 .panel--tap {
   cursor: pointer;
-  transition: border-color 0.14s ease, background 0.14s ease;
+  transition: border-color 0.14s ease, background 0.14s ease, transform 0.1s ease;
 }
 .panel--tap:hover {
   border-color: var(--accent);
   background: rgba(34, 211, 238, 0.08);
 }
+.panel--tap:active {
+  transform: scale(0.94);
+}
 
 .board-area {
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   display: flex;
   align-items: center;
@@ -261,7 +273,10 @@ body {
   color: var(--accent);
 }
 .icon-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.88) translateY(1px);
+  background: rgba(34, 211, 238, 0.28);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ---------- 弹层 ---------- */
@@ -349,19 +364,28 @@ body {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.12s ease, transform 0.1s ease, border-color 0.12s ease;
+  transition: background 0.12s ease, transform 0.08s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 }
 .ctl:hover {
   background: rgba(34, 211, 238, 0.14);
   border-color: var(--accent);
 }
 .ctl:active {
-  transform: scale(0.93);
+  transform: scale(0.9) translateY(2px);
+  background: rgba(34, 211, 238, 0.26);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.16);
 }
 .ctl--accent {
   background: linear-gradient(135deg, var(--accent), #5eead4);
   border-color: transparent;
   color: #071018;
+}
+.ctl--accent:active {
+  transform: scale(0.9) translateY(2px);
+  filter: brightness(1.25);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
 }
 
 /* ---------- 提示 ---------- */
@@ -387,11 +411,10 @@ a,
   .app { gap: 7px; padding: 10px 12px 9px; }
   .brand__title { font-size: 22px; }
   .brand__sub { margin-top: 4px; }
-  .hud__value { font-size: 16px; }
-  .hud__item { padding: 6px 5px 5px; }
-  .toprow { gap: 8px; }
+  .hud__item { padding: 5px 8px; }
+  .side { flex-basis: 100px; width: 100px; }
   .panel { padding: 6px 8px; gap: 4px; }
-  .panel canvas { width: 40px; height: 40px; }
+  .panel canvas { width: 38px; height: 38px; }
   .ctl { padding: 10px 0 9px; font-size: 14px; }
   .hint { font-size: 10px; }
 }
@@ -399,6 +422,7 @@ a,
 /* 更矮（横屏小窗 / 老款小屏）：进一步压缩，隐藏键盘提示行 */
 @media (max-height: 600px) {
   .hud__label { font-size: 9px; }
+  .hud__value { font-size: 13px; }
   .controls { gap: 6px; }
   .ctl { font-size: 13px; padding: 8px 0 7px; }
   .hint { display: none; }
@@ -412,13 +436,17 @@ a,
 
 @media (max-width: 380px) {
   .brand__title { font-size: 22px; }
-  /* 数据条改 2×2：每格更宽，数字不再被挤压换行 */
-  .hud { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-  .hud__value { font-size: 16px; }
-  .hud__item { padding: 6px 5px 5px; }
-  .toprow { gap: 8px; }
-  .panel { padding: 6px 8px; gap: 4px; }
-  .panel canvas { width: 40px; height: 40px; }
+  .side { flex-basis: 92px; width: 92px; gap: 8px; }
+  .hud__item { padding: 5px 8px; }
+  .hud__value { font-size: 13px; }
+  .panel { padding: 5px 6px; gap: 4px; }
+  .panel canvas { width: 34px; height: 34px; }
+  .play { gap: 8px; }
   .controls { gap: 6px; }
   .ctl { font-size: 14px; }
+}
+
+/* 宽屏（平板 / 桌面）：整体放大，棋盘更大 */
+@media (min-width: 560px) {
+  .app { max-width: 580px; }
 }
