@@ -466,6 +466,9 @@
         // 到出屋时间：走向门口
         g.house = false;
         g.leaving = true;
+        // 先吸附到整数格点（屋里浮动位置非格点，不吸附无法转向选路）
+        g.px = Math.round(g.px);
+        g.py = Math.round(g.py);
         g.dir = UP;
         // 继续走 leaving 逻辑（不 continue）
       }
@@ -796,4 +799,18 @@
   setMode('menu');
   updateHud();
   requestAnimationFrame(frame);
+
+  // 调试钩子（仅测试沙箱使用；生产环境无 window.__DSH_TEST__ 不生效）
+  if (window.__DSH_TEST__) {
+    window.__getState = function () {
+      return {
+        mode: mode,
+        pac: pac ? { px: pac.px, py: pac.py, dir: pac.dir } : null,
+        ghosts: ghosts.map(function (g) {
+          return { type: g.type, px: g.px, py: g.py, house: g.house, leaving: g.leaving, mode: g.mode };
+        }),
+        pelletsLeft: pelletsLeft,
+      };
+    };
+  }
 })();
