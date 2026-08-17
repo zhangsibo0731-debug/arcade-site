@@ -47,6 +47,7 @@
   let effects = { wideUntil: 0, slowUntil: 0, shrinkUntil: 0, triangleUntil: 0, fastUntil: 0, ironUntil: 0 };
   let keys = { left: false, right: false };
   let shake = 0, flash = 0;
+  let combo = 0, wallBounceCount = 0, comboT = 0;
   let lastT = 0;
   let saveAcc = 0;
   let resumeTargetMode = 'paused';
@@ -130,7 +131,7 @@
     return audioCtx;
   }
 
-  function play(name) {
+  function play(name, pitch) {
     const ac = ensureAudio();
     if (!ac) return;
     if (ac.state === 'suspended') ac.resume();
@@ -146,6 +147,7 @@
       case 'over': freq = 150; dur = 0.5; type = 'sawtooth'; vol = 0.18; break;
       case 'debuff': freq = 320; dur = 0.3; type = 'sawtooth'; vol = 0.18; break;
     }
+    freq *= (pitch || 1);
     const osc = ac.createOscillator();
     const gain = ac.createGain();
     osc.type = type;
@@ -291,6 +293,8 @@
   function newGame() {
     score = 0;
     lives = LIVES_START;
+    combo = 0;
+    wallBounceCount = 0;
     effects = { wideUntil: 0, slowUntil: 0, shrinkUntil: 0, triangleUntil: 0, fastUntil: 0, ironUntil: 0 };
     powerups = [];
     particles = [];
@@ -304,6 +308,7 @@
   function nextLevel() {
     buildLevel(level + 1);
     resetBall();
+    combo = 0;
     setMode('ready');
     updateHud();
     saveState();
@@ -399,18 +404,23 @@
       b.hp--;
     }
     if (b.hp <= 0) {
+      combo++;
+      comboT = performance.now();
       const rows = rowsForLevel(level);
-      score += (rows - b.row) * 10;
+      score += (rows - b.row) * 10 * combo;
       spawnParticles(b, r);
       maybeDrop(b, r);
-      play('brick');
+      shake = Math.max(shake, 2.5);
+      play('brick', 1 + Math.min(combo - 1, 8) * 0.06);
       if (allCleared()) {
         setMode('levelclear');
         play('clear');
       }
     } else {
+      shake = Math.max(shake, 4);
       play('hard');
     }
+    wallBounceCount = 0;
     updateHud();
   }
 
@@ -506,10 +516,14 @@
       b.x += b.vx * dt;
       b.y += b.vy * dt;
 
-      // 墙
-      if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); }
-      if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx); }
+      // 墙（左右墙连续反弹时注入垂直分量，避免水平死循环）
+      if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); wallBounceCount++; }
+      if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx); wallBounceCount++; }
       if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy); }
+      if (wallBounceCount >= 4) {
+        b.vy = (Math.random() < 0.5 ? -1 : 1) * ballSpeed() * 0.35;
+        wallBounceCount = 0;
+      }
 
       // 挡板
       if (b.vy > 0 &&
@@ -530,6 +544,8 @@
           b.vy = -Math.cos(ang) * sp;
         }
         b.y = paddle.y - b.r - 0.5;
+        combo = 0;
+        wallBounceCount = 0;
         play('paddle');
       }
 
@@ -694,6 +710,21 @@
     ctx.globalAlpha = 1;
 
     ctx.restore();
+
+    // 连击显示
+    if (combo >= 2) {
+      const t = (performance.now() - comboT) / 1000;
+      const pop = t < 0.2 ? 1 + (0.2 - t) * 1.2 : 1;
+      ctx.save();
+      ctx.translate(W / 2, H * 0.42);
+      ctx.scale(pop, pop);
+      ctx.fillStyle = '#ffd43b';
+      ctx.font = '800 22px "Space Grotesk", "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('连击 ×' + combo, 0, 0);
+      ctx.restore();
+    }
 
     // 发射提示
     if (mode === 'ready') {
