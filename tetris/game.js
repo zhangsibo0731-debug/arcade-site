@@ -95,7 +95,7 @@
   let spawnHold = 0;
   let saveAcc = 0;
   // 消行视觉反馈：行闪烁 + 浮动得分
-  let fx = { text: '', big: false, until: 0, rows: [], rowsUntil: 0 };
+  let fx = { text: '', text2: '', big: false, until: 0, rows: [], rowsUntil: 0 };
   // 触屏长按重复
   let ctlHold = null; // { action: left|right|down, t, acc }
   // 落地缓冲
@@ -338,7 +338,7 @@
       }
     }
     if (cleared > 0) {
-      const pts = CLEAR_PTS[cleared] * level;
+      const pts = CLEAR_PTS[Math.min(cleared, 4)] * level; // 防御：cleared 超 4 时封顶
       score += pts;
       lines += cleared;
       level = Math.floor(lines / 10) + 1;
@@ -350,7 +350,13 @@
       fx.rowsUntil = now + 240;
       const labels = { 1: '单消', 2: '双消', 3: '三消', 4: '四消' };
       fx.big = cleared >= 3;
-      fx.text = (cleared === 4 ? 'TETRIS! ' : '') + '+' + pts + ' ' + (labels[cleared] || '');
+      if (cleared === 4) {
+        fx.text = 'TETRIS!';
+        fx.text2 = '+' + pts + ' ' + labels[cleared];
+      } else {
+        fx.text = '+' + pts + ' ' + labels[cleared];
+        fx.text2 = '';
+      }
       fx.until = now + 1100;
     }
   }
@@ -604,7 +610,7 @@
       }
     }
 
-    // 浮动得分（单消小字 / 三消四消金色大字 + 发光）
+    // 浮动得分（字号按棋盘宽度自动缩放，四消拆两行，保证不超出屏幕）
     if (fx.until > performance.now()) {
       const total = 1100;
       const t = 1 - (fx.until - performance.now()) / total; // 0..1
@@ -614,16 +620,42 @@
       ctx.translate(W / 2, H * 0.28);
       ctx.scale(pop, pop);
       ctx.globalAlpha = fade;
-      ctx.fillStyle = fx.big ? '#ffd43b' : '#ffffff';
-      ctx.shadowColor = '#ffd43b';
-      ctx.shadowBlur = fx.big ? 18 : 10;
-      ctx.font = (fx.big ? '800 30px' : '700 24px') + ' "Space Grotesk", "PingFang SC", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(fx.text, 0, 0);
+      if (fx.big && fx.text2) {
+        // 两行：金色 TETRIS! + 白色得分
+        ctx.fillStyle = '#ffd43b';
+        ctx.shadowColor = '#ffd43b';
+        ctx.shadowBlur = 18;
+        ctx.font = fitFont('800 30px', fx.text, W * 0.92);
+        ctx.fillText(fx.text, 0, -13);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 8;
+        ctx.font = fitFont('700 20px', fx.text2, W * 0.92);
+        ctx.fillText(fx.text2, 0, 15);
+      } else {
+        ctx.fillStyle = fx.big ? '#ffd43b' : '#ffffff';
+        ctx.shadowColor = '#ffd43b';
+        ctx.shadowBlur = fx.big ? 18 : 10;
+        ctx.font = fitFont(fx.big ? '800 26px' : '700 24px', fx.text, W * 0.9);
+        ctx.fillText(fx.text, 0, 0);
+      }
       ctx.shadowBlur = 0;
       ctx.restore();
     }
+  }
+
+  // 字号自动缩小到文字宽度不超过 maxW（防止超出棋盘）
+  function fitFont(base, text, maxW) {
+    const m = base.match(/(\d+)px/);
+    const size = m ? parseInt(m[1], 10) : 20;
+    const weight = base.split(' ')[0] || '700';
+    let s = size;
+    for (; s > 10; s--) {
+      ctx.font = weight + ' ' + s + 'px "Space Grotesk", "PingFang SC", sans-serif';
+      if (ctx.measureText(text).width <= maxW) break;
+    }
+    return weight + ' ' + s + 'px "Space Grotesk", "PingFang SC", sans-serif';
   }
 
   function drawPreview(canvasEl, type) {
