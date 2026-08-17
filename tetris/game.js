@@ -38,6 +38,8 @@
     Z: '#ff6b6b', J: '#4dabf7', L: '#ffa94d',
   };
   const CLEAR_PTS = [0, 100, 300, 500, 800];
+  const LOCK_DELAY = 0.5;       // 落地缓冲（秒）：触底后仍可移动/旋转
+  const MAX_LOCK_RESETS = 4;    // 缓冲最多重置次数，防止无限滑
 
   // ---------- 方块定义 ----------
   function rotateCW(m) {
@@ -94,6 +96,13 @@
   let saveAcc = 0;
   // 消行视觉反馈：行闪烁 + 浮动得分
   let fx = { text: '', big: false, until: 0, rows: [], rowsUntil: 0 };
+  // 触屏长按重复
+  let ctlHold = null; // { action: left|right|down, t, acc }
+  // 落地缓冲
+  let lockDelay = 0, lockResets = 0;
+  // 粒子 & 冲击环（消行碎片 / 硬降轨迹）
+  let particles = [];
+  let rings = [];
 
   // ---------- 音效 ----------
   let audioCtx = null;
@@ -128,6 +137,7 @@
       case 'clear': freq = 500; dur = 0.12; type = 'triangle'; vol = 0.15; break;
       case 'tetris': freq = 660; dur = 0.2; type = 'triangle'; vol = 0.16; break;
       case 'hold': freq = 280; dur = 0.04; type = 'square'; vol = 0.08; break;
+      case 'drop': freq = 200; dur = 0.08; type = 'sawtooth'; vol = 0.1; break;
       case 'over': freq = 140; dur = 0.5; type = 'sawtooth'; vol = 0.18; break;
     }
     freq *= (pitch || 1);
@@ -174,6 +184,42 @@
     return bag.shift();
   }
 
+  // ---------- 落地缓冲 ----------
+  function startLock() {
+    if (mode !== 'playing' || lockDelay > 0) return;
+    lockDelay = LOCK_DELAY;
+    lockResets = 0;
+  }
+  function resetLock() { lockDelay = 0; lockResets = 0; }
+  // 移动/旋转成功后调用：若方块已不触底则取消缓冲继续下落；否则重置缓冲（有限次）
+  function onPieceMoved() {
+    if (lockDelay <= 0) return;
+    if (!collidesAt(current.x, current.y + 1, current.type, current.stateIndex)) {
+      resetLock();
+    } else if (lockResets < MAX_LOCK_RESETS) {
+      lockDelay = LOCK_DELAY;
+      lockResets++;
+    }
+  }
+
+  // ---------- 粒子 ----------
+  function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 500 * dt;
+      p.life -= dt * (p.decay || 2);
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = rings.length - 1; i >= 0; i--) {
+      const r = rings[i];
+      r.r += r.speed * dt;
+      r.life -= dt * 3;
+      if (r.life <= 0) rings.splice(i, 1);
+    }
+  }
+
   // ---------- 碰撞 ----------
   function cellsOf(p) {
     return PIECES[p.type].states[p.stateIndex];
@@ -200,6 +246,7 @@
       current.y -= dy;
       return false;
     }
+    onPieceMoved();
     return true;
   }
   function rotate(dir) {
@@ -210,6 +257,7 @@
         current.x += k[0];
         current.y += k[1];
         current.stateIndex = next;
+        onPieceMoved();
         play('rotate');
         return;
       }
@@ -217,14 +265,26 @@
   }
   function hardDrop() {
     if (mode !== 'playing' || !current) return;
+    const startY = current.y;
     let dist = 0;
     while (tryMove(0, 1)) dist++;
     score += dist * 2;
     updateHud();
+    // 下落轨迹粒子（沿路径撒色块残影）
+    for (let i = 1; i < dist; i += 2) {
+      for (const o of cellsOf(current)) {
+        const px = (current.x + o[0] + 0.5) * cell;
+        const py = (startY + i + o[1] + 0.5) * cell;
+        particles.push({ x: px, y: py, vx: 0, vy: 260, life: 0.3, size: cell * 0.4, color: COLORS[current.type], decay: 3 });
+      }
+    }
+    // 落点冲击环
+    rings.push({ x: W / 2, y: (current.y + 0.5) * cell, r: cell, speed: 460, life: 1, color: '#ffffff' });
+    play('drop');
     lock();
   }
   function softDropOnce() {
-    if (!tryMove(0, 1)) lock();
+    if (!tryMove(0, 1)) startLock();
   }
   function hold() {
     if (mode !== 'playing' || !canHold || !current) return;
@@ -260,6 +320,16 @@
     const clearedRows = [];
     for (let y = ROWS - 1; y >= 0; y--) {
       if (board[y].every((c) => c)) {
+        // 消行碎片：每格两片色块向上飞散
+        for (let x = 0; x < COLS; x++) {
+          const col = board[y][x];
+          const cx = (x + 0.5) * cell, cy = (y + 0.5) * cell;
+          for (let k = 0; k < 2; k++) {
+            const a = -Math.PI / 2 + (Math.random() * 2 - 1) * 1.3;
+            const sp = 70 + Math.random() * 130;
+            particles.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.55, size: cell * 0.5, color: col, decay: 2.4 });
+          }
+        }
         board.splice(y, 1);
         board.unshift(Array(COLS).fill(0));
         clearedRows.push(y);
@@ -289,6 +359,7 @@
     current = { type: nextType, stateIndex: 0, x: spawnXFor(nextType), y: 0 };
     nextType = nextFromBag();
     canHold = true;
+    resetLock();
     if (collides()) gameOver();
   }
 
@@ -323,6 +394,10 @@
     holdType = s.holdType || null;
     canHold = s.canHold !== false;
     current = s.current || null;
+    ctlHold = null;
+    resetLock();
+    particles = [];
+    rings = [];
     updateHud();
   }
 
@@ -335,6 +410,10 @@
     nextType = nextFromBag();
     gravityAcc = 0; leftAcc = 0; rightAcc = 0; downAcc = 0;
     keys = { left: false, right: false, down: false };
+    ctlHold = null;
+    resetLock();
+    particles = [];
+    rings = [];
     spawn();
     setMode('playing');
     updateHud();
@@ -496,6 +575,26 @@
       }
     }
 
+    // 粒子（消行碎片 / 硬降轨迹）
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life));
+      ctx.fillStyle = p.color;
+      const s = p.size || cell * 0.5;
+      ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+    }
+    ctx.globalAlpha = 1;
+
+    // 冲击环（硬降落点）
+    for (const r of rings) {
+      ctx.globalAlpha = Math.max(0, r.life);
+      ctx.strokeStyle = r.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
     // 消行白闪
     if (fx.rowsUntil > performance.now()) {
       const t = Math.max(0, (fx.rowsUntil - performance.now()) / 240);
@@ -565,6 +664,27 @@
   function update(dt) {
     if (mode !== 'playing' || !current) return;
 
+    // 落地缓冲倒计时：超时仍未重新下落 → 锁定
+    if (lockDelay > 0) {
+      lockDelay -= dt;
+      if (lockDelay <= 0) { lock(); return; }
+    }
+
+    // 触屏长按重复：按住 250ms 后开始连移 / 连降
+    if (ctlHold) {
+      ctlHold.t += dt;
+      if (ctlHold.t >= 0.25) {
+        ctlHold.acc += dt;
+        const iv = ctlHold.action === 'down' ? 0.04 : 0.09;
+        while (ctlHold.acc >= iv) {
+          ctlHold.acc -= iv;
+          if (ctlHold.action === 'left') { if (!tryMove(-1, 0)) { ctlHold.acc = 0; break; } play('move'); }
+          else if (ctlHold.action === 'right') { if (!tryMove(1, 0)) { ctlHold.acc = 0; break; } play('move'); }
+          else if (ctlHold.action === 'down') softDropOnce();
+        }
+      }
+    }
+
     // 左右重复移动
     if (keys.left) {
       leftAcc += dt;
@@ -578,15 +698,18 @@
     // 软降 / 重力
     if (keys.down) {
       downAcc += dt;
-      while (downAcc >= 0.03) { downAcc -= 0.03; if (!tryMove(0, 1)) { lock(); break; } }
+      while (downAcc >= 0.03) { downAcc -= 0.03; if (!tryMove(0, 1)) { startLock(); break; } }
       gravityAcc = 0;
     } else {
       gravityAcc += dt;
       if (gravityAcc >= gravityInterval() / 1000) {
         gravityAcc = 0;
-        if (!tryMove(0, 1)) lock();
+        if (!tryMove(0, 1)) startLock();
       }
     }
+
+    // 粒子 & 冲击环
+    updateParticles(dt);
   }
 
   // ---------- 事件 ----------
@@ -638,17 +761,25 @@
     newGame();
   });
 
-  document.querySelector('.controls').addEventListener('click', (e) => {
+  // 触控按钮：按下立即执行一次；按住 250ms 后自动连续移动/下落
+  const controlsEl = document.querySelector('.controls');
+  controlsEl.addEventListener('pointerdown', (e) => {
     const btn = e.target.closest('.ctl');
     if (!btn) return;
-    const a = btn.dataset.a;
+    e.preventDefault();
     if (mode !== 'playing') return;
-    if (a === 'left') { keys.left = false; tryMove(-1, 0); play('move'); }
-    else if (a === 'right') { tryMove(1, 0); play('move'); }
+    const a = btn.dataset.a;
+    if (a === 'left') { if (tryMove(-1, 0)) play('move'); ctlHold = { action: 'left', t: 0, acc: 0 }; }
+    else if (a === 'right') { if (tryMove(1, 0)) play('move'); ctlHold = { action: 'right', t: 0, acc: 0 }; }
     else if (a === 'rotate') rotate(1);
-    else if (a === 'down') softDropOnce();
+    else if (a === 'down') { softDropOnce(); ctlHold = { action: 'down', t: 0, acc: 0 }; }
     else if (a === 'drop') hardDrop();
   });
+  function endCtlHold() { ctlHold = null; }
+  controlsEl.addEventListener('pointerleave', endCtlHold);
+  document.addEventListener('pointerup', endCtlHold);
+  document.addEventListener('pointercancel', endCtlHold);
+  window.addEventListener('blur', endCtlHold);
 
   document.addEventListener('keydown', (e) => {
     if (e.repeat) return;
