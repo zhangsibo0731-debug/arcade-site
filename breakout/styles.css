@@ -228,6 +228,7 @@ body {
 .ov-sub {
   font-size: 14px;
   line-height: 1.6;
+  white-space: pre-line;
   color: var(--text-soft);
   margin-bottom: 22px;
 }
