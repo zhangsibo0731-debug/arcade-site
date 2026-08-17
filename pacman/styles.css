@@ -282,15 +282,15 @@ body {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
   gap: 0;
-  width: 168px;
-  height: 168px;
+  width: min(220px, 62vw);
+  height: min(220px, 62vw);
   flex: 0 0 auto;
 }
 .dpad-btn {
   border: none;
   background: rgba(255, 255, 255, 0.07);
   color: var(--text-soft);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   cursor: pointer;
   user-select: none;
@@ -312,13 +312,14 @@ body {
 }
 .dpad-center {
   grid-area: 2 / 2;
-  background: rgba(255, 255, 255, 0.03);
+  /* 中间实心（与四臂同色），不留暗色空块 */
+  background: rgba(255, 255, 255, 0.07);
   box-shadow: inset 0 0 0 1px var(--line);
 }
-.dpad-up { grid-area: 1 / 2; border-radius: 22px 22px 0 0; }
-.dpad-left { grid-area: 2 / 1; border-radius: 22px 0 0 22px; }
-.dpad-right { grid-area: 2 / 3; border-radius: 0 22px 22px 0; }
-.dpad-down { grid-area: 3 / 2; border-radius: 0 0 22px 22px; }
+.dpad-up { grid-area: 1 / 2; border-radius: 24px 24px 0 0; }
+.dpad-left { grid-area: 2 / 1; border-radius: 24px 0 0 24px; }
+.dpad-right { grid-area: 2 / 3; border-radius: 0 24px 24px 0; }
+.dpad-down { grid-area: 3 / 2; border-radius: 0 0 24px 24px; }
 
 /* ---------- 提示 ---------- */
 .hint {
@@ -343,20 +344,20 @@ a {
   .brand__title { font-size: 22px; }
   .brand__sub { margin-top: 4px; }
   .hud__item { padding: 5px 6px 4px; }
-  .dpad { width: 150px; height: 150px; }
+  .dpad { width: min(190px, 56vw); height: min(190px, 56vw); }
   .hint { font-size: 10px; }
 }
 
 @media (max-height: 600px) {
-  .dpad { width: 132px; height: 132px; }
-  .dpad-btn { font-size: 13px; }
+  .dpad { width: min(160px, 48vw); height: min(160px, 48vw); }
+  .dpad-btn { font-size: 15px; }
   .hint { display: none; }
 }
 
 @media (max-width: 380px) {
   .brand__title { font-size: 22px; }
-  .dpad { width: 150px; height: 150px; }
-  .dpad-btn { font-size: 14px; }
+  .dpad { width: min(190px, 58vw); height: min(190px, 58vw); }
+  .dpad-btn { font-size: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
