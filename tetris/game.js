@@ -138,7 +138,8 @@
     const now = ac.currentTime;
     let freq = 220, dur = 0.05, type = 'square', vol = 0.12;
     switch (name) {
-      case 'move': freq = 320; dur = 0.03; type = 'square'; vol = 0.05; break;
+      // 清脆咔哒按键声（iOS 无震动，用声音补偿手感）
+      case 'move': freq = 1000; dur = 0.02; type = 'square'; vol = 0.05; break;
       case 'rotate': freq = 360; dur = 0.04; type = 'square'; vol = 0.08; break;
       case 'lock': freq = 160; dur = 0.05; type = 'triangle'; vol = 0.12; break;
       case 'clear': freq = 500; dur = 0.12; type = 'triangle'; vol = 0.15; break;
