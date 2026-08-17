@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0f1e" />
+<title>吃豆人 · Pac-Man</title>
+<link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<main class="app">
+  <header class="app__header">
+    <div class="app__header-left">
+      <a class="back-btn" href="../" aria-label="返回游戏厅" title="返回游戏厅">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5" />
+          <path d="m12 19-7-7 7-7" />
+        </svg>
+      </a>
+      <div class="brand">
+        <h1 class="brand__title">吃豆人</h1>
+        <p class="brand__sub">PAC-MAN · 迷宫吃豆</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="hud" aria-label="游戏数据">
+    <div class="hud__item">
+      <span class="hud__label">得分</span>
+      <span class="hud__value" id="score">0</span>
+    </div>
+    <div class="hud__item">
+      <span class="hud__label">最高</span>
+      <span class="hud__value" id="hi">0</span>
+    </div>
+    <div class="hud__item">
+      <span class="hud__label">生命</span>
+      <span class="hud__value" id="lives">3</span>
+    </div>
+    <div class="hud__item">
+      <span class="hud__label">关卡</span>
+      <span class="hud__value" id="level">1</span>
+    </div>
+  </section>
+
+  <section class="stage" id="stage">
+    <canvas id="game"></canvas>
+    <button class="icon-btn icon-btn--left" id="btnSound" type="button" aria-label="关闭声音">
+      <svg id="icSoundOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4Z" />
+        <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+        <path d="M18 6a8.5 8.5 0 0 1 0 12" />
+      </svg>
+      <svg id="icSoundOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+        <path d="M11 5 6 9H3v6h3l5 4Z" />
+        <path d="m16 9 5 6" />
+        <path d="m21 9-5 6" />
+      </svg>
+    </button>
+    <button class="icon-btn icon-btn--right" id="btnPause" type="button" aria-label="暂停" hidden>
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="6" y="5" width="4" height="14" rx="1.5" />
+        <rect x="14" y="5" width="4" height="14" rx="1.5" />
+      </svg>
+    </button>
+    <div class="overlay" id="overlay" hidden>
+      <div class="ov-card">
+        <h2 class="ov-title" id="ovTitle">吃豆人</h2>
+        <p class="ov-sub" id="ovSub">吃光所有豆子，避开幽灵<br />吃能量豆反吃幽灵（200/400/800/1600 分）</p>
+        <button class="ov-btn" id="ovBtn" type="button">开始游戏</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="controls" aria-label="触控操作">
+    <button class="ctl ctl--up" type="button" data-d="3">上</button>
+    <button class="ctl ctl--left" type="button" data-d="2">左</button>
+    <button class="ctl ctl--right" type="button" data-d="1">右</button>
+    <button class="ctl ctl--down" type="button" data-d="4">下</button>
+  </section>
+
+  <p class="hint">方向键 / 滑动 / 按钮控制移动 · 空格暂停</p>
+</main>
+
+<script src="game.js"></script>
+</body>
+</html>

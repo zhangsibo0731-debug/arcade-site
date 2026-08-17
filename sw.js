@@ -23,6 +23,9 @@ const ASSETS = [
   './memory/index.html',
   './memory/styles.css',
   './memory/game.js',
+  './pacman/index.html',
+  './pacman/styles.css',
+  './pacman/game.js',
 ];
 
 self.addEventListener('install', (e) => {

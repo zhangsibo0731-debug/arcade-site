@@ -20,7 +20,7 @@
   <header class="lobby__header">
     <p class="lobby__kicker">ARCADE</p>
     <h1 class="lobby__title">游戏厅</h1>
-    <p class="lobby__sub">五台街机，选一台开始玩</p>
+    <p class="lobby__sub">六台街机，选一台开始玩</p>
   </header>
 
   <section class="shelf">
@@ -150,6 +150,37 @@
         <span class="card__score" id="memoryScore">暂无记录</span>
       </div>
     </a>
+
+    <a class="card" href="pacman/">
+      <div class="card__preview card__preview--pacman" aria-hidden="true">
+        <svg viewBox="0 0 96 96" focusable="false">
+          <rect x="8" y="8" width="80" height="80" rx="6" fill="#10142a" />
+          <g fill="#2b4bd8">
+            <rect x="12" y="12" width="72" height="5" rx="2" />
+            <rect x="12" y="79" width="72" height="5" rx="2" />
+            <rect x="12" y="12" width="5" height="72" rx="2" />
+            <rect x="79" y="12" width="5" height="72" rx="2" />
+            <rect x="12" y="38" width="16" height="5" rx="2" />
+            <rect x="68" y="38" width="16" height="5" rx="2" />
+            <rect x="40" y="38" width="16" height="5" rx="2" />
+            <rect x="28" y="54" width="5" height="17" rx="2" />
+            <rect x="63" y="54" width="5" height="17" rx="2" />
+          </g>
+          <circle cx="24" cy="28" r="2.2" fill="#ffcd78" />
+          <circle cx="72" cy="28" r="2.2" fill="#ffcd78" />
+          <path d="M40 60 a9 9 0 1 0 18 0 z" fill="#ffd43b" />
+          <circle cx="66" cy="26" r="7" fill="#ff3b30" />
+          <circle cx="52" cy="26" r="7" fill="#ff9ff3" />
+          <circle cx="80" cy="60" r="7" fill="#22d3ee" />
+          <circle cx="16" cy="60" r="7" fill="#ffa94d" />
+        </svg>
+      </div>
+      <div class="card__body">
+        <h2 class="card__title">吃豆人</h2>
+        <p class="card__desc">经典迷宫 · 吃豆避鬼</p>
+        <span class="card__score" id="pacmanScore">暂无记录</span>
+      </div>
+    </a>
   </section>
 
   <section class="tools">
@@ -199,6 +230,10 @@
       var mb = JSON.parse(localStorage.getItem('memory_best_v1') || '{}');
       var mv = Object.keys(mb).map(function (k) { return mb[k]; }).filter(function (v) { return typeof v === 'number' && v > 0; });
       if (mv.length) set('memoryScore', '最佳 ' + Math.min.apply(null, mv) + ' 步');
+    } catch (e) {}
+    try {
+      var ph = parseInt(localStorage.getItem('pacman_hi_v1'), 10);
+      if (ph > 0) set('pacmanScore', '最高 ' + ph);
     } catch (e) {}
   })();
 </script>

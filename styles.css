@@ -101,6 +101,7 @@ body {
 .card__preview--tetris { background: #161a30; }
 .card__preview--2048 { background: #faf8ef; }
 .card__preview--memory { background: #fff3d6; }
+.card__preview--pacman { background: #10142a; }
 
 .card__body {
   display: flex;
