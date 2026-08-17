@@ -18,6 +18,10 @@
   const btnSound = $('btnSound');
   const icSoundOn = $('icSoundOn');
   const icSoundOff = $('icSoundOff');
+  const resumeOverlay = $('resumeOverlay');
+  const resumeSub = $('resumeSub');
+  const btnResumeNew = $('btnResumeNew');
+  const btnResumeContinue = $('btnResumeContinue');
 
   // ---------- 迷宫（经典 28×31） ----------
   const COLS = 28, ROWS = 31;
@@ -65,6 +69,7 @@
 
   const HI_KEY = 'pacman_hi_v1';
   const MUTE_KEY = 'pacman_muted_v1';
+  const SAVE_KEY = 'pacman_save_v1';
   const LIVES_START = 3;
   const MAX_LIVES = 6;
   const GHOST_COLORS = { blinky: '#ff3b30', pinky: '#ff9ff3', inky: '#22d3ee', clyde: '#ffa94d' };
@@ -87,6 +92,7 @@
   let dyeT = 0;           // 死亡动画计时
   let lastT = 0;
   let pauseAt = 0;        // 暂停时刻（用于平移幽灵出屋倒计时）
+  let saveAcc = 0;        // 自动存档计时
 
   // ---------- 工具 ----------
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
@@ -240,6 +246,68 @@
     newLevel(1);
   }
 
+  // ---------- 存档 / 继续 ----------
+  function saveState() {
+    if (mode !== 'playing' && mode !== 'paused') return;
+    if (lives <= 0) return;
+    const now = performance.now();
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        score: score,
+        lives: lives,
+        level: level,
+        extraLifeAt: extraLifeAt,
+        grid: grid,
+        pelletsLeft: pelletsLeft,
+        pac: pac,
+        ghosts: ghosts.map(function (g) {
+          return {
+            type: g.type, px: g.px, py: g.py,
+            dir: g.dir, nextDir: g.nextDir,
+            mode: g.mode, house: g.house, leaving: g.leaving,
+            spawnRemain: Math.max(0, g.spawnAt - now),
+          };
+        }),
+        modeTimer: modeTimer,
+        scatter: scatter,
+        frightRemain: frightUntil > now ? frightUntil - now : 0,
+        eatenCombo: eatenCombo,
+      }));
+    } catch (e) {}
+  }
+
+  function clearState() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  }
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; }
+  }
+
+  function restoreState(s) {
+    score = s.score || 0;
+    lives = s.lives || LIVES_START;
+    level = s.level || 1;
+    extraLifeAt = s.extraLifeAt || 10000;
+    grid = s.grid || (parseGrid(), grid);
+    pelletsLeft = (typeof s.pelletsLeft === 'number') ? s.pelletsLeft : 0;
+    pac = s.pac || makePac();
+    const now = performance.now();
+    ghosts = (s.ghosts || []).map(function (g) {
+      return {
+        type: g.type, px: g.px, py: g.py,
+        dir: g.dir, nextDir: g.nextDir || NONE,
+        mode: g.mode, house: !!g.house, leaving: !!g.leaving,
+        spawnAt: now + (g.spawnRemain || 0),
+      };
+    });
+    modeTimer = s.modeTimer || 0;
+    scatter = s.scatter !== false;
+    frightUntil = s.frightRemain ? now + s.frightRemain : 0;
+    eatenCombo = s.eatenCombo || 0;
+    updateHud();
+  }
+
   function ghostSpeedMult() {
     return Math.min(1 + (level - 1) * 0.05, 1.35);
   }
@@ -274,7 +342,15 @@
     const dx = DXY[d][0], dy = DXY[d][1];
     const nt = tileAt(t.x + dx, t.y + dy);
     if (ch === pac) return pacWalkable(nt);
-    return ghostWalkable(nt);
+    // 出屋中的幽灵可走门与屋内；其余幽灵不能进幽灵屋（门单向）
+    if (ch.leaving) return ghostWalkable(nt);
+    return nt === PELLET || nt === POWER || nt === PATH;
+  }
+
+  // 幽灵能否穿越某格（moveChar 防穿墙用，与 canGo 一致）
+  function ghostCanTraverse(ch, nt) {
+    if (ch.leaving) return ghostWalkable(nt);
+    return nt === PELLET || nt === POWER || nt === PATH;
   }
 
   function opp(d) {
@@ -289,7 +365,7 @@
     const t = tileOf(g);
     const opts = [];
     for (const d of [RIGHT, LEFT, UP, DOWN]) {
-      if (d === g.dir) continue;
+      // 只禁止掉头（恐惧/眼睛形态可掉头），直行与转弯都允许
       if (d === opp(g.dir) && g.mode !== 'frightened' && g.mode !== 'eyes') continue;
       if (canGo(g, d)) opts.push(d);
     }
@@ -342,7 +418,7 @@
     // 防穿墙：前方是墙时贴住格线
     const t = tileOf(ch);
     const nt = tileAt(t.x + d[0], t.y + d[1]);
-    const walk = (ch === pac) ? pacWalkable(nt) : ghostWalkable(nt);
+    const walk = (ch === pac) ? pacWalkable(nt) : ghostCanTraverse(ch, nt);
     if (!walk) {
       // 已贴墙：吸附回格点（避免嵌入墙内）
       ch.px = Math.round(ch.px);
@@ -407,6 +483,7 @@
       if (dyeT > 1.1) {
         if (lives <= 0) {
           setMode('gameover');
+          clearState();
         } else {
           resetPositions();
           setMode('playing');
@@ -534,6 +611,7 @@
   function setMode(m) {
     const prev = mode;
     mode = m;
+    resumeOverlay.hidden = true;
     // 暂停期间幽灵出屋倒计时应停止流逝：恢复时平移 spawnAt
     if (m === 'paused' && prev === 'playing') pauseAt = performance.now();
     else if (m === 'playing' && prev === 'paused') {
@@ -732,6 +810,8 @@
     lastT = now;
     dt = Math.min(dt, 0.04);
     update(dt, now);
+    saveAcc += dt;
+    if (saveAcc >= 1) { saveAcc -= 1; saveState(); }
     draw(now);
     requestAnimationFrame(frame);
   }
@@ -784,6 +864,17 @@
     else if (mode === 'levelclear') newLevel(level + 1);
   });
 
+  btnResumeContinue.addEventListener('click', () => {
+    resumeOverlay.hidden = true;
+    setMode('playing');
+    ensureAudio();
+  });
+
+  btnResumeNew.addEventListener('click', () => {
+    resumeOverlay.hidden = true;
+    newGame();
+  });
+
   document.addEventListener('keydown', (e) => {
     const k = e.key;
     if (k === 'ArrowLeft' || k === 'a' || k === 'A') setPacDir(LEFT);
@@ -799,17 +890,34 @@
   });
 
   window.addEventListener('resize', resize);
+  window.addEventListener('pagehide', saveState);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && mode === 'playing') setMode('paused');
+    if (document.visibilityState === 'hidden') {
+      if (mode === 'playing') {
+        saveState();
+        setMode('paused');
+      } else {
+        saveState();
+      }
+    }
   });
 
   // ---------- 启动 ----------
   hi = readHi();
   resize();
   applyMuted();
-  parseGrid();
-  resetPositions(); // 菜单画面也显示角色（pac/幽灵就绪，避免绘制空指针）
-  setMode('menu');
+  const saved = loadState();
+  if (saved && saved.lives > 0 && typeof saved.pelletsLeft === 'number') {
+    restoreState(saved);
+    mode = 'resume';
+    resumeSub.textContent = '得分 ' + saved.score + ' · 第 ' + saved.level + ' 关 · 生命 ×' + saved.lives;
+    resumeOverlay.hidden = false;
+    btnPause.hidden = true;
+  } else {
+    parseGrid();
+    resetPositions(); // 菜单画面也显示角色（pac/幽灵就绪，避免绘制空指针）
+    setMode('menu');
+  }
   updateHud();
   requestAnimationFrame(frame);
 
