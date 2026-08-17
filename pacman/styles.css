@@ -278,6 +278,10 @@ body {
   justify-content: center;
 }
 .dpad {
+  --dpad-idle: rgba(255, 255, 255, 0.07);
+  --dpad-hover: rgba(255, 212, 59, 0.14);
+  --dpad-active: rgba(255, 212, 59, 0.3);
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -285,8 +289,8 @@ body {
   width: min(220px, 62vw);
   height: min(220px, 62vw);
   flex: 0 0 auto;
-  /* 容器直接裁成十字形：四臂与中心是一整块均匀色，中间无叠加块 */
-  background: rgba(255, 255, 255, 0.07);
+  /* 四个按钮各自组成一条十字臂，并用朝中心的三角形无缝填满中区。 */
+  background: transparent;
   clip-path: polygon(
     33.333% 0%, 66.667% 0%, 66.667% 33.333%,
     100% 33.333%, 100% 66.667%, 66.667% 66.667%,
@@ -295,8 +299,11 @@ body {
   );
 }
 .dpad-btn {
+  --dpad-fill: var(--dpad-idle);
+  position: relative;
+  z-index: 1;
   border: none;
-  background: transparent;
+  background: var(--dpad-fill);
   color: var(--text-soft);
   font-size: 18px;
   font-weight: 700;
@@ -308,19 +315,59 @@ body {
 }
 .dpad-btn span {
   pointer-events: none;
+  position: relative;
+  z-index: 2;
   display: block;
 }
+.dpad-btn::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  background: var(--dpad-fill);
+  pointer-events: auto;
+  transition: background 0.1s ease;
+}
 .dpad-btn:hover {
-  background: rgba(255, 212, 59, 0.14);
+  --dpad-fill: var(--dpad-hover);
 }
 .dpad-btn:active {
-  background: rgba(255, 212, 59, 0.3);
+  --dpad-fill: var(--dpad-active);
   color: var(--accent);
+}
+.dpad-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
 }
 .dpad-up { grid-area: 1 / 2; }
 .dpad-left { grid-area: 2 / 1; }
 .dpad-right { grid-area: 2 / 3; }
 .dpad-down { grid-area: 3 / 2; }
+.dpad-up::after {
+  top: 100%;
+  left: 0;
+  height: 50%;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.dpad-down::after {
+  bottom: 100%;
+  left: 0;
+  height: 50%;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.dpad-left::after {
+  top: 0;
+  left: 100%;
+  width: 50%;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.dpad-right::after {
+  top: 0;
+  right: 100%;
+  width: 50%;
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+}
 
 /* ---------- 提示 ---------- */
 .hint {

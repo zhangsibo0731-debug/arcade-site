@@ -215,6 +215,9 @@
   }
 
   function resetPositions() {
+    // 每次重置角色都从散开阶段开始，避免沿用上一条命/关卡的追击状态。
+    scatter = true;
+    modeTimer = 0;
     pac = makePac();
     ghosts = [
       makeGhost('blinky', 14, 11),
@@ -225,8 +228,6 @@
     for (const g of ghosts) g.mode = scatter ? 'scatter' : 'chase';
     frightUntil = 0;
     eatenCombo = 0;
-    modeTimer = 0;
-    scatter = true;
   }
 
   // ---------- 关卡 ----------
@@ -455,7 +456,10 @@
   }
 
   function collision(a, b) {
-    return Math.abs(a.px - b.px) < 0.55 && Math.abs(a.py - b.py) < 0.55;
+    const dx = Math.abs(a.px - b.px);
+    // 横向隧道首尾相连；两端的角色在视觉和玩法上仍应发生碰撞。
+    const wrappedDx = Math.min(dx, Math.abs(COLS - dx));
+    return wrappedDx < 0.55 && Math.abs(a.py - b.py) < 0.55;
   }
 
   function killGhost(g) {
@@ -597,7 +601,8 @@
       if (g.house || g.leaving || g.mode === 'eyes') continue;
       if (!collision(pac, g)) continue;
       if (g.mode === 'frightened') killGhost(g);
-      else { die(); break; }
+      // 死亡后立即结束本帧，避免最后一颗豆同时触发过关并覆盖 dying 状态。
+      else { die(); return; }
     }
 
     // 过关
@@ -616,9 +621,10 @@
     resumeOverlay.hidden = true;
     // 暂停期间幽灵出屋倒计时应停止流逝：恢复时平移 spawnAt
     if (m === 'paused' && prev === 'playing') pauseAt = performance.now();
-    else if (m === 'playing' && prev === 'paused') {
+    else if (m === 'playing' && (prev === 'paused' || prev === 'resume')) {
       const gap = performance.now() - pauseAt;
       for (const g of ghosts) g.spawnAt += gap;
+      if (frightUntil > 0) frightUntil += gap;
     }
     if (m === 'menu' || m === 'paused' || m === 'levelclear' || m === 'gameover') {
       showOverlay(m);
@@ -912,6 +918,8 @@
   if (saved && saved.lives > 0 && typeof saved.pelletsLeft === 'number') {
     restoreState(saved);
     mode = 'resume';
+    // 恢复确认弹窗停留期间属于暂停时间，继续时统一顺延绝对计时器。
+    pauseAt = performance.now();
     resumeSub.textContent = '得分 ' + saved.score + ' · 第 ' + saved.level + ' 关 · 生命 ×' + saved.lives;
     resumeOverlay.hidden = false;
     btnPause.hidden = true;
