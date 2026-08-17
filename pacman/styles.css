@@ -272,7 +272,7 @@ body {
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* ---------- 触控方向键（四臂连体十字，无中心块） ---------- */
+/* ---------- 触控方向键（整体十字形，无独立中间块） ---------- */
 .controls {
   display: flex;
   justify-content: center;
@@ -285,14 +285,18 @@ body {
   width: min(220px, 62vw);
   height: min(220px, 62vw);
   flex: 0 0 auto;
-  /* 中心交叉底色：横竖两条实心条，把四臂连成一体 */
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)) center / 100% 33.333% no-repeat,
-    linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)) center / 33.333% 100% no-repeat;
+  /* 容器直接裁成十字形：四臂与中心是一整块均匀色，中间无叠加块 */
+  background: rgba(255, 255, 255, 0.07);
+  clip-path: polygon(
+    33.333% 0%, 66.667% 0%, 66.667% 33.333%,
+    100% 33.333%, 100% 66.667%, 66.667% 66.667%,
+    66.667% 100%, 33.333% 100%, 33.333% 66.667%,
+    0% 66.667%, 0% 33.333%, 33.333% 33.333%
+  );
 }
 .dpad-btn {
   border: none;
-  background: rgba(255, 255, 255, 0.07);
+  background: transparent;
   color: var(--text-soft);
   font-size: 18px;
   font-weight: 700;
@@ -313,10 +317,10 @@ body {
   background: rgba(255, 212, 59, 0.3);
   color: var(--accent);
 }
-.dpad-up { grid-area: 1 / 2; border-radius: 22px 22px 0 0; }
-.dpad-left { grid-area: 2 / 1; border-radius: 22px 0 0 22px; }
-.dpad-right { grid-area: 2 / 3; border-radius: 0 22px 22px 0; }
-.dpad-down { grid-area: 3 / 2; border-radius: 0 0 22px 22px; }
+.dpad-up { grid-area: 1 / 2; }
+.dpad-left { grid-area: 2 / 1; }
+.dpad-right { grid-area: 2 / 3; }
+.dpad-down { grid-area: 3 / 2; }
 
 /* ---------- 提示 ---------- */
 .hint {
