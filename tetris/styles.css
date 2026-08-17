@@ -22,6 +22,8 @@
 
 html, body {
   height: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -99,6 +101,9 @@ body {
   text-transform: uppercase;
   color: var(--text-soft);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- 数据条 ---------- */
@@ -106,8 +111,10 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  min-width: 0;
 }
 .hud__item {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -116,17 +123,24 @@ body {
   border: 1px solid var(--line);
   border-radius: 12px;
   text-align: center;
+  overflow: hidden;
 }
 .hud__label {
   font-size: 10px;
   letter-spacing: 0.12em;
   color: var(--text-soft);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hud__value {
-  font-size: 19px;
+  font-size: clamp(14px, 4.6vw, 19px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- 游戏区 ---------- */
@@ -141,8 +155,10 @@ body {
   display: flex;
   justify-content: center;
   gap: 10px;
+  min-width: 0;
 }
 .panel {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -157,10 +173,12 @@ body {
   letter-spacing: 0.12em;
   color: var(--text-soft);
   font-weight: 500;
+  white-space: nowrap;
 }
 .panel canvas {
   width: 48px;
   height: 48px;
+  flex: 0 0 auto;
 }
 .panel--tap {
   cursor: pointer;
@@ -352,6 +370,9 @@ body {
   font-size: 11px;
   color: var(--text-soft);
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 全局：去掉所有按钮/链接的灰色点按高亮 */
@@ -390,8 +411,14 @@ a,
 }
 
 @media (max-width: 380px) {
-  .brand__title { font-size: 24px; }
-  .hud { gap: 6px; }
+  .brand__title { font-size: 22px; }
+  /* 数据条改 2×2：每格更宽，数字不再被挤压换行 */
+  .hud { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .hud__value { font-size: 16px; }
+  .hud__item { padding: 6px 5px 5px; }
+  .toprow { gap: 8px; }
+  .panel { padding: 6px 8px; gap: 4px; }
+  .panel canvas { width: 40px; height: 40px; }
   .controls { gap: 6px; }
   .ctl { font-size: 14px; }
 }
