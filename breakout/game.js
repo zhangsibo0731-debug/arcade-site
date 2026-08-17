@@ -332,6 +332,7 @@
 
   function loseLife() {
     lives--;
+    combo = 0;
     flash = 1;
     shake = 8;
     if (lives <= 0) {
@@ -407,7 +408,7 @@
       combo++;
       comboT = performance.now();
       const rows = rowsForLevel(level);
-      score += (rows - b.row) * 10 * combo;
+      score += (rows - b.row) * 10 * Math.min(combo, 8);
       spawnParticles(b, r);
       maybeDrop(b, r);
       shake = Math.max(shake, 2.5);
@@ -544,7 +545,6 @@
           b.vy = -Math.cos(ang) * sp;
         }
         b.y = paddle.y - b.r - 0.5;
-        combo = 0;
         wallBounceCount = 0;
         play('paddle');
       }
@@ -719,10 +719,13 @@
       ctx.translate(W / 2, H * 0.42);
       ctx.scale(pop, pop);
       ctx.fillStyle = '#ffd43b';
-      ctx.font = '800 22px "Space Grotesk", "PingFang SC", sans-serif';
+      ctx.shadowColor = '#ffd43b';
+      ctx.shadowBlur = 14;
+      ctx.font = '800 26px "Space Grotesk", "PingFang SC", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('连击 ×' + combo, 0, 0);
+      ctx.shadowBlur = 0;
       ctx.restore();
     }
 
