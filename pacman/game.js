@@ -592,7 +592,8 @@
     const ox = (W - COLS * cell) / 2;
     const oy = (H - ROWS * cell) / 2;
     drawMaze(ox, oy, now);
-    if (mode === 'dying') { drawPac(ox, oy, true); return; }
+    if (mode === 'dying') { if (pac) drawPac(ox, oy, true); return; }
+    if (!pac) return; // 菜单等 pac 未就绪时不绘制角色
     for (const g of ghosts) drawGhost(g, ox, oy, now);
     drawPac(ox, oy, false);
   }
@@ -791,6 +792,7 @@
   resize();
   applyMuted();
   parseGrid();
+  resetPositions(); // 菜单画面也显示角色（pac/幽灵就绪，避免绘制空指针）
   setMode('menu');
   updateHud();
   requestAnimationFrame(frame);
