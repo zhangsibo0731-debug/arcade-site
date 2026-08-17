@@ -108,6 +108,13 @@
   let audioCtx = null;
   let muted = readMuted();
 
+  // 触感反馈（Android 震动；iOS 不支持 navigator.vibrate 时静默跳过）
+  function haptic(pattern) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (e) {}
+  }
+
   function readMuted() {
     try { return localStorage.getItem(MUTE_KEY) === '1'; } catch (e) { return false; }
   }
@@ -259,6 +266,7 @@
         current.stateIndex = next;
         onPieceMoved();
         play('rotate');
+        haptic(6);
         return;
       }
     }
@@ -281,6 +289,7 @@
     // 落点冲击环
     rings.push({ x: W / 2, y: (current.y + 0.5) * cell, r: cell, speed: 460, life: 1, color: '#ffffff' });
     play('drop');
+    haptic(18);
     lock();
   }
   function softDropOnce() {
@@ -300,6 +309,7 @@
     canHold = false;
     if (collides()) gameOver();
     play('hold');
+    haptic(8);
   }
 
   function lock() {
@@ -311,6 +321,7 @@
     }
     clearLines();
     play('lock');
+    haptic(10);
     spawn();
     saveState();
   }
@@ -358,6 +369,7 @@
         fx.text2 = '';
       }
       fx.until = now + 1100;
+      haptic(cleared >= 4 ? [30, 40, 30] : 12 + cleared * 6);
     }
   }
 
@@ -429,6 +441,7 @@
   function gameOver() {
     setMode('gameover');
     play('over');
+    haptic([80, 50, 80]);
     clearState();
     if (score > hi) {
       hi = score;
@@ -452,7 +465,7 @@
   function showOverlay(m) {
     if (m === 'menu') {
       ovTitle.textContent = '俄罗斯方块';
-      ovSub.textContent = '消除整行得分\n一次消 2/3/4 行，奖励更高（四消 TETRIS!）';
+      ovSub.textContent = '一次消 2/3/4 行，奖励更高（四消 TETRIS!）\n单/双/三/四消 = 100/300/500/800 分 × 等级';
       ovBtn.textContent = '开始游戏';
     } else if (m === 'paused') {
       ovTitle.textContent = '已暂停';
@@ -801,10 +814,10 @@
     e.preventDefault();
     if (mode !== 'playing') return;
     const a = btn.dataset.a;
-    if (a === 'left') { if (tryMove(-1, 0)) play('move'); ctlHold = { action: 'left', t: 0, acc: 0 }; }
-    else if (a === 'right') { if (tryMove(1, 0)) play('move'); ctlHold = { action: 'right', t: 0, acc: 0 }; }
+    if (a === 'left') { if (tryMove(-1, 0)) play('move'); ctlHold = { action: 'left', t: 0, acc: 0 }; haptic(5); }
+    else if (a === 'right') { if (tryMove(1, 0)) play('move'); ctlHold = { action: 'right', t: 0, acc: 0 }; haptic(5); }
     else if (a === 'rotate') rotate(1);
-    else if (a === 'down') { softDropOnce(); ctlHold = { action: 'down', t: 0, acc: 0 }; }
+    else if (a === 'down') { softDropOnce(); ctlHold = { action: 'down', t: 0, acc: 0 }; haptic(5); }
     else if (a === 'drop') hardDrop();
   });
   function endCtlHold() { ctlHold = null; }
