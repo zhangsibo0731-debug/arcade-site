@@ -699,8 +699,13 @@
 
       // 磁吸状态：粘在板上，跟随挡板
       if (b.stuck) {
-        b.x = paddle.x + paddle.w / 2 + (b.offX || 0);
-        b.y = paddle.y - b.r - 1;
+        if (performance.now() >= effects.magnetUntil) {
+          // 磁力过期：自动发射，避免球永远粘在板上无法操作
+          launchStuck();
+        } else {
+          b.x = paddle.x + paddle.w / 2 + (b.offX || 0);
+          b.y = paddle.y - b.r - 1;
+        }
         continue;
       }
 
@@ -1042,9 +1047,9 @@
     if (mode === 'ready') launch();
   });
 
-  // 磁吸板：松开手指发射粘住的球
+  // 磁吸板：松开手指发射粘住的球（不依赖磁力剩余时间，粘住即可发射）
   stage.addEventListener('pointerup', (e) => {
-    if (mode === 'playing' && performance.now() < effects.magnetUntil && balls.some((b) => b.stuck)) {
+    if (mode === 'playing' && balls.some((b) => b.stuck)) {
       launchStuck();
     }
   });
@@ -1082,7 +1087,7 @@
       e.preventDefault();
       ensureAudio();
       if (mode === 'ready') launch();
-      else if (mode === 'playing' && performance.now() < effects.magnetUntil && balls.some((b) => b.stuck)) launchStuck();
+      else if (mode === 'playing' && balls.some((b) => b.stuck)) launchStuck();
       else if (mode === 'playing') setMode('paused');
       else if (mode === 'paused') setMode('playing');
     }

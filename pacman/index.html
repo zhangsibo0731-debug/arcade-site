@@ -68,7 +68,7 @@
     <div class="overlay" id="overlay" hidden>
       <div class="ov-card">
         <h2 class="ov-title" id="ovTitle">吃豆人</h2>
-        <p class="ov-sub" id="ovSub">吃光所有豆子，避开幽灵<br />吃能量豆反吃幽灵（200/400/800/1600 分）</p>
+        <p class="ov-sub" id="ovSub">吃光所有豆子，避开幽灵<br />吃能量豆反吃幽灵：200 分起，连吃翻倍（封顶 1600）</p>
         <button class="ov-btn" id="ovBtn" type="button">开始游戏</button>
       </div>
     </div>
@@ -85,13 +85,16 @@
   </section>
 
   <section class="controls" aria-label="触控操作">
-    <button class="ctl ctl--up" type="button" data-d="3">上</button>
-    <button class="ctl ctl--left" type="button" data-d="2">左</button>
-    <button class="ctl ctl--right" type="button" data-d="1">右</button>
-    <button class="ctl ctl--down" type="button" data-d="4">下</button>
+    <div class="dpad">
+      <button class="dpad-btn dpad-up" type="button" data-d="3" aria-label="上"><span>▲</span></button>
+      <button class="dpad-btn dpad-left" type="button" data-d="2" aria-label="左"><span>◀</span></button>
+      <span class="dpad-center" aria-hidden="true"></span>
+      <button class="dpad-btn dpad-right" type="button" data-d="1" aria-label="右"><span>▶</span></button>
+      <button class="dpad-btn dpad-down" type="button" data-d="4" aria-label="下"><span>▼</span></button>
+    </div>
   </section>
 
-  <p class="hint">方向键 / 滑动 / 按钮控制移动 · 空格暂停</p>
+  <p class="hint">方向键 / 滑动 / 十字键控制移动 · 空格暂停</p>
 </main>
 
 <script src="game.js"></script>

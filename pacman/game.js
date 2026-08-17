@@ -460,7 +460,9 @@
 
   function killGhost(g) {
     eatenCombo++;
-    score += 200 * Math.pow(2, eatenCombo - 1);
+    // 连吃翻倍，但封顶 1600（第 4 只后不再涨，与原版一致）
+    const mult = Math.min(eatenCombo, 4);
+    score += 200 * Math.pow(2, mult - 1);
     g.mode = 'eyes';
     g.dir = UP;
     g.leaving = false;
@@ -630,7 +632,7 @@
   function showOverlay(m) {
     if (m === 'menu') {
       ovTitle.textContent = '吃豆人';
-      ovSub.textContent = '吃光所有豆子，避开幽灵\n吃能量豆反吃幽灵（200/400/800/1600 分）';
+      ovSub.textContent = '吃光所有豆子，避开幽灵\n吃能量豆反吃幽灵：200 分起，连吃翻倍（封顶 1600）';
       ovBtn.textContent = '开始游戏';
     } else if (m === 'paused') {
       ovTitle.textContent = '已暂停';
@@ -838,7 +840,7 @@
     if (d) setPacDir(d);
   });
 
-  document.querySelectorAll('.ctl').forEach((btn) => {
+  document.querySelectorAll('.dpad-btn').forEach((btn) => {
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       if (mode === 'playing') {

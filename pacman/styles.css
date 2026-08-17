@@ -272,48 +272,53 @@ body {
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* ---------- 触控方向键（十字） ---------- */
+/* ---------- 触控方向键（连体十字键） ---------- */
 .controls {
+  display: flex;
+  justify-content: center;
+}
+.dpad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: auto auto;
-  gap: 8px;
-  max-width: 250px;
-  margin: 0 auto;
-  width: 100%;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0;
+  width: 168px;
+  height: 168px;
+  flex: 0 0 auto;
 }
-.ctl {
-  padding: 11px 0;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel);
-  color: var(--text);
-  font-family: var(--font-sans);
+.dpad-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-soft);
   font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  transition: background 0.12s ease, transform 0.08s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.1s ease;
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background 0.1s ease, color 0.1s ease;
 }
-.ctl--up { grid-column: 2; grid-row: 1; }
-.ctl--left { grid-column: 1; grid-row: 2; }
-.ctl--right { grid-column: 3; grid-row: 2; }
-.ctl--down { grid-column: 2; grid-row: 2; }
-.ctl:hover {
+.dpad-btn span {
+  pointer-events: none;
+  display: block;
+}
+.dpad-btn:hover {
   background: rgba(255, 212, 59, 0.14);
-  border-color: var(--accent);
 }
-.ctl:active {
-  transform: scale(0.88) translateY(3px);
-  background: rgba(255, 212, 59, 0.26);
-  border-color: var(--accent);
+.dpad-btn:active {
+  background: rgba(255, 212, 59, 0.3);
   color: var(--accent);
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(255, 212, 59, 0.14);
 }
+.dpad-center {
+  grid-area: 2 / 2;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.dpad-up { grid-area: 1 / 2; border-radius: 22px 22px 0 0; }
+.dpad-left { grid-area: 2 / 1; border-radius: 22px 0 0 22px; }
+.dpad-right { grid-area: 2 / 3; border-radius: 0 22px 22px 0; }
+.dpad-down { grid-area: 3 / 2; border-radius: 0 0 22px 22px; }
 
 /* ---------- 提示 ---------- */
 .hint {
@@ -338,20 +343,20 @@ a {
   .brand__title { font-size: 22px; }
   .brand__sub { margin-top: 4px; }
   .hud__item { padding: 5px 6px 4px; }
-  .ctl { padding: 9px 0; font-size: 14px; }
+  .dpad { width: 150px; height: 150px; }
   .hint { font-size: 10px; }
 }
 
 @media (max-height: 600px) {
-  .controls { gap: 6px; max-width: 210px; }
-  .ctl { font-size: 13px; padding: 7px 0; }
+  .dpad { width: 132px; height: 132px; }
+  .dpad-btn { font-size: 13px; }
   .hint { display: none; }
 }
 
 @media (max-width: 380px) {
   .brand__title { font-size: 22px; }
-  .controls { max-width: 210px; }
-  .ctl { font-size: 14px; }
+  .dpad { width: 150px; height: 150px; }
+  .dpad-btn { font-size: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
