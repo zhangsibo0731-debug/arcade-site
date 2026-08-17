@@ -86,6 +86,7 @@
   let eatenCombo = 0;     // 连吃幽灵计数
   let dyeT = 0;           // 死亡动画计时
   let lastT = 0;
+  let pauseAt = 0;        // 暂停时刻（用于平移幽灵出屋倒计时）
 
   // ---------- 工具 ----------
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
@@ -249,7 +250,7 @@
   // ---------- 幽灵 AI ----------
   function ghostTarget(g) {
     if (g.leaving) return { x: 14, y: 11 }; // 门上方通道
-    if (g.mode === 'eyes') return { x: 14, y: 13.5 }; // 屋中心
+    if (g.mode === 'eyes') return { x: 14, y: 13 }; // 屋中心（整数格点，否则到达判定永不成立）
     if (g.mode === 'frightened') return null;
     if (g.mode === 'scatter') {
       const s = SCATTER_SPOTS[g.type];
@@ -476,7 +477,8 @@
         const t = tileOf(g);
         if (Math.abs(t.x - 14) <= 1 && Math.abs(t.y - 11) <= 1 && aligned(g)) {
           g.leaving = false;
-          g.mode = scatter ? 'scatter' : 'chase';
+          // 能量豆生效期间出屋的幽灵也是蓝色恐惧状态（经典行为）
+          g.mode = (frightUntil > performance.now()) ? 'frightened' : (scatter ? 'scatter' : 'chase');
         } else {
           if (aligned(g)) g.dir = ghostPickDir(g);
           moveChar(g, dt, 6.5 * gm);
@@ -484,19 +486,23 @@
         }
       }
       if (g.mode === 'eyes') {
-        const t = ghostTarget(g);
-        if (Math.abs(g.px - t.x) < 0.35 && Math.abs(g.py - t.y) < 0.35) {
+        // 经典行为：眼睛形态无视墙壁，直线飞回幽灵屋
+        const t = ghostTarget(g); // 屋中心 (14,13)
+        const dx = t.x - g.px, dy = t.y - g.py;
+        const d = Math.hypot(dx, dy);
+        const step = 10 * dt;
+        if (d < step + 0.01) {
           const spot = { pinky: 12, inky: 14, clyde: 16 }[g.type] || 14;
           g.px = spot; g.py = 14;
           g.dir = UP;
           g.house = true;
           g.leaving = false;
           g.spawnAt = now + 2500; // 重生后在屋里稍候再出
-          g.mode = scatter ? 'scatter' : 'chase';
-          continue;
+          g.mode = (frightUntil > now) ? 'frightened' : (scatter ? 'scatter' : 'chase');
+        } else {
+          g.px += dx / d * step;
+          g.py += dy / d * step;
         }
-        if (aligned(g)) g.dir = ghostPickDir(g);
-        moveChar(g, dt, 10);
         continue;
       }
       // 正常（scatter/chase/frightened）
@@ -526,7 +532,14 @@
 
   // ---------- 流程 ----------
   function setMode(m) {
+    const prev = mode;
     mode = m;
+    // 暂停期间幽灵出屋倒计时应停止流逝：恢复时平移 spawnAt
+    if (m === 'paused' && prev === 'playing') pauseAt = performance.now();
+    else if (m === 'playing' && prev === 'paused') {
+      const gap = performance.now() - pauseAt;
+      for (const g of ghosts) g.spawnAt += gap;
+    }
     if (m === 'menu' || m === 'paused' || m === 'levelclear' || m === 'gameover') {
       showOverlay(m);
       btnPause.hidden = true;
@@ -811,6 +824,20 @@
         }),
         pelletsLeft: pelletsLeft,
       };
+    };
+    window.__forcePower = function () {
+      frightUntil = performance.now() + 6000;
+      eatenCombo = 0;
+      for (const g of ghosts) {
+        if (!g.house && g.mode !== 'eyes') g.mode = 'frightened';
+      }
+    };
+    window.__forceCollide = function (type) {
+      const g = ghosts.find(function (x) { return x.type === type; });
+      if (g && !g.house && g.mode !== 'eyes' && pac) {
+        g.px = pac.px;
+        g.py = pac.py;
+      }
     };
   }
 })();
