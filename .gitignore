@@ -4,6 +4,7 @@ arcade-site/
 
 # 本地冒烟测试（不进仓库）
 breakout/_smoke.js
+tetris/_smoke.js
 
 # 数独目录里已废弃的旧文件（现在统一用根目录的 manifest/sw/icons）
 sudoku/manifest.json

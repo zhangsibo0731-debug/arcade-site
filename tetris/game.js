@@ -92,6 +92,8 @@
   let lastT = 0;
   let spawnHold = 0;
   let saveAcc = 0;
+  // 消行视觉反馈：行闪烁 + 浮动得分
+  let fx = { text: '', big: false, until: 0, rows: [], rowsUntil: 0 };
 
   // ---------- 音效 ----------
   let audioCtx = null;
@@ -113,7 +115,7 @@
     } catch (e) { return null; }
     return audioCtx;
   }
-  function play(name) {
+  function play(name, pitch) {
     const ac = ensureAudio();
     if (!ac) return;
     if (ac.state === 'suspended') ac.resume();
@@ -128,6 +130,7 @@
       case 'hold': freq = 280; dur = 0.04; type = 'square'; vol = 0.08; break;
       case 'over': freq = 140; dur = 0.5; type = 'sawtooth'; vol = 0.18; break;
     }
+    freq *= (pitch || 1);
     const osc = ac.createOscillator();
     const gain = ac.createGain();
     osc.type = type;
@@ -254,20 +257,31 @@
 
   function clearLines() {
     let cleared = 0;
+    const clearedRows = [];
     for (let y = ROWS - 1; y >= 0; y--) {
       if (board[y].every((c) => c)) {
         board.splice(y, 1);
         board.unshift(Array(COLS).fill(0));
+        clearedRows.push(y);
         cleared++;
         y++;
       }
     }
     if (cleared > 0) {
-      score += CLEAR_PTS[cleared] * level;
+      const pts = CLEAR_PTS[cleared] * level;
+      score += pts;
       lines += cleared;
       level = Math.floor(lines / 10) + 1;
-      play(cleared === 4 ? 'tetris' : 'clear');
+      play(cleared === 4 ? 'tetris' : 'clear', 1 + (cleared - 1) * 0.12);
       updateHud();
+      // 可见奖励：被消行白闪 + 浮动得分大字
+      const now = performance.now();
+      fx.rows = clearedRows;
+      fx.rowsUntil = now + 240;
+      const labels = { 1: '单消', 2: '双消', 3: '三消', 4: '四消' };
+      fx.big = cleared >= 3;
+      fx.text = (cleared === 4 ? 'TETRIS! ' : '') + '+' + pts + ' ' + (labels[cleared] || '');
+      fx.until = now + 1100;
     }
   }
 
@@ -353,7 +367,7 @@
   function showOverlay(m) {
     if (m === 'menu') {
       ovTitle.textContent = '俄罗斯方块';
-      ovSub.textContent = '消除整行得分，堆到顶部就结束';
+      ovSub.textContent = '消除整行得分\n一次消 2/3/4 行，奖励更高（四消 TETRIS!）';
       ovBtn.textContent = '开始游戏';
     } else if (m === 'paused') {
       ovTitle.textContent = '已暂停';
@@ -480,6 +494,36 @@
         if (y < 0) continue;
         drawBlockOn(ctx, x * cell, y * cell, cell, COLORS[current.type], 1);
       }
+    }
+
+    // 消行白闪
+    if (fx.rowsUntil > performance.now()) {
+      const t = Math.max(0, (fx.rowsUntil - performance.now()) / 240);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.75 * t).toFixed(3) + ')';
+      for (const y of fx.rows) {
+        ctx.fillRect(0, y * cell, W, cell);
+      }
+    }
+
+    // 浮动得分（单消小字 / 三消四消金色大字 + 发光）
+    if (fx.until > performance.now()) {
+      const total = 1100;
+      const t = 1 - (fx.until - performance.now()) / total; // 0..1
+      const pop = t < 0.12 ? 0.5 + (t / 0.12) * 0.6 : 1.1 - Math.min(0.12, (t - 0.12) * 0.25);
+      const fade = Math.max(0, Math.min(1, (fx.until - performance.now()) / 320));
+      ctx.save();
+      ctx.translate(W / 2, H * 0.28);
+      ctx.scale(pop, pop);
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = fx.big ? '#ffd43b' : '#ffffff';
+      ctx.shadowColor = '#ffd43b';
+      ctx.shadowBlur = fx.big ? 18 : 10;
+      ctx.font = (fx.big ? '800 30px' : '700 24px') + ' "Space Grotesk", "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(fx.text, 0, 0);
+      ctx.shadowBlur = 0;
+      ctx.restore();
     }
   }
 
@@ -636,6 +680,11 @@
   hi = readHi();
   resize();
   applyMuted();
+  // 字体加载会改变头部/HUD 高度 → 棋盘可用空间变化，加载完重测一次
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => setTimeout(resize, 60));
+  }
+  setTimeout(resize, 350);
   const saved = loadState();
   if (saved && saved.board && saved.current) {
     restoreState(saved);

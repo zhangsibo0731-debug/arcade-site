@@ -33,9 +33,12 @@ body {
     var(--bg);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  /* 禁止双击缩放：连点按钮时页面不再放大（子元素可用 touch-action 覆盖） */
+  touch-action: manipulation;
 }
 
 .app {
+  height: 100vh;
   height: 100dvh;
   max-width: 430px;
   margin: 0 auto;
@@ -43,6 +46,7 @@ body {
   flex-direction: column;
   gap: 10px;
   padding: 14px 14px 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 /* ---------- 顶栏 ---------- */
@@ -222,6 +226,9 @@ body {
   place-items: center;
   cursor: pointer;
   backdrop-filter: blur(4px);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition: background 0.14s ease, transform 0.1s ease, color 0.14s ease, border-color 0.14s ease;
 }
 .icon-btn svg {
@@ -270,6 +277,7 @@ body {
 .ov-sub {
   font-size: 13px;
   line-height: 1.6;
+  white-space: pre-line;
   color: var(--text-soft);
   margin-bottom: 18px;
 }
@@ -320,6 +328,9 @@ body {
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition: background 0.12s ease, transform 0.1s ease, border-color 0.12s ease;
 }
 .ctl:hover {
@@ -341,6 +352,35 @@ body {
   font-size: 11px;
   color: var(--text-soft);
   letter-spacing: 0.02em;
+}
+
+/* 全局：去掉所有按钮/链接的灰色点按高亮 */
+button,
+a,
+.panel--tap {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 矮屏（小手机 / 地址栏占高）：压缩纵向空间，把空间让给棋盘 */
+@media (max-height: 720px) {
+  .app { gap: 7px; padding: 10px 12px 9px; }
+  .brand__title { font-size: 22px; }
+  .brand__sub { margin-top: 4px; }
+  .hud__value { font-size: 16px; }
+  .hud__item { padding: 6px 5px 5px; }
+  .toprow { gap: 8px; }
+  .panel { padding: 6px 8px; gap: 4px; }
+  .panel canvas { width: 40px; height: 40px; }
+  .ctl { padding: 10px 0 9px; font-size: 14px; }
+  .hint { font-size: 10px; }
+}
+
+/* 更矮（横屏小窗 / 老款小屏）：进一步压缩，隐藏键盘提示行 */
+@media (max-height: 600px) {
+  .hud__label { font-size: 9px; }
+  .controls { gap: 6px; }
+  .ctl { font-size: 13px; padding: 8px 0 7px; }
+  .hint { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
