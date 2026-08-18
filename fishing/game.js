@@ -48,6 +48,7 @@
   let powerDir = 1;
   let castDistance = .55;
   let castTime = 0;
+  let hookTime = 0;
   let waitLeft = 0;
   let biteLeft = 0;
   let fish = null;
@@ -68,6 +69,7 @@
   let ripple = 0;
   let caughtFlash = 0;
   let finishLeft = 0;
+  let motionTestHold = false;
 
   function readInt(key) {
     try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
@@ -101,7 +103,7 @@
     catchGame.hidden = next !== 'fishing' && next !== 'finishing';
     powerWrap.hidden = next !== 'casting';
     pauseBtn.hidden = !['ready', 'casting', 'waiting', 'bite', 'fishing'].includes(next);
-    actionBtn.disabled = next === 'waiting';
+    actionBtn.disabled = next === 'waiting' || next === 'hooking';
 
     if (next === 'ready') {
       actionBtn.textContent = '按住蓄力';
@@ -121,10 +123,14 @@
       actionBtn.disabled = false;
       actionBtn.textContent = '按住向上';
       actionHint.textContent = '按住上升 · 松开下沉 · 让鱼留在捕获区';
+    } else if (next === 'hooking') {
+      actionBtn.textContent = '提竿中…';
+      actionHint.textContent = '上钩了！准备遛鱼';
     }
   }
 
   function startSession() {
+    motionTestHold = false;
     overlay.hidden = true;
     modalBack.hidden = true;
     setMode('ready');
@@ -185,9 +191,14 @@
     zoneY = .2;
     zoneV = 0;
     catchProgress = fish.id === 'crucian' && totalCaught === 0 ? .38 : .25;
-    setMode('fishing');
+    hookTime = .62;
+    setMode('hooking');
     play('hook');
     vibrate(22);
+  }
+
+  function startFishing() {
+    setMode('fishing');
   }
 
   function missBite() {
@@ -334,7 +345,7 @@
       if (power <= 0) { power = 0; powerDir = 1; }
       powerFill.style.width = Math.round(power * 100) + '%';
     } else if (mode === 'waiting') {
-      castTime = Math.max(0, castTime - dt);
+      if (!motionTestHold) castTime = Math.max(0, castTime - dt);
       ripple += dt;
       waitLeft -= dt;
       if (waitLeft <= 0) beginBite();
@@ -342,6 +353,9 @@
       ripple += dt * 5;
       biteLeft -= dt;
       if (biteLeft <= 0) missBite();
+    } else if (mode === 'hooking') {
+      if (!motionTestHold) hookTime -= dt;
+      if (hookTime <= 0) startFishing();
     } else if (mode === 'fishing') {
       updateFishing(dt);
     } else if (mode === 'finishing') {
@@ -414,14 +428,46 @@
     ctx.fillStyle = '#10172a';
     ctx.beginPath(); ctx.arc(personX, groundY - 42, 10, 0, Math.PI * 2); ctx.fill();
     ctx.fillRect(personX - 8, groundY - 33, 16, 30);
+    const pullBack = mode === 'casting' ? power : 0;
+    const rodTipX = personX + 40 - pullBack * 18;
+    const rodTipY = groundY - 72 - pullBack * 8;
     ctx.strokeStyle = '#d8b77a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(personX + 5, groundY - 27); ctx.lineTo(personX + 40, groundY - 72); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(personX + 5, groundY - 27); ctx.lineTo(rodTipX, rodTipY); ctx.stroke();
 
-    if (mode !== 'menu' && mode !== 'result') {
-      const bobX = personX + 45 + (w * .7 - personX) * castDistance;
-      const bobY = lakeY + 28 + Math.sin(time / 260) * (mode === 'bite' ? 8 : 2);
+    const targetBobX = personX + 45 + (w * .7 - personX) * castDistance;
+    const targetBobY = lakeY + 28;
+    if (mode === 'ready' || mode === 'casting') {
+      const hookX = personX + 24 - pullBack * 12;
+      const hookY = lakeY - 10;
+      ctx.strokeStyle = 'rgba(245,241,223,.58)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY); ctx.quadraticCurveTo(personX + 42, groundY - 18, hookX, hookY); ctx.stroke();
+      ctx.strokeStyle = '#f5f1df'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(hookX, hookY - 5); ctx.lineTo(hookX, hookY + 3); ctx.quadraticCurveTo(hookX, hookY + 8, hookX + 5, hookY + 5); ctx.stroke();
+    } else if (mode === 'waiting' && castTime > 0) {
+      const castT = Math.max(0, Math.min(1, 1 - castTime / .72));
+      const bobX = rodTipX + (targetBobX - rodTipX) * castT;
+      const bobY = rodTipY + (targetBobY - rodTipY) * castT - Math.sin(Math.PI * castT) * h * .24;
       ctx.strokeStyle = 'rgba(245,241,223,.55)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(personX + 40, groundY - 72); ctx.quadraticCurveTo(w * .45, lakeY - 48, bobX, bobY); ctx.stroke();
+      ctx.fillStyle = '#ff806b'; ctx.fillRect(bobX - 2, bobY - 8, 4, 9);
+      ctx.fillStyle = '#f5f1df'; ctx.beginPath(); ctx.arc(bobX, bobY + 1, 4, 0, Math.PI * 2); ctx.fill();
+    } else if (mode === 'hooking') {
+      const hookT = Math.max(0, Math.min(1, 1 - hookTime / .62));
+      const bobX = targetBobX + (rodTipX - targetBobX) * hookT * .72;
+      const bobY = targetBobY - Math.sin(Math.PI * hookT) * h * .3 - hookT * 20;
+      ctx.strokeStyle = 'rgba(245,241,223,.8)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY); ctx.quadraticCurveTo(w * .52, lakeY - 80, bobX, bobY); ctx.stroke();
+      ctx.fillStyle = fish ? fish.color : '#8fd3c7';
+      ctx.beginPath(); ctx.ellipse(bobX - 10, bobY + 7, 11, 6, -.25, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(bobX - 20, bobY + 6); ctx.lineTo(bobX - 29, bobY); ctx.lineTo(bobX - 27, bobY + 13); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#17213b'; ctx.beginPath(); ctx.arc(bobX - 5, bobY + 5, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(220,245,242,.6)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(targetBobX, targetBobY + 3, 15 + hookT * 20, 5 + hookT * 5, 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (['waiting', 'bite', 'fishing', 'finishing', 'paused'].includes(mode)) {
+      const bobX = targetBobX;
+      const bobY = targetBobY + Math.sin(time / 260) * (mode === 'bite' ? 8 : 2);
+      ctx.strokeStyle = 'rgba(245,241,223,.55)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY); ctx.quadraticCurveTo(w * .45, lakeY - 48, bobX, bobY); ctx.stroke();
       ctx.fillStyle = '#ff806b'; ctx.fillRect(bobX - 2, bobY - 8, 4, 9);
       ctx.fillStyle = '#f5f1df'; ctx.beginPath(); ctx.arc(bobX, bobY + 1, 4, 0, Math.PI * 2); ctx.fill();
       if (mode === 'waiting' || mode === 'bite') {
@@ -529,8 +575,22 @@
   window.__fishingTest = {
     getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: fish && fish.id, fishY, zoneY, zoneV, catchProgress, totalCaught, bestWeight, streak, bestStreak }),
     start: startSession,
+    showCast: (progress) => {
+      motionTestHold = true;
+      castDistance = .78;
+      castTime = .72 * (1 - Math.max(0, Math.min(.9, Number(progress) || 0)));
+      waitLeft = 999;
+      setMode('waiting');
+    },
     bite: () => { if (mode === 'ready') { castDistance = .8; } beginBite(); },
     hook: hookFish,
+    showHook: (progress) => {
+      motionTestHold = true;
+      if (!fish) fish = FISH[0];
+      hookTime = .62 * (1 - Math.max(0, Math.min(.9, Number(progress) || 0)));
+      setMode('hooking');
+    },
+    startFishing: startFishing,
     finish: beginCatchFinish,
     setFish: (id) => { fish = FISH.find((item) => item.id === id) || FISH[0]; },
     setProgress: (value) => { catchProgress = Math.max(0, Math.min(1, Number(value))); },
