@@ -109,6 +109,7 @@ body {
 .card__preview--memory { background: #fff3d6; }
 .card__preview--pacman { background: #10142a; }
 .card__preview--puyo { background: #211b3b; }
+.card__preview--fishing { background: #15294a; }
 
 .card__body {
   display: flex;

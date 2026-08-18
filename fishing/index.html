@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#111b35" />
+<title>月光垂钓 · 湖畔钓鱼</title>
+<link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+<main class="app">
+  <header class="header">
+    <a class="icon-btn back" href="../" aria-label="返回游戏厅" title="返回游戏厅">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    </a>
+    <div>
+      <h1>月光垂钓</h1>
+      <p>MOONLIT FISHING · 湖畔小憩</p>
+    </div>
+  </header>
+
+  <section class="game-shell">
+    <div class="stage" id="stage">
+      <canvas id="scene" aria-label="月夜湖泊钓鱼场景"></canvas>
+      <div class="top-actions">
+        <button class="icon-btn" id="soundBtn" type="button" aria-label="关闭声音">🔊</button>
+        <button class="icon-btn" id="pauseBtn" type="button" aria-label="暂停" hidden>Ⅱ</button>
+      </div>
+
+      <div class="notice" id="notice" hidden>
+        <strong id="noticeTitle">鱼咬钩了！</strong>
+        <span id="noticeSub">快提竿</span>
+      </div>
+
+      <section class="catch-game" id="catchGame" aria-label="遛鱼区域" hidden>
+        <div class="catch-track" id="catchTrack">
+          <div class="fish-marker" id="fishMarker" aria-hidden="true"><span>🐟</span><i></i></div>
+          <div class="catch-zone" id="catchZone"><span>捕获区</span></div>
+        </div>
+        <div class="progress-wrap">
+          <span>捕获进度</span>
+          <div class="progress"><i id="progressFill"></i></div>
+        </div>
+      </section>
+
+      <div class="overlay" id="overlay">
+        <div class="modal">
+          <span class="modal__eyebrow" id="modalEyebrow">今晚，湖面很安静</span>
+          <h2 id="modalTitle">月光垂钓</h2>
+          <p id="modalText">按住蓄力，松开抛竿<br />鱼咬钩后及时提竿</p>
+          <button class="primary" id="modalBtn" type="button">去湖边</button>
+          <a class="modal__back" id="modalBack" href="../" hidden>返回游戏厅</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud" role="group" aria-label="钓鱼记录">
+      <div><span>已钓</span><strong id="totalCaught">0</strong></div>
+      <div><span>最大重量</span><strong id="bestWeight">--</strong></div>
+      <div><span>连续成功</span><strong id="streak">0</strong></div>
+      <div><span>最佳连续</span><strong id="bestStreak">0</strong></div>
+    </div>
+
+    <div class="action-area">
+      <div class="power" id="powerWrap" hidden><i id="powerFill"></i></div>
+      <button class="action-btn" id="actionBtn" type="button">按住蓄力</button>
+      <p id="actionHint">按住按钮蓄力，松开抛竿</p>
+    </div>
+  </section>
+</main>
+<script src="../input-guard.js?v=6"></script>
+<script src="game.js?v=4"></script>
+</body>
+</html>
