@@ -7,7 +7,7 @@
 <title>月光垂钓 · 湖畔钓鱼</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=3" />
+<link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
 <main class="app">
@@ -25,6 +25,7 @@
     <div class="stage" id="stage">
       <canvas id="scene" aria-label="月夜湖泊钓鱼场景"></canvas>
       <div class="top-actions">
+        <button class="icon-btn" id="catalogBtn" type="button" aria-label="鱼类图鉴" title="鱼类图鉴">册</button>
         <button class="icon-btn" id="soundBtn" type="button" aria-label="关闭声音">
           <svg id="soundOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a8.5 8.5 0 0 1 0 12"/></svg>
           <svg id="soundOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/></svg>
@@ -39,7 +40,7 @@
 
       <section class="catch-game" id="catchGame" aria-label="遛鱼区域" hidden>
         <div class="catch-track" id="catchTrack">
-          <div class="fish-marker" id="fishMarker" aria-hidden="true"><span>🐟</span><i></i></div>
+          <div class="fish-marker" id="fishMarker" aria-hidden="true"><span class="fish-sprite"></span><i></i></div>
           <div class="catch-zone" id="catchZone"><span>捕获区</span></div>
         </div>
         <div class="progress-wrap">
@@ -51,10 +52,11 @@
       <div class="overlay" id="overlay">
         <div class="modal">
           <span class="modal__eyebrow" id="modalEyebrow">今晚，湖面很安静</span>
+          <div class="result-fish fish-sprite" id="resultFish" aria-hidden="true" hidden></div>
           <h2 id="modalTitle">月光垂钓</h2>
           <p id="modalText">按住蓄力，松开抛竿<br />鱼咬钩后及时提竿</p>
           <button class="primary" id="modalBtn" type="button">去湖边</button>
-          <button class="modal__back" id="modalNew" type="button" hidden>新钓一局</button>
+          <button class="modal__back" id="modalNew" type="button">查看鱼类图鉴</button>
           <a class="modal__back" id="modalBack" href="../" hidden>返回游戏厅</a>
         </div>
       </div>
@@ -73,8 +75,16 @@
       <p id="actionHint">按住按钮蓄力，松开抛竿</p>
     </div>
   </section>
+
+  <section class="catalog" id="catalog" aria-label="鱼类图鉴" hidden>
+    <div class="catalog__head">
+      <div><span>MOONLAKE COLLECTION</span><h2>鱼类图鉴</h2><p id="catalogProgress">已发现 0 / 12</p></div>
+      <button class="icon-btn" id="catalogClose" type="button" aria-label="关闭图鉴">×</button>
+    </div>
+    <div class="catalog__grid" id="catalogGrid"></div>
+  </section>
 </main>
 <script src="../input-guard.js?v=6"></script>
-<script src="game.js?v=12"></script>
+<script src="game.js?v=14"></script>
 </body>
 </html>
