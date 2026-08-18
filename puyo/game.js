@@ -281,7 +281,7 @@
     if (level > previousLevel) showLevel(level);
     play(chain > 1 ? 'chain' : 'clear', chain);
     haptic(chain >= 3 ? [22, 28, 22 + chain * 2] : chain > 1 ? [16, 24, 16] : 10);
-    if (chain >= 3) shakeBoard(chain);
+    if (chain >= 2) shakeBoard(chain);
 
     popCells = new Set(cells.map((p) => p[0] + ',' + p[1]));
     popStartedAt = performance.now();
@@ -290,7 +290,7 @@
     setTimeout(() => {
       if (token !== resolveToken) return;
       for (const p of cells) {
-        makeBurst(p[0], p[1], board[p[1]][p[0]]);
+        makeBurst(p[0], p[1], board[p[1]][p[0]], chain);
         board[p[1]][p[0]] = 0;
       }
       popCells.clear();
@@ -325,7 +325,9 @@
     chainValue.textContent = chain === 1 ? '消除' : chain;
     chainLabel.textContent = chain === 1 ? 'CLEAR' : 'CHAIN';
     chainGain.textContent = '+' + gained;
-    chainPop.style.setProperty('--chain-size', (chain === 1 ? 36 : Math.min(72, 48 + (chain - 2) * 4)) + 'px');
+    chainPop.style.setProperty('--chain-size', (chain === 1 ? 36 : Math.min(92, 50 + (chain - 2) * 7)) + 'px');
+    chainPop.style.setProperty('--chain-hue', String(Math.max(0, 82 - Math.max(0, chain - 2) * 13)));
+    chainPop.style.setProperty('--chain-tilt', (chain <= 1 ? -4 : Math.min(8, chain) * (chain % 2 ? 1 : -1)) + 'deg');
     chainPop.hidden = true;
     void chainPop.offsetWidth;
     chainPop.hidden = false;
@@ -346,7 +348,7 @@
 
   function showLevel(nextLevel) {
     clearTimeout(levelPopTimer);
-    levelPop.textContent = 'LEVEL ' + nextLevel + '!';
+    levelPop.textContent = 'LEVEL UP! · ' + nextLevel;
     levelPop.hidden = true;
     void levelPop.offsetWidth;
     levelPop.hidden = false;
@@ -357,7 +359,11 @@
 
   function shakeBoard(chain) {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    boardWrap.style.setProperty('--shake', Math.min(6, chain) + 'px');
+    const strength = Math.min(7, 2 + chain);
+    boardWrap.style.setProperty('--shake', strength + 'px');
+    boardWrap.style.setProperty('--shake-neg', -strength + 'px');
+    boardWrap.style.setProperty('--shake-soft', Math.round(strength * 0.7) + 'px');
+    boardWrap.style.setProperty('--shake-soft-neg', -Math.round(strength * 0.7) + 'px');
     boardWrap.classList.remove('is-shaking');
     void boardWrap.offsetWidth;
     boardWrap.classList.add('is-shaking');
@@ -628,8 +634,9 @@
     drawNext();
   }
 
-  function makeBurst(x, y, color) {
-    for (let i = 0; i < 8; i++) {
+  function makeBurst(x, y, color, chain) {
+    const count = Math.min(16, 8 + Math.max(0, (chain || 1) - 1) * 2);
+    for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
       const speed = 35 + Math.random() * 90;
       particles.push({
@@ -907,7 +914,7 @@
   if (saved && validBoard(saved.board)) {
     if (restoreState(saved)) {
       mode = 'resume';
-      resumeSub.textContent = '得分 ' + score + ' · 等级 ' + level + ' · 本局连锁 ' + runMaxChain;
+      resumeSub.textContent = '得分 ' + score + ' · 等级 ' + level + ' · 本局最高连锁 ' + runMaxChain;
       resumeOverlay.hidden = false;
       btnPause.hidden = true;
     } else {

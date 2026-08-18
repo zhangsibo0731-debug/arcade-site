@@ -241,18 +241,19 @@ body {
   text-align: center;
   color: #fff;
   text-shadow: 0 3px 16px rgba(0,0,0,.6);
-  transform: translate(-50%, -50%) rotate(-6deg);
+  transform: translate(-50%, -50%) rotate(var(--chain-tilt, -6deg));
   animation: chain-pop .7s cubic-bezier(.17,.89,.35,1.35) both;
   pointer-events: none;
 }
 .chain-pop div { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
-.chain-pop strong { color: var(--lime); font-size: var(--chain-size, 48px); line-height: 1; }
+.chain-pop strong { color: hsl(var(--chain-hue, 82) 92% 65%); font-size: var(--chain-size, 48px); line-height: 1; }
 .chain-pop span { font-size: 17px; font-weight: 700; letter-spacing: .05em; }
 .chain-pop small { display: block; margin-top: 4px; color: #fff; font-size: 15px; font-weight: 700; }
 @keyframes chain-pop {
-  0% { opacity: 0; transform: translate(-50%,-40%) scale(.4) rotate(-12deg); }
-  35% { opacity: 1; transform: translate(-50%,-50%) scale(1.14) rotate(-4deg); }
-  100% { opacity: 0; transform: translate(-50%,-65%) scale(.96) rotate(-2deg); }
+  0% { opacity: 0; transform: translate(-50%,-40%) scale(.35) rotate(var(--chain-tilt, -6deg)); }
+  35% { opacity: 1; transform: translate(-50%,-50%) scale(1.18) rotate(var(--chain-tilt, -4deg)); }
+  55% { transform: translate(-50%,-50%) scale(.98) rotate(0deg); }
+  100% { opacity: 0; transform: translate(-50%,-68%) scale(1.04) rotate(0); }
 }
 
 .chain-result, .level-pop {
@@ -282,10 +283,10 @@ body {
 .board-wrap.is-shaking { animation: board-shake .24s linear; }
 @keyframes board-shake {
   0%, 100% { transform: translate(0); }
-  20% { transform: translate(-3px, 1px); }
-  40% { transform: translate(3px, -1px); }
-  60% { transform: translate(-2px, -1px); }
-  80% { transform: translate(2px, 1px); }
+  20% { transform: translate(var(--shake-neg, -3px), 1px); }
+  40% { transform: translate(var(--shake, 3px), -1px); }
+  60% { transform: translate(var(--shake-soft-neg, -2px), -1px); }
+  80% { transform: translate(var(--shake-soft, 2px), 1px); }
 }
 
 .controls { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
