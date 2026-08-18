@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#171329" />
+<title>噗呦噗呦 · 连锁消除</title>
+<link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<main class="app">
+  <header class="app__header">
+    <a class="back-btn" href="../" aria-label="返回游戏厅" title="返回游戏厅">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M19 12H5"></path>
+        <path d="m12 19-7-7 7-7"></path>
+      </svg>
+    </a>
+    <div class="brand">
+      <h1 class="brand__title">噗呦噗呦</h1>
+      <p class="brand__sub">PUYO · 果冻连锁实验</p>
+    </div>
+  </header>
+
+  <section class="play">
+    <div class="board-area">
+      <div class="board-wrap" id="boardWrap">
+        <canvas id="board" aria-label="噗呦游戏棋盘"></canvas>
+        <button class="icon-btn icon-btn--left" id="btnSound" type="button" aria-label="关闭声音">
+          <svg id="icSoundOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4Z"></path>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+            <path d="M18 6a8.5 8.5 0 0 1 0 12"></path>
+          </svg>
+          <svg id="icSoundOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+            <path d="M11 5 6 9H3v6h3l5 4Z"></path>
+            <path d="m16 9 5 6"></path>
+            <path d="m21 9-5 6"></path>
+          </svg>
+        </button>
+        <button class="icon-btn icon-btn--right" id="btnPause" type="button" aria-label="暂停" hidden>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <rect x="6" y="5" width="4" height="14" rx="1.5"></rect>
+            <rect x="14" y="5" width="4" height="14" rx="1.5"></rect>
+          </svg>
+        </button>
+        <div class="chain-pop" id="chainPop" hidden><strong id="chainValue">2</strong><span>连锁</span></div>
+        <div class="overlay" id="overlay" hidden>
+          <div class="ov-card">
+            <div class="ov-orbit" aria-hidden="true"><i></i><i></i></div>
+            <h2 class="ov-title" id="ovTitle">噗呦噗呦</h2>
+            <p class="ov-sub" id="ovSub">连接 4 颗同色噗呦即可消除<br />连续坠落消除会形成高分连锁</p>
+            <button class="ov-btn" id="ovBtn" type="button">开始实验</button>
+          </div>
+        </div>
+        <div class="overlay" id="resumeOverlay" hidden>
+          <div class="ov-card">
+            <h2 class="ov-title">继续上次的连锁？</h2>
+            <p class="ov-sub" id="resumeSub">得分 0 · 等级 1</p>
+            <div class="ov-actions">
+              <button class="ov-btn ov-btn--ghost" id="btnResumeNew" type="button">新开一局</button>
+              <button class="ov-btn" id="btnResumeContinue" type="button">继续上次</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side" aria-label="游戏数据">
+      <div class="hud">
+        <div class="hud__item"><span class="hud__label">得分</span><span class="hud__value" id="score">0</span></div>
+        <div class="hud__item"><span class="hud__label">最高</span><span class="hud__value" id="hi">0</span></div>
+        <div class="hud__item"><span class="hud__label">等级</span><span class="hud__value" id="level">1</span></div>
+        <div class="hud__item"><span class="hud__label">最多连锁</span><span class="hud__value" id="bestChain">0</span></div>
+      </div>
+      <div class="next-panel">
+        <span class="next-panel__label">NEXT</span>
+        <canvas id="nextCanvas" aria-label="下一组噗呦"></canvas>
+      </div>
+      <div class="recipe">
+        <span class="recipe__dot"></span>
+        <p>四颗同色<br />触发反应</p>
+      </div>
+    </aside>
+  </section>
+
+  <section class="controls" aria-label="触控操作">
+    <button class="ctl" type="button" data-a="left" aria-label="向左移动">左</button>
+    <button class="ctl" type="button" data-a="right" aria-label="向右移动">右</button>
+    <button class="ctl ctl--rotate" type="button" data-a="ccw" aria-label="逆时针旋转">逆转</button>
+    <button class="ctl ctl--rotate" type="button" data-a="cw" aria-label="顺时针旋转">顺转</button>
+    <button class="ctl" type="button" data-a="down" aria-label="加速下落">下落</button>
+    <button class="ctl ctl--accent" type="button" data-a="drop" aria-label="快速落下">落底</button>
+  </section>
+
+  <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · P 暂停</p>
+</main>
+<script src="game.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v2';
+const CACHE = 'arcade-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -26,6 +26,9 @@ const ASSETS = [
   './pacman/index.html',
   './pacman/styles.css',
   './pacman/game.js',
+  './puyo/index.html',
+  './puyo/styles.css',
+  './puyo/game.js',
 ];
 
 self.addEventListener('install', (e) => {

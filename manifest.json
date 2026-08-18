@@ -1,7 +1,7 @@
 {
   "name": "游戏厅",
   "short_name": "游戏厅",
-  "description": "数独、打砖块、俄罗斯方块三个小游戏的合集。",
+  "description": "数独、打砖块、俄罗斯方块、2048、记忆翻牌、吃豆人与噗呦噗呦的小游戏合集。",
   "lang": "zh-CN",
   "dir": "ltr",
   "start_url": "./",
