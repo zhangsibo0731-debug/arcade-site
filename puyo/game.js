@@ -445,13 +445,13 @@
     if (kind === 'menu') {
       ovTitle.textContent = '噗呦噗呦';
       ovSub.textContent = '连接 4 颗同色噗呦即可消除\n连续坠落消除会形成高分连锁';
-      ovBtn.textContent = '开始实验';
+      ovBtn.textContent = '开始游戏';
     } else if (kind === 'paused') {
-      ovTitle.textContent = '实验暂停';
+      ovTitle.textContent = '游戏暂停';
       ovSub.textContent = '按「继续」或 P 回到连锁现场';
       ovBtn.textContent = '继续';
     } else if (kind === 'gameover') {
-      ovTitle.textContent = '容器装满了';
+      ovTitle.textContent = '游戏结束';
       const records = [];
       if (score > hiAtStart && score > 0) records.push('最高分新纪录');
       if (runMaxChain > bestChainAtStart && runMaxChain > 0) records.push('连锁新纪录');
