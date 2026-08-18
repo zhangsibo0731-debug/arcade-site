@@ -7,7 +7,7 @@
 <title>月光垂钓 · 湖畔钓鱼</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=2" />
+<link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
 <main class="app">
@@ -25,7 +25,10 @@
     <div class="stage" id="stage">
       <canvas id="scene" aria-label="月夜湖泊钓鱼场景"></canvas>
       <div class="top-actions">
-        <button class="icon-btn" id="soundBtn" type="button" aria-label="关闭声音">🔊</button>
+        <button class="icon-btn" id="soundBtn" type="button" aria-label="关闭声音">
+          <svg id="soundOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a8.5 8.5 0 0 1 0 12"/></svg>
+          <svg id="soundOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/></svg>
+        </button>
         <button class="icon-btn" id="pauseBtn" type="button" aria-label="暂停" hidden>Ⅱ</button>
       </div>
 
@@ -51,6 +54,7 @@
           <h2 id="modalTitle">月光垂钓</h2>
           <p id="modalText">按住蓄力，松开抛竿<br />鱼咬钩后及时提竿</p>
           <button class="primary" id="modalBtn" type="button">去湖边</button>
+          <button class="modal__back" id="modalNew" type="button" hidden>新钓一局</button>
           <a class="modal__back" id="modalBack" href="../" hidden>返回游戏厅</a>
         </div>
       </div>
@@ -71,6 +75,6 @@
   </section>
 </main>
 <script src="../input-guard.js?v=6"></script>
-<script src="game.js?v=10"></script>
+<script src="game.js?v=12"></script>
 </body>
 </html>

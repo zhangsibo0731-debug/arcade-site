@@ -10,6 +10,7 @@
   const modalTitle = $('modalTitle');
   const modalText = $('modalText');
   const modalBtn = $('modalBtn');
+  const modalNew = $('modalNew');
   const modalBack = $('modalBack');
   const actionBtn = $('actionBtn');
   const actionHint = $('actionHint');
@@ -24,6 +25,8 @@
   const noticeTitle = $('noticeTitle');
   const noticeSub = $('noticeSub');
   const soundBtn = $('soundBtn');
+  const soundOn = $('soundOn');
+  const soundOff = $('soundOff');
   const pauseBtn = $('pauseBtn');
   const totalCaughtEl = $('totalCaught');
   const bestWeightEl = $('bestWeight');
@@ -34,10 +37,11 @@
   const WEIGHT_KEY = 'fishing_best_weight_v1';
   const STREAK_KEY = 'fishing_best_streak_v1';
   const MUTE_KEY = 'fishing_muted_v1';
+  const SAVE_KEY = 'fishing_save_v1';
   const FISH = [
     { id: 'crucian', name: '小鲫鱼', icon: '🐟', rarity: '常见', color: '#8fd3c7', min: 220, max: 760, behavior: 'calm', difficulty: .72 },
     { id: 'perch', name: '河鲈', icon: '🐠', rarity: '少见', color: '#ffd06b', min: 420, max: 1380, behavior: 'active', difficulty: 1 },
-    { id: 'moon', name: '月光鱼', icon: '🐡', rarity: '稀有', color: '#b7a8ff', min: 680, max: 2180, behavior: 'dash', difficulty: 1.18 },
+    { id: 'moon', name: '月光鱼', icon: '🐡', rarity: '稀有', color: '#b7a8ff', min: 680, max: 2180, behavior: 'dash', difficulty: 1.1 },
   ];
 
   let mode = 'menu';
@@ -57,6 +61,7 @@
   let fishMoveLeft = 0;
   let fishWarning = 0;
   let dashPending = false;
+  let dashCount = 0;
   let zoneY = .22;
   let zoneV = 0;
   let catchProgress = .24;
@@ -70,6 +75,8 @@
   let caughtFlash = 0;
   let finishLeft = 0;
   let motionTestHold = false;
+  let saveAcc = 0;
+  let pendingResume = null;
 
   function readInt(key) {
     try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
@@ -81,6 +88,90 @@
       localStorage.setItem(WEIGHT_KEY, String(bestWeight));
       localStorage.setItem(STREAK_KEY, String(bestStreak));
     } catch (e) {}
+  }
+
+  function saveState() {
+    let phase = mode === 'paused' ? beforePause : mode;
+    if (phase === 'ready' || phase === 'casting') {
+      clearState();
+      return;
+    }
+    if (!['waiting', 'bite', 'hooking', 'fishing'].includes(phase)) return;
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        phase: phase,
+        castDistance: castDistance,
+        castTime: castTime,
+        waitLeft: waitLeft,
+        biteLeft: biteLeft,
+        hookTime: hookTime,
+        fish: fish && fish.id,
+        fishY: fishY,
+        fishTarget: fishTarget,
+        fishMoveLeft: fishMoveLeft,
+        fishWarning: fishWarning,
+        dashPending: dashPending,
+        dashCount: dashCount,
+        zoneY: zoneY,
+        zoneV: zoneV,
+        catchProgress: catchProgress,
+        streak: streak,
+      }));
+    } catch (e) {}
+  }
+
+  function loadState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+      return saved && typeof saved === 'object' ? saved : null;
+    } catch (e) { return null; }
+  }
+
+  function clearState() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  }
+
+  function showResumePrompt(saved) {
+    pendingResume = saved;
+    mode = 'resume';
+    overlay.hidden = false;
+    modalEyebrow.textContent = '湖面还记得这一竿';
+    modalTitle.textContent = '继续上次垂钓？';
+    const fishName = saved.fish && FISH.find((item) => item.id === saved.fish);
+    modalText.textContent = fishName ? fishName.name + ' · 捕获进度 ' + Math.round((saved.catchProgress || 0) * 100) + '%' : '鱼竿和浮标都还在原处';
+    modalBtn.textContent = '继续上次';
+    modalNew.hidden = false;
+    modalBack.hidden = false;
+  }
+
+  function restoreState(saved) {
+    const restoredFish = saved.fish && FISH.find((item) => item.id === saved.fish);
+    let phase = saved.phase;
+    if (!['ready', 'waiting', 'bite', 'hooking', 'fishing'].includes(phase)) phase = 'ready';
+    if (['hooking', 'fishing'].includes(phase) && !restoredFish) phase = 'ready';
+    castDistance = Number(saved.castDistance) || .55;
+    castTime = Math.max(0, Number(saved.castTime) || 0);
+    waitLeft = Math.max(.4, Number(saved.waitLeft) || .4);
+    biteLeft = Math.max(.8, Number(saved.biteLeft) || .8);
+    hookTime = Math.max(.15, Number(saved.hookTime) || .15);
+    fish = restoredFish || null;
+    fishY = Math.max(.04, Math.min(.96, Number(saved.fishY) || .5));
+    fishTarget = Math.max(.04, Math.min(.96, Number(saved.fishTarget) || fishY));
+    fishMoveLeft = Math.max(.1, Number(saved.fishMoveLeft) || .4);
+    fishWarning = Math.max(0, Number(saved.fishWarning) || 0);
+    dashPending = !!saved.dashPending;
+    dashCount = Math.max(0, Number(saved.dashCount) || 0);
+    zoneY = Math.max(.16, Math.min(.84, Number(saved.zoneY) || .2));
+    zoneV = Math.max(-.88, Math.min(.84, Number(saved.zoneV) || 0));
+    catchProgress = Math.max(.08, Math.min(.96, Number(saved.catchProgress) || .25));
+    streak = Math.max(0, Number(saved.streak) || 0);
+    if (fish) fishMarker.querySelector('span').textContent = fish.icon;
+    pendingResume = null;
+    motionTestHold = false;
+    modalNew.hidden = true;
+    setMode(phase);
+    updateHud();
+    saveState();
   }
 
   function updateHud() {
@@ -131,7 +222,10 @@
 
   function startSession() {
     motionTestHold = false;
+    pendingResume = null;
+    clearState();
     overlay.hidden = true;
+    modalNew.hidden = true;
     modalBack.hidden = true;
     setMode('ready');
     play('start');
@@ -156,17 +250,19 @@
     waitLeft = 1.15 + Math.random() * 1.75;
     ripple = 0;
     setMode('waiting');
+    saveState();
     play('cast');
     vibrate(10);
   }
 
   function beginBite() {
-    biteLeft = 1.35;
+    biteLeft = totalCaught < 3 ? 1.7 : 1.35;
     noticeTitle.textContent = '鱼咬钩了！';
     noticeSub.textContent = '快提竿';
     notice.hidden = false;
     setMode('bite');
     notice.hidden = false;
+    saveState();
     play('bite');
     vibrate([20, 35, 35]);
   }
@@ -188,17 +284,20 @@
     fishMoveLeft = .45;
     fishWarning = 0;
     dashPending = false;
+    dashCount = 0;
     zoneY = .2;
     zoneV = 0;
     catchProgress = fish.id === 'crucian' && totalCaught === 0 ? .38 : .25;
     hookTime = .62;
     setMode('hooking');
+    saveState();
     play('hook');
     vibrate(22);
   }
 
   function startFishing() {
     setMode('fishing');
+    saveState();
   }
 
   function missBite() {
@@ -218,14 +317,16 @@
         fishTarget = .08 + Math.random() * .84;
         fishMoveLeft = .32 + Math.random() * .48;
       } else if (!dashPending) {
-        fishWarning = .34;
-        fishMoveLeft = .34;
+        fishWarning = .5;
+        fishMoveLeft = .5;
         fishTarget = fishY;
         dashPending = true;
       } else {
-        fishTarget = fishY > .5 ? .08 + Math.random() * .18 : .74 + Math.random() * .2;
-        fishMoveLeft = .42 + Math.random() * .28;
+        if (dashCount === 0) fishTarget = fishY > .5 ? .18 + Math.random() * .14 : .68 + Math.random() * .14;
+        else fishTarget = fishY > .5 ? .08 + Math.random() * .18 : .74 + Math.random() * .2;
+        fishMoveLeft = .48 + Math.random() * .28;
         dashPending = false;
+        dashCount++;
       }
     }
     const speed = (fish.behavior === 'calm' ? .62 : fish.behavior === 'active' ? 1.1 : 1.3) * fish.difficulty;
@@ -239,7 +340,7 @@
     updateFish(dt);
     const accel = held ? 2.12 : -1.48;
     zoneV += accel * dt;
-    zoneV *= Math.pow(.28, dt);
+    zoneV *= Math.pow(.2, dt);
     zoneV = Math.max(-.88, Math.min(.84, zoneV));
     zoneY += zoneV * dt;
     const zoneHalf = fish.id === 'crucian' && totalCaught === 0 ? .19 : .16;
@@ -292,17 +393,19 @@
   }
 
   function showResult(success, title, text) {
+    clearState();
     setMode('result');
     overlay.hidden = false;
     modalEyebrow.textContent = success ? '本次收获' : '差一点点';
     modalTitle.textContent = title;
     modalText.textContent = text;
     modalBtn.textContent = '再钓一竿';
+    modalNew.hidden = true;
     modalBack.hidden = false;
   }
 
   function showPause() {
-    if (!['ready', 'casting', 'waiting', 'bite', 'fishing'].includes(mode)) return;
+    if (!['ready', 'casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) return;
     beforePause = mode === 'casting' ? 'ready' : mode;
     held = false;
     mode = 'paused';
@@ -311,12 +414,15 @@
     modalTitle.textContent = '已暂停';
     modalText.textContent = '休息一下，准备好再继续。';
     modalBtn.textContent = '继续钓鱼';
+    modalNew.hidden = true;
     modalBack.hidden = false;
+    saveState();
   }
 
   function resume() {
     overlay.hidden = true;
     setMode(beforePause);
+    saveState();
   }
 
   function pressStart(event) {
@@ -361,6 +467,11 @@
     } else if (mode === 'finishing') {
       if (!motionTestHold) finishLeft -= dt;
       if (finishLeft <= 0) catchFish();
+    }
+    saveAcc += dt;
+    if (saveAcc >= .5) {
+      saveAcc = 0;
+      saveState();
     }
     caughtFlash = Math.max(0, caughtFlash - dt * 1.4);
   }
@@ -543,15 +654,22 @@
     try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
   }
 
+  function applyMuted() {
+    soundOn.hidden = muted;
+    soundOff.hidden = !muted;
+    soundBtn.setAttribute('aria-label', muted ? '开启声音' : '关闭声音');
+  }
+
   modalBtn.addEventListener('click', () => {
     if (mode === 'paused') resume();
+    else if (mode === 'resume' && pendingResume) restoreState(pendingResume);
     else startSession();
   });
+  modalNew.addEventListener('click', startSession);
   pauseBtn.addEventListener('click', showPause);
   soundBtn.addEventListener('click', () => {
     muted = !muted;
-    soundBtn.textContent = muted ? '🔇' : '🔊';
-    soundBtn.setAttribute('aria-label', muted ? '开启声音' : '关闭声音');
+    applyMuted();
     try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
     if (!muted) play('start');
   });
@@ -577,14 +695,19 @@
   });
   window.addEventListener('blur', () => {
     held = false;
-    if (['casting', 'waiting', 'bite', 'fishing'].includes(mode)) showPause();
+    if (['casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
   });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && ['casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
+  });
+  window.addEventListener('pagehide', saveState);
   window.addEventListener('resize', resize);
 
-  soundBtn.textContent = muted ? '🔇' : '🔊';
-  soundBtn.setAttribute('aria-label', muted ? '开启声音' : '关闭声音');
+  applyMuted();
   updateHud();
   resize();
+  const savedState = loadState();
+  if (savedState) showResumePrompt(savedState);
   requestAnimationFrame(frame);
 
   window.__fishingTest = {

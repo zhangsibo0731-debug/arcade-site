@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v22';
+const CACHE = 'arcade-v24';
 const ASSETS = [
   './',
   './index.html',
@@ -31,8 +31,8 @@ const ASSETS = [
   './puyo/styles.css?v=6',
   './puyo/game.js?v=12',
   './fishing/index.html',
-  './fishing/styles.css?v=2',
-  './fishing/game.js?v=10',
+  './fishing/styles.css?v=3',
+  './fishing/game.js?v=12',
 ];
 
 self.addEventListener('install', (e) => {
