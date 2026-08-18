@@ -27,6 +27,7 @@
   const icSoundOff = $('icSoundOff');
   const chainPop = $('chainPop');
   const chainValue = $('chainValue');
+  const chainLabel = $('chainLabel');
   const chainGain = $('chainGain');
   const chainResult = $('chainResult');
   const levelPop = $('levelPop');
@@ -320,11 +321,11 @@
   }
 
   function showChain(chain, gained) {
-    if (chain < 2) return;
     clearTimeout(chainPopTimer);
-    chainValue.textContent = chain;
+    chainValue.textContent = chain === 1 ? '消除' : chain;
+    chainLabel.textContent = chain === 1 ? 'CLEAR' : 'CHAIN';
     chainGain.textContent = '+' + gained;
-    chainPop.style.setProperty('--chain-size', Math.min(72, 48 + (chain - 2) * 4) + 'px');
+    chainPop.style.setProperty('--chain-size', (chain === 1 ? 36 : Math.min(72, 48 + (chain - 2) * 4)) + 'px');
     chainPop.hidden = true;
     void chainPop.offsetWidth;
     chainPop.hidden = false;
@@ -927,6 +928,9 @@
     window.__puyoTest = {
       getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, runMaxChain, bestChain, clearedTotal }),
       setBoard: (next) => { if (validBoard(next)) board = next.map((r) => r.slice()); },
+      setPair: (next) => {
+        if (validPair(next)) pair = JSON.parse(JSON.stringify(next));
+      },
       setProgress: (cleared, nextScore) => {
         clearedTotal = Math.max(0, Number(cleared) || 0);
         level = Math.min(12, Math.floor(clearedTotal / 35) + 1);
@@ -934,6 +938,7 @@
         updateHud();
       },
       resolve: () => { mode = 'resolving'; pair = null; resolveStep(1, ++resolveToken); },
+      hardDrop: hardDrop,
       newGame: newGame,
     };
   }
