@@ -38,8 +38,8 @@
     Z: '#ff6b6b', J: '#4dabf7', L: '#ffa94d',
   };
   const CLEAR_PTS = [0, 100, 300, 500, 800];
-  const LOCK_DELAY = 0.5;       // 落地缓冲（秒）：触底后仍可移动/旋转
-  const MAX_LOCK_RESETS = 4;    // 缓冲最多重置次数，防止无限滑
+  const LOCK_DELAY = 0.6;       // 落地缓冲（秒）：触底后仍可移动/旋转
+  const MAX_LOCK_RESETS = 6;    // 缓冲最多重置次数，兼顾手机操作容错
 
   // ---------- 方块定义 ----------
   function rotateCW(m) {
@@ -182,7 +182,7 @@
     return Math.floor((COLS - PIECES[type].size) / 2);
   }
   function gravityInterval() {
-    return Math.max(90, 760 * Math.pow(0.85, level - 1));
+    return Math.max(140, 900 * Math.pow(0.88, level - 1));
   }
 
   // ---------- 7-bag ----------

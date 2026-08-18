@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v7';
+const CACHE = 'arcade-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -17,7 +17,7 @@ const ASSETS = [
   './breakout/game.js',
   './tetris/index.html',
   './tetris/styles.css',
-  './tetris/game.js',
+  './tetris/game.js?v=8',
   './2048/index.html',
   './2048/styles.css',
   './2048/game.js',
