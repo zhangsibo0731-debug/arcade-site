@@ -125,7 +125,7 @@
       actionHint.textContent = '按住上升 · 松开下沉 · 让鱼留在捕获区';
     } else if (next === 'hooking') {
       actionBtn.textContent = '提竿中…';
-      actionHint.textContent = '上钩了！准备遛鱼';
+      actionHint.textContent = '鱼线绷紧了，准备遛鱼';
     }
   }
 
@@ -359,7 +359,7 @@
     } else if (mode === 'fishing') {
       updateFishing(dt);
     } else if (mode === 'finishing') {
-      finishLeft -= dt;
+      if (!motionTestHold) finishLeft -= dt;
       if (finishLeft <= 0) catchFish();
     }
     caughtFlash = Math.max(0, caughtFlash - dt * 1.4);
@@ -453,17 +453,32 @@
       ctx.fillStyle = '#f5f1df'; ctx.beginPath(); ctx.arc(bobX, bobY + 1, 4, 0, Math.PI * 2); ctx.fill();
     } else if (mode === 'hooking') {
       const hookT = Math.max(0, Math.min(1, 1 - hookTime / .62));
-      const bobX = targetBobX + (rodTipX - targetBobX) * hookT * .72;
-      const bobY = targetBobY - Math.sin(Math.PI * hookT) * h * .3 - hookT * 20;
+      const bobX = targetBobX + Math.sin(hookT * Math.PI * 3) * 5;
+      const bobY = targetBobY - Math.sin(Math.PI * hookT) * 10;
       ctx.strokeStyle = 'rgba(245,241,223,.8)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY - Math.sin(Math.PI * hookT) * 12); ctx.lineTo(bobX, bobY); ctx.stroke();
+      ctx.fillStyle = '#ff806b'; ctx.fillRect(bobX - 2, bobY - 8, 4, 9);
+      ctx.fillStyle = '#f5f1df'; ctx.beginPath(); ctx.arc(bobX, bobY + 1, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = .3;
+      ctx.fillStyle = fish ? fish.color : '#8fd3c7';
+      ctx.beginPath(); ctx.ellipse(bobX - 8, targetBobY + 35 + Math.sin(hookT * 12) * 5, 12, 5, .15, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(220,245,242,.6)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(targetBobX, targetBobY + 3, 14 + hookT * 15, 4 + hookT * 4, 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (mode === 'finishing') {
+      const finishT = Math.max(0, Math.min(1, 1 - finishLeft / .38));
+      const bobX = targetBobX + (rodTipX - targetBobX) * finishT * .72;
+      const bobY = targetBobY - Math.sin(Math.PI * finishT) * h * .3 - finishT * 20;
+      ctx.strokeStyle = 'rgba(245,241,223,.85)'; ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY); ctx.quadraticCurveTo(w * .52, lakeY - 80, bobX, bobY); ctx.stroke();
       ctx.fillStyle = fish ? fish.color : '#8fd3c7';
       ctx.beginPath(); ctx.ellipse(bobX - 10, bobY + 7, 11, 6, -.25, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.moveTo(bobX - 20, bobY + 6); ctx.lineTo(bobX - 29, bobY); ctx.lineTo(bobX - 27, bobY + 13); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#17213b'; ctx.beginPath(); ctx.arc(bobX - 5, bobY + 5, 1.4, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(220,245,242,.6)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(targetBobX, targetBobY + 3, 15 + hookT * 20, 5 + hookT * 5, 0, 0, Math.PI * 2); ctx.stroke();
-    } else if (['waiting', 'bite', 'fishing', 'finishing', 'paused'].includes(mode)) {
+      ctx.strokeStyle = 'rgba(220,245,242,.65)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(targetBobX, targetBobY + 3, 15 + finishT * 20, 5 + finishT * 5, 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (['waiting', 'bite', 'fishing', 'paused'].includes(mode)) {
       const bobX = targetBobX;
       const bobY = targetBobY + Math.sin(time / 260) * (mode === 'bite' ? 8 : 2);
       ctx.strokeStyle = 'rgba(245,241,223,.55)'; ctx.lineWidth = 1;
@@ -592,6 +607,13 @@
     },
     startFishing: startFishing,
     finish: beginCatchFinish,
+    showFinish: (progress) => {
+      if (!fish) fish = FISH[0];
+      motionTestHold = true;
+      catchProgress = 1;
+      finishLeft = .38 * (1 - Math.max(0, Math.min(.9, Number(progress) || 0)));
+      mode = 'finishing';
+    },
     setFish: (id) => { fish = FISH.find((item) => item.id === id) || FISH[0]; },
     setProgress: (value) => { catchProgress = Math.max(0, Math.min(1, Number(value))); },
   };
