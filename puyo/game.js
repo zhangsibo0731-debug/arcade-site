@@ -364,7 +364,7 @@
   }
 
   function gravityInterval() {
-    return Math.max(0.12, 0.72 - (level - 1) * 0.052);
+    return Math.max(0.18, 0.9 - (level - 1) * 0.055);
   }
 
   function update(dt) {

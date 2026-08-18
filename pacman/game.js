@@ -72,6 +72,8 @@
   const SAVE_KEY = 'pacman_save_v1';
   const LIVES_START = 3;
   const MAX_LIVES = 6;
+  const GHOST_BASE_SPEED = 5.9;
+  const GHOST_FRIGHT_SPEED = 3.1;
   const GHOST_COLORS = { blinky: '#ff3b30', pinky: '#ff9ff3', inky: '#22d3ee', clyde: '#ffa94d' };
   const SCATTER_SPOTS = { blinky: [25, 1], pinky: [2, 1], inky: [25, 29], clyde: [2, 29] };
   const EXIT_DELAY = { blinky: 0, pinky: 3, inky: 6, clyde: 9 };
@@ -310,7 +312,7 @@
   }
 
   function ghostSpeedMult() {
-    return Math.min(1 + (level - 1) * 0.05, 1.35);
+    return Math.min(1 + (level - 1) * 0.03, 1.22);
   }
   function frightDuration() {
     return Math.max(2.5, 6 - (level - 1) * 0.3);
@@ -564,7 +566,7 @@
           g.mode = (frightUntil > performance.now()) ? 'frightened' : (scatter ? 'scatter' : 'chase');
         } else {
           if (aligned(g)) g.dir = ghostPickDir(g);
-          moveChar(g, dt, 6.5 * gm);
+          moveChar(g, dt, GHOST_BASE_SPEED * gm);
           continue;
         }
       }
@@ -592,7 +594,7 @@
       if (aligned(g)) {
         g.dir = ghostPickDir(g);
       }
-      const sp = g.mode === 'frightened' ? 3.4 : 6.5 * gm;
+      const sp = g.mode === 'frightened' ? GHOST_FRIGHT_SPEED : GHOST_BASE_SPEED * gm;
       moveChar(g, dt, sp);
     }
 
