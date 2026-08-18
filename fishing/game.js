@@ -38,6 +38,7 @@
   const bestWeightEl = $('bestWeight');
   const streakEl = $('streak');
   const bestStreakEl = $('bestStreak');
+  const environmentLabel = $('environmentLabel');
 
   const TOTAL_KEY = 'fishing_total_v1';
   const WEIGHT_KEY = 'fishing_best_weight_v1';
@@ -45,21 +46,30 @@
   const MUTE_KEY = 'fishing_muted_v1';
   const SAVE_KEY = 'fishing_save_v1';
   const COLLECTION_KEY = 'fishing_collection_v1';
+  const ENV_KEY = 'fishing_environment_step_v1';
   const FISH = [
-    { id: 'crucian', name: '小鲫鱼', rarity: '常见', color: '#b9c5ca', min: 220, max: 760, behavior: 'calm', difficulty: .7, weight: 24, sprite: 0, hint: '湖中随处可见，性情温和。' },
-    { id: 'carp', name: '红鲤鱼', rarity: '常见', color: '#e58a42', min: 520, max: 2400, behavior: 'calm', difficulty: .78, weight: 17, sprite: 1, hint: '喜欢水草丰盛的浅水区域。' },
-    { id: 'loach', name: '湖鳅', rarity: '常见', color: '#a58b54', min: 180, max: 620, behavior: 'active', difficulty: .76, weight: 13, sprite: 2, hint: '细长灵活，常贴着湖底游动。' },
-    { id: 'catfish', name: '蓝鲶鱼', rarity: '常见', color: '#6686a8', min: 760, max: 3600, behavior: 'calm', difficulty: .84, weight: 11, sprite: 3, hint: '长着胡须，偏爱安静的夜晚。' },
-    { id: 'perch', name: '翡翠河鲈', rarity: '常见', color: '#54a99b', min: 420, max: 1380, behavior: 'active', difficulty: .9, weight: 10, sprite: 4, hint: '条纹鲜明，游动十分活跃。' },
-    { id: 'trout', name: '彩虹鳟', rarity: '少见', color: '#87b9c7', min: 680, max: 2800, behavior: 'active', difficulty: .96, weight: 8, sprite: 5, hint: '雨后常在清凉水域出现。' },
-    { id: 'eel', name: '金鳗', rarity: '少见', color: '#bd813e', min: 540, max: 2200, behavior: 'active', difficulty: 1, weight: 6, sprite: 6, hint: '动作流畅，却很擅长突然变向。' },
-    { id: 'puffer', name: '珊瑚河豚', rarity: '少见', color: '#ef8b73', min: 360, max: 1200, behavior: 'active', difficulty: 1.02, weight: 5, sprite: 7, hint: '圆滚滚的身体会随水流跳动。' },
-    { id: 'icefin', name: '冰鳍鱼', rarity: '稀有', color: '#8ed4ee', min: 920, max: 4200, behavior: 'dash', difficulty: 1.04, weight: 3, sprite: 8, hint: '据说会在冰凉的雨幕下现身。' },
-    { id: 'starlight', name: '星辉鱼', rarity: '稀有', color: '#8d6ce3', min: 780, max: 3400, behavior: 'dash', difficulty: 1.08, weight: 2, sprite: 9, hint: '鳞片只在深夜映出星光。' },
-    { id: 'koi', name: '红白锦鲤', rarity: '稀有', color: '#efaa73', min: 1100, max: 5600, behavior: 'dash', difficulty: 1.09, weight: .8, sprite: 10, hint: '红白纹样独一无二，十分珍贵。' },
-    { id: 'moon', name: '月光锦鲤', rarity: '传说', color: '#d7f3e8', min: 1800, max: 8260, behavior: 'dash', difficulty: 1.12, weight: .2, sprite: 11, hint: '只回应最有耐心的湖畔来客。' },
+    { id: 'crucian', name: '小鲫鱼', rarity: '常见', color: '#b9c5ca', min: 220, max: 760, behavior: 'calm', difficulty: .7, weight: 24, sprite: 0, times: ['day','dusk','night'], weathers: ['clear','rain'], habitat: '全天 · 晴雨皆有', hint: '湖中随处可见，性情温和。' },
+    { id: 'carp', name: '红鲤鱼', rarity: '常见', color: '#e58a42', min: 520, max: 2400, behavior: 'calm', difficulty: .78, weight: 17, sprite: 1, times: ['day','dusk'], weathers: ['clear','rain'], habitat: '白天/黄昏 · 晴雨皆有', hint: '喜欢水草丰盛的浅水区域。' },
+    { id: 'loach', name: '湖鳅', rarity: '常见', color: '#a58b54', min: 180, max: 620, behavior: 'active', difficulty: .76, weight: 13, sprite: 2, times: ['day','dusk','night'], weathers: ['clear','rain'], habitat: '全天 · 晴雨皆有', hint: '细长灵活，常贴着湖底游动。' },
+    { id: 'catfish', name: '蓝鲶鱼', rarity: '常见', color: '#6686a8', min: 760, max: 3600, behavior: 'calm', difficulty: .84, weight: 11, sprite: 3, times: ['dusk','night'], weathers: ['clear','rain'], habitat: '黄昏/夜晚 · 晴雨皆有', hint: '长着胡须，偏爱安静的夜晚。' },
+    { id: 'perch', name: '翡翠河鲈', rarity: '常见', color: '#54a99b', min: 420, max: 1380, behavior: 'active', difficulty: .9, weight: 10, sprite: 4, times: ['day','dusk'], weathers: ['clear','rain'], habitat: '白天/黄昏 · 晴雨皆有', hint: '条纹鲜明，游动十分活跃。' },
+    { id: 'trout', name: '彩虹鳟', rarity: '少见', color: '#87b9c7', min: 680, max: 2800, behavior: 'active', difficulty: .96, weight: 8, sprite: 5, times: ['day','dusk','night'], weathers: ['rain'], habitat: '全天 · 雨天', hint: '雨后常在清凉水域出现。' },
+    { id: 'eel', name: '金鳗', rarity: '少见', color: '#bd813e', min: 540, max: 2200, behavior: 'active', difficulty: 1, weight: 6, sprite: 6, times: ['dusk','night'], weathers: ['clear','rain'], habitat: '黄昏/夜晚 · 晴雨皆有', hint: '动作流畅，却很擅长突然变向。' },
+    { id: 'puffer', name: '珊瑚河豚', rarity: '少见', color: '#ef8b73', min: 360, max: 1200, behavior: 'active', difficulty: 1.02, weight: 5, sprite: 7, times: ['day','dusk'], weathers: ['clear'], habitat: '白天/黄昏 · 晴天', hint: '圆滚滚的身体会随水流跳动。' },
+    { id: 'icefin', name: '冰鳍鱼', rarity: '稀有', color: '#8ed4ee', min: 920, max: 4200, behavior: 'dash', difficulty: 1.04, weight: 3, sprite: 8, times: ['night'], weathers: ['rain'], habitat: '夜晚 · 雨天', hint: '据说会在冰凉的雨幕下现身。' },
+    { id: 'starlight', name: '星辉鱼', rarity: '稀有', color: '#8d6ce3', min: 780, max: 3400, behavior: 'dash', difficulty: 1.08, weight: 2, sprite: 9, times: ['night'], weathers: ['clear','rain'], habitat: '夜晚 · 晴雨皆有', hint: '鳞片只在深夜映出星光。' },
+    { id: 'koi', name: '红白锦鲤', rarity: '稀有', color: '#efaa73', min: 1100, max: 5600, behavior: 'dash', difficulty: 1.09, weight: .8, sprite: 10, times: ['dusk'], weathers: ['clear','rain'], habitat: '黄昏 · 晴雨皆有', hint: '红白纹样独一无二，十分珍贵。' },
+    { id: 'moon', name: '月光锦鲤', rarity: '传说', color: '#d7f3e8', min: 1800, max: 8260, behavior: 'dash', difficulty: 1.12, weight: .2, sprite: 11, times: ['night'], weathers: ['clear','rain'], habitat: '夜晚 · 远投更易遇见', hint: '只回应最有耐心的湖畔来客。' },
   ];
   const RARITY_RANK = { '常见': 0, '少见': 1, '稀有': 2, '传说': 3 };
+  const ENVIRONMENTS = [
+    { time: 'night', weather: 'clear', label: '🌙 夜晚 · ☀️ 晴天' },
+    { time: 'dusk', weather: 'clear', label: '🌇 黄昏 · ☀️ 晴天' },
+    { time: 'day', weather: 'clear', label: '☀️ 白天 · ☀️ 晴天' },
+    { time: 'night', weather: 'rain', label: '🌙 夜晚 · 🌧️ 雨天' },
+    { time: 'dusk', weather: 'rain', label: '🌇 黄昏 · 🌧️ 雨天' },
+    { time: 'day', weather: 'rain', label: '☁️ 白天 · 🌧️ 雨天' },
+  ];
 
   let mode = 'menu';
   let beforePause = 'ready';
@@ -95,9 +105,26 @@
   let saveAcc = 0;
   let pendingResume = null;
   let collection = loadCollection();
+  let environmentStep = readInt(ENV_KEY);
+  let environment = environmentForStep(environmentStep);
 
   function readInt(key) {
     try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
+  }
+
+  function environmentForStep(step) {
+    return ENVIRONMENTS[Math.floor(Math.max(0, step) / 4) % ENVIRONMENTS.length];
+  }
+
+  function updateEnvironment() {
+    environment = environmentForStep(environmentStep);
+    environmentLabel.textContent = environment.label;
+  }
+
+  function advanceEnvironment() {
+    environmentStep++;
+    try { localStorage.setItem(ENV_KEY, String(environmentStep)); } catch (e) {}
+    updateEnvironment();
   }
 
   function loadCollection() {
@@ -148,7 +175,7 @@
       rarity.className = 'fish-card__rarity';
       rarity.textContent = discovered ? item.rarity : '尚未发现';
       const detail = document.createElement('p');
-      detail.textContent = discovered ? '捕获 ' + record.count + ' 次 · 最大 ' + formatWeight(record.best) : item.hint;
+      detail.textContent = discovered ? item.habitat + '\n捕获 ' + record.count + ' 次 · 最大 ' + formatWeight(record.best) : item.hint;
       card.append(art, name, rarity, detail);
       catalogGrid.appendChild(card);
     });
@@ -357,7 +384,16 @@
 
   function chooseFish() {
     const rareBoost = Math.max(0, castDistance - .55) * 1.7;
-    const weighted = FISH.map((item) => item.weight * (1 + RARITY_RANK[item.rarity] * rareBoost));
+    const weighted = FISH.map((item) => {
+      if (!item.times.includes(environment.time) || !item.weathers.includes(environment.weather)) return 0;
+      let environmentBoost = 1;
+      if (item.id === 'catfish' && environment.time === 'night') environmentBoost = 1.7;
+      if (item.id === 'trout' && environment.weather === 'rain') environmentBoost = 1.8;
+      if (item.id === 'icefin') environmentBoost = 2.2;
+      if (item.id === 'starlight' && environment.weather === 'clear') environmentBoost = 1.5;
+      if (item.id === 'moon' && environment.weather === 'rain') environmentBoost = 1.35;
+      return item.weight * environmentBoost * (1 + RARITY_RANK[item.rarity] * rareBoost);
+    });
     let roll = Math.random() * weighted.reduce((sum, value) => sum + value, 0);
     for (let i = 0; i < FISH.length; i++) {
       roll -= weighted[i];
@@ -394,6 +430,7 @@
   function missBite() {
     streak = 0;
     updateHud();
+    advanceEnvironment();
     showResult(false, '反应慢了一点', '鱼儿吃掉鱼饵，溜走了。');
   }
 
@@ -477,6 +514,7 @@
     if (species.first) badges.push('✨ 新物种发现！');
     if (species.speciesRecord) badges.push('🏆 单鱼新纪录！');
     if (isRecord) badges.push('本湖最大重量！');
+    advanceEnvironment();
     showResult(true, '钓到了！', fish.name + ' · ' + fish.rarity + '\n' + formatWeight(weight) + (badges.length ? '\n' + badges.join(' · ') : ''), fish);
   }
 
@@ -485,6 +523,7 @@
     updateHud();
     play('lose');
     vibrate(35);
+    advanceEnvironment();
     showResult(false, '鱼儿脱钩了', '这条' + fish.name + '很有力气。\n调整节奏，再试一次吧。');
   }
 
@@ -597,24 +636,32 @@
     const w = stage.clientWidth;
     const h = stage.clientHeight;
     const lakeY = h * .48;
+    const isNight = environment.time === 'night';
+    const isDusk = environment.time === 'dusk';
+    const isRain = environment.weather === 'rain';
     const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, '#142449');
-    grad.addColorStop(.48, '#283f66');
-    grad.addColorStop(.49, '#1c5270');
-    grad.addColorStop(1, '#0e2c4a');
+    grad.addColorStop(0, isNight ? '#142449' : isDusk ? '#70465b' : '#5793b5');
+    grad.addColorStop(.48, isNight ? '#283f66' : isDusk ? '#c27c69' : '#9bc7d0');
+    grad.addColorStop(.49, isNight ? '#1c5270' : isDusk ? '#35677a' : '#34768b');
+    grad.addColorStop(1, isNight ? '#0e2c4a' : '#16465d');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    ctx.fillStyle = 'rgba(255,239,183,.92)';
-    ctx.beginPath(); ctx.arc(w * .72, h * .17, Math.min(w, h) * .075, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#1a2d51';
-    ctx.beginPath(); ctx.arc(w * .748, h * .145, Math.min(w, h) * .072, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 26; i++) {
-      const x = ((i * 83) % 997) / 997 * w;
-      const y = ((i * 47) % 211) / 211 * lakeY * .75;
-      const twinkle = .35 + .5 * Math.abs(Math.sin(time / 900 + i));
-      ctx.fillStyle = 'rgba(255,244,205,' + twinkle + ')';
-      ctx.fillRect(x, y, i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
+    if (isNight) {
+      ctx.fillStyle = 'rgba(255,239,183,.92)';
+      ctx.beginPath(); ctx.arc(w * .72, h * .17, Math.min(w, h) * .075, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1a2d51';
+      ctx.beginPath(); ctx.arc(w * .748, h * .145, Math.min(w, h) * .072, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < 26; i++) {
+        const x = ((i * 83) % 997) / 997 * w;
+        const y = ((i * 47) % 211) / 211 * lakeY * .75;
+        const twinkle = .35 + .5 * Math.abs(Math.sin(time / 900 + i));
+        ctx.fillStyle = 'rgba(255,244,205,' + twinkle + ')';
+        ctx.fillRect(x, y, i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
+      }
+    } else {
+      ctx.fillStyle = isDusk ? 'rgba(255,190,112,.92)' : 'rgba(255,238,173,.94)';
+      ctx.beginPath(); ctx.arc(w * .74, h * (isDusk ? .28 : .16), Math.min(w, h) * .065, 0, Math.PI * 2); ctx.fill();
     }
 
     ctx.fillStyle = '#0d1b32';
@@ -631,6 +678,18 @@
         if (!x) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
       }
       ctx.stroke();
+    }
+
+    if (isRain) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(204,232,244,.36)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 42; i++) {
+        const x = (((i * 73) + time * .16) % (w + 60)) - 30;
+        const y = (((i * 47) + time * .28) % (h + 50)) - 50;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 14); ctx.stroke();
+      }
+      ctx.restore();
     }
 
     const personX = w * .16;
@@ -808,6 +867,7 @@
   window.addEventListener('resize', resize);
 
   applyMuted();
+  updateEnvironment();
   setFishSprite(fishMarker.querySelector('span'), FISH[0]);
   updateHud();
   resize();
@@ -816,7 +876,7 @@
   requestAnimationFrame(frame);
 
   window.__fishingTest = {
-    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: fish && fish.id, fishY, zoneY, zoneV, catchProgress, totalCaught, bestWeight, streak, bestStreak }),
+    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: fish && fish.id, fishY, zoneY, zoneV, catchProgress, totalCaught, bestWeight, streak, bestStreak, environmentStep, environment: environment.time + '-' + environment.weather }),
     start: startSession,
     showCast: (progress) => {
       motionTestHold = true;
@@ -844,5 +904,10 @@
     },
     setFish: (id) => { fish = FISH.find((item) => item.id === id) || FISH[0]; },
     setProgress: (value) => { catchProgress = Math.max(0, Math.min(1, Number(value))); },
+    setEnvironment: (time, weather) => {
+      const index = ENVIRONMENTS.findIndex((item) => item.time === time && item.weather === weather);
+      if (index >= 0) { environmentStep = index * 4; updateEnvironment(); }
+    },
+    sampleFish: (count) => Array.from({ length: Math.max(1, Number(count) || 1) }, () => chooseFish().id),
   };
 })();
