@@ -7,7 +7,7 @@
 <title>噗呦噗呦 · 连锁消除</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
 <main class="app">
@@ -46,13 +46,19 @@
             <rect x="14" y="5" width="4" height="14" rx="1.5"></rect>
           </svg>
         </button>
-        <div class="chain-pop" id="chainPop" hidden><strong id="chainValue">2</strong><span>连锁</span></div>
+        <div class="chain-pop" id="chainPop" hidden>
+          <div><strong id="chainValue">2</strong><span>CHAIN</span></div>
+          <small id="chainGain">+0</small>
+        </div>
+        <div class="chain-result" id="chainResult" hidden>本次 2 CHAIN!</div>
+        <div class="level-pop" id="levelPop" hidden>LEVEL 2!</div>
         <div class="overlay" id="overlay" hidden>
           <div class="ov-card">
             <div class="ov-orbit" aria-hidden="true"><i></i><i></i></div>
             <h2 class="ov-title" id="ovTitle">噗呦噗呦</h2>
             <p class="ov-sub" id="ovSub">连接 4 颗同色噗呦即可消除<br />连续坠落消除会形成高分连锁</p>
             <button class="ov-btn" id="ovBtn" type="button">开始实验</button>
+            <a class="ov-back" id="ovBack" href="../" hidden>返回游戏厅</a>
           </div>
         </div>
         <div class="overlay" id="resumeOverlay" hidden>
@@ -73,10 +79,10 @@
         <div class="hud__item"><span class="hud__label">得分</span><span class="hud__value" id="score">0</span></div>
         <div class="hud__item"><span class="hud__label">最高</span><span class="hud__value" id="hi">0</span></div>
         <div class="hud__item"><span class="hud__label">等级</span><span class="hud__value" id="level">1</span></div>
-        <div class="hud__item"><span class="hud__label">最多连锁</span><span class="hud__value" id="bestChain">0</span></div>
+        <div class="hud__item"><span class="hud__label">本局连锁</span><span class="hud__value" id="runChain">0</span></div>
       </div>
       <div class="next-panel">
-        <span class="next-panel__label">NEXT</span>
+        <span class="next-panel__label">NEXT 1 · 2</span>
         <canvas id="nextCanvas" aria-label="下一组噗呦"></canvas>
       </div>
       <div class="recipe">
@@ -97,6 +103,6 @@
 
   <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · P 暂停</p>
 </main>
-<script src="game.js"></script>
+<script src="game.js?v=5"></script>
 </body>
 </html>

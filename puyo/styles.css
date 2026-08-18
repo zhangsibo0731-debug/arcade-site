@@ -129,7 +129,7 @@ body {
   background: rgba(184, 243, 74, 0.065);
 }
 .next-panel__label { color: var(--lime); font-size: 9px; font-weight: 700; letter-spacing: 0.2em; }
-.next-panel canvas { width: 64px; height: 76px; }
+.next-panel canvas { width: 72px; height: 124px; }
 .recipe {
   margin-top: auto;
   padding: 11px 10px;
@@ -222,27 +222,70 @@ body {
 .ov-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .ov-actions .ov-btn { padding-inline: 3px; font-size: 13px; letter-spacing: 0; }
 .ov-btn--ghost { color: var(--text); border: 1px solid var(--line); background: transparent; box-shadow: none; }
+.ov-back {
+  position: relative;
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--soft);
+  font-size: 12px;
+  text-decoration: none;
+}
+.ov-back:hover { color: var(--text); }
 
 .chain-pop {
   position: absolute;
   left: 50%;
   top: 44%;
   z-index: 7;
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
+  min-width: 150px;
+  text-align: center;
   color: #fff;
   text-shadow: 0 3px 16px rgba(0,0,0,.6);
   transform: translate(-50%, -50%) rotate(-6deg);
   animation: chain-pop .7s cubic-bezier(.17,.89,.35,1.35) both;
   pointer-events: none;
 }
-.chain-pop strong { color: var(--lime); font-size: 43px; line-height: 1; }
-.chain-pop span { font-size: 17px; font-weight: 700; }
+.chain-pop div { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+.chain-pop strong { color: var(--lime); font-size: var(--chain-size, 48px); line-height: 1; }
+.chain-pop span { font-size: 17px; font-weight: 700; letter-spacing: .05em; }
+.chain-pop small { display: block; margin-top: 4px; color: #fff; font-size: 15px; font-weight: 700; }
 @keyframes chain-pop {
   0% { opacity: 0; transform: translate(-50%,-40%) scale(.4) rotate(-12deg); }
   35% { opacity: 1; transform: translate(-50%,-50%) scale(1.14) rotate(-4deg); }
   100% { opacity: 0; transform: translate(-50%,-65%) scale(.96) rotate(-2deg); }
+}
+
+.chain-result, .level-pop {
+  position: absolute;
+  left: 50%;
+  z-index: 7;
+  width: max-content;
+  max-width: 90%;
+  pointer-events: none;
+  transform: translateX(-50%);
+  text-align: center;
+  font-weight: 700;
+  text-shadow: 0 3px 16px rgba(0,0,0,.7);
+}
+.chain-result { top: 31%; color: #fff; font-size: 18px; animation: result-pop 1.1s ease both; }
+.level-pop { top: 17%; color: var(--cyan); font-size: 25px; letter-spacing: .06em; animation: level-pop .95s ease both; }
+@keyframes result-pop {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.75); }
+  18%, 72% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -8px) scale(.96); }
+}
+@keyframes level-pop {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.5); }
+  30%, 68% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -10px) scale(1); }
+}
+.board-wrap.is-shaking { animation: board-shake .24s linear; }
+@keyframes board-shake {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-3px, 1px); }
+  40% { transform: translate(3px, -1px); }
+  60% { transform: translate(-2px, -1px); }
+  80% { transform: translate(2px, 1px); }
 }
 
 .controls { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
@@ -266,6 +309,7 @@ body {
 }
 .ctl:hover { color: var(--lime); border-color: rgba(184,243,74,.6); background: rgba(184,243,74,.1); }
 .ctl:active { transform: scale(.88) translateY(2px); background: rgba(184,243,74,.2); }
+.ctl.is-pressed { transform: scale(.9) translateY(2px); color: var(--lime); border-color: rgba(184,243,74,.7); background: rgba(184,243,74,.2); }
 .ctl--rotate { color: #ffd8ea; border-color: rgba(255,111,174,.25); }
 .ctl--accent { color: #171329; border-color: transparent; background: var(--lime); }
 .ctl--accent:hover { color: #171329; background: #caff65; }
@@ -279,6 +323,7 @@ body {
   .brand__sub { margin-top: 3px; }
   .hud__item { padding: 5px 8px; }
   .next-panel { padding: 7px; }
+  .next-panel canvas { width: 56px; height: 96px; }
   .recipe { display: none; }
   .ctl { min-height: 40px; padding: 7px 1px; }
 }

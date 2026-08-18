@@ -98,6 +98,10 @@ body {
   width: 88px;
   height: 88px;
 }
+.card__preview--puyo svg {
+  width: 116px;
+  height: 116px;
+}
 .card__preview--sudoku { background: #e7e9ee; }
 .card__preview--breakout { background: #171c38; }
 .card__preview--tetris { background: #161a30; }

@@ -11,11 +11,12 @@
   const scoreEl = $('score');
   const hiEl = $('hi');
   const levelEl = $('level');
-  const bestChainEl = $('bestChain');
+  const runChainEl = $('runChain');
   const overlayEl = $('overlay');
   const ovTitle = $('ovTitle');
   const ovSub = $('ovSub');
   const ovBtn = $('ovBtn');
+  const ovBack = $('ovBack');
   const resumeOverlay = $('resumeOverlay');
   const resumeSub = $('resumeSub');
   const btnResumeNew = $('btnResumeNew');
@@ -26,6 +27,9 @@
   const icSoundOff = $('icSoundOff');
   const chainPop = $('chainPop');
   const chainValue = $('chainValue');
+  const chainGain = $('chainGain');
+  const chainResult = $('chainResult');
+  const levelPop = $('levelPop');
 
   const COLS = 6;
   const ROWS = 12;
@@ -47,6 +51,9 @@
   let level = 1;
   let clearedTotal = 0;
   let bestChain = readNumber(CHAIN_KEY);
+  let runMaxChain = 0;
+  let hiAtStart = hi;
+  let bestChainAtStart = bestChain;
   let cell = 32;
   let lastT = 0;
   let gravityAcc = 0;
@@ -55,10 +62,18 @@
   let resolveToken = 0;
   let particles = [];
   let popCells = new Set();
+  let popStartedAt = 0;
+  let popDuration = 280;
+  let fallOffsets = new Map();
+  let fallStartedAt = 0;
+  let fallDuration = 210;
   let muted = readMuted();
   let audioCtx = null;
   let touchStart = null;
   let chainPopTimer = null;
+  let chainResultTimer = null;
+  let levelPopTimer = null;
+  let lockResets = 0;
 
   function readNumber(key) {
     try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
@@ -111,6 +126,7 @@
     fillQueue();
     gravityAcc = 0;
     lockAcc = 0;
+    lockResets = 0;
     drawNext();
     if (collidesAt(pair.x, pair.y, pair.rot)) gameOver();
   }
@@ -120,7 +136,11 @@
     if (collidesAt(pair.x + dx, pair.y + dy, pair.rot)) return false;
     pair.x += dx;
     pair.y += dy;
-    lockAcc = 0;
+    if (dx && collidesAt(pair.x, pair.y + 1, pair.rot)) {
+      if (lockResets < 12) { lockAcc = 0; lockResets++; }
+    } else {
+      lockAcc = 0;
+    }
     if (dx) play('move');
     return true;
   }
@@ -134,7 +154,11 @@
         pair.x += k[0];
         pair.y += k[1];
         pair.rot = next;
-        lockAcc = 0;
+        if (collidesAt(pair.x, pair.y + 1, pair.rot)) {
+          if (lockResets < 12) { lockAcc = 0; lockResets++; }
+        } else {
+          lockAcc = 0;
+        }
         play('rotate');
         haptic(7);
         return true;
@@ -175,7 +199,7 @@
     mode = 'resolving';
     btnPause.hidden = true;
     // 横向组合落在高低不平处时，两颗噗呦应分别沉降到各自的支撑面。
-    applyGravity();
+    applyGravity(true);
     play('land');
     haptic(9);
     resolveStep(1, ++resolveToken);
@@ -226,6 +250,7 @@
     const groups = findClearGroups();
     if (!groups.length) {
       popCells.clear();
+      if (chain > 2) showChainResult(chain - 1);
       mode = 'playing';
       btnPause.hidden = false;
       spawnPair();
@@ -241,55 +266,101 @@
     const multiplier = Math.max(1, chainPower + colorBonus + sizeBonus);
     const gained = cells.length * 10 * multiplier;
 
+    const previousLevel = level;
     score += gained;
     clearedTotal += cells.length;
     level = Math.min(12, Math.floor(clearedTotal / 35) + 1);
+    runMaxChain = Math.max(runMaxChain, chain);
     if (chain > bestChain) {
       bestChain = chain;
       try { localStorage.setItem(CHAIN_KEY, String(bestChain)); } catch (e) {}
     }
     updateHud();
-    showChain(chain);
+    showChain(chain, gained);
+    if (level > previousLevel) showLevel(level);
     play(chain > 1 ? 'chain' : 'clear', chain);
-    haptic(chain > 1 ? [18, 30, 18] : 12);
+    haptic(chain >= 3 ? [22, 28, 22 + chain * 2] : chain > 1 ? [16, 24, 16] : 10);
+    if (chain >= 3) shakeBoard(chain);
 
     popCells = new Set(cells.map((p) => p[0] + ',' + p[1]));
-    for (const p of cells) makeBurst(p[0], p[1], board[p[1]][p[0]]);
+    popStartedAt = performance.now();
+    popDuration = Math.max(170, 300 - (chain - 1) * 22);
 
     setTimeout(() => {
       if (token !== resolveToken) return;
-      for (const p of cells) board[p[1]][p[0]] = 0;
+      for (const p of cells) {
+        makeBurst(p[0], p[1], board[p[1]][p[0]]);
+        board[p[1]][p[0]] = 0;
+      }
       popCells.clear();
-      applyGravity();
-      setTimeout(() => resolveStep(chain + 1, token), 230);
-    }, 280);
+      applyGravity(true);
+      const settleDelay = Math.max(120, 225 - (chain - 1) * 14);
+      setTimeout(() => resolveStep(chain + 1, token), settleDelay);
+    }, popDuration);
   }
 
-  function applyGravity() {
+  function applyGravity(animate) {
+    const offsets = new Map();
     for (let x = 0; x < COLS; x++) {
       let write = ROWS - 1;
       for (let y = ROWS - 1; y >= 0; y--) {
         if (board[y][x]) {
+          const distance = write - y;
           board[write][x] = board[y][x];
           if (write !== y) board[y][x] = 0;
+          if (animate && distance > 0) offsets.set(x + ',' + write, distance);
           write--;
         }
       }
       while (write >= 0) board[write--][x] = 0;
     }
+    fallOffsets = offsets;
+    fallStartedAt = performance.now();
+    fallDuration = 190;
   }
 
-  function showChain(chain) {
+  function showChain(chain, gained) {
     if (chain < 2) return;
     clearTimeout(chainPopTimer);
     chainValue.textContent = chain;
+    chainGain.textContent = '+' + gained;
+    chainPop.style.setProperty('--chain-size', Math.min(72, 48 + (chain - 2) * 4) + 'px');
     chainPop.hidden = true;
     void chainPop.offsetWidth;
     chainPop.hidden = false;
     chainPopTimer = setTimeout(() => {
       chainPop.hidden = true;
       chainPopTimer = null;
-    }, 720);
+    }, 760);
+  }
+
+  function showChainResult(chain) {
+    clearTimeout(chainResultTimer);
+    chainResult.textContent = '本次 ' + chain + ' CHAIN!';
+    chainResult.hidden = true;
+    void chainResult.offsetWidth;
+    chainResult.hidden = false;
+    chainResultTimer = setTimeout(() => { chainResult.hidden = true; }, 1120);
+  }
+
+  function showLevel(nextLevel) {
+    clearTimeout(levelPopTimer);
+    levelPop.textContent = 'LEVEL ' + nextLevel + '!';
+    levelPop.hidden = true;
+    void levelPop.offsetWidth;
+    levelPop.hidden = false;
+    play('level', nextLevel);
+    haptic([16, 28, 24]);
+    levelPopTimer = setTimeout(() => { levelPop.hidden = true; }, 980);
+  }
+
+  function shakeBoard(chain) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    boardWrap.style.setProperty('--shake', Math.min(6, chain) + 'px');
+    boardWrap.classList.remove('is-shaking');
+    void boardWrap.offsetWidth;
+    boardWrap.classList.add('is-shaking');
+    setTimeout(() => boardWrap.classList.remove('is-shaking'), 260);
   }
 
   function gravityInterval() {
@@ -320,11 +391,21 @@
     score = 0;
     level = 1;
     clearedTotal = 0;
+    runMaxChain = 0;
+    hiAtStart = hi;
+    bestChainAtStart = bestChain;
     particles = [];
     popCells.clear();
+    fallOffsets.clear();
     clearTimeout(chainPopTimer);
+    clearTimeout(chainResultTimer);
+    clearTimeout(levelPopTimer);
     chainPopTimer = null;
+    chainResultTimer = null;
+    levelPopTimer = null;
     chainPop.hidden = true;
+    chainResult.hidden = true;
+    levelPop.hidden = true;
     fillQueue();
     mode = 'playing';
     overlayEl.hidden = true;
@@ -359,6 +440,7 @@
   }
 
   function showOverlay(kind) {
+    ovBack.hidden = true;
     if (kind === 'menu') {
       ovTitle.textContent = '噗呦噗呦';
       ovSub.textContent = '连接 4 颗同色噗呦即可消除\n连续坠落消除会形成高分连锁';
@@ -369,13 +451,18 @@
       ovBtn.textContent = '继续';
     } else if (kind === 'gameover') {
       ovTitle.textContent = '容器装满了';
-      ovSub.textContent = '本局得分 ' + score + ' · 最高连锁 ' + bestChain;
-      ovBtn.textContent = '重新实验';
+      const records = [];
+      if (score > hiAtStart && score > 0) records.push('最高分新纪录');
+      if (runMaxChain > bestChainAtStart && runMaxChain > 0) records.push('连锁新纪录');
+      ovSub.textContent = 'SCORE  ' + score + '\nLEVEL  ' + level + '\nMAX CHAIN  ' + runMaxChain + '\nBEST CHAIN  ' + bestChain + '\n消除  ' + clearedTotal + ' 颗' + (records.length ? '\nNEW RECORD! · ' + records.join(' / ') : '');
+      ovBtn.textContent = '再来一局';
+      ovBack.hidden = false;
     }
     overlayEl.hidden = false;
   }
 
   function togglePause() {
+    stopHold();
     if (mode === 'playing') {
       setMode('paused');
       saveState();
@@ -393,7 +480,7 @@
     }
     hiEl.textContent = hi;
     levelEl.textContent = level;
-    bestChainEl.textContent = bestChain;
+    runChainEl.textContent = runMaxChain;
   }
 
   function saveState() {
@@ -406,6 +493,9 @@
         score: score,
         level: level,
         clearedTotal: clearedTotal,
+        runMaxChain: runMaxChain,
+        hiAtStart: hiAtStart,
+        bestChainAtStart: bestChainAtStart,
       }));
     } catch (e) {}
   }
@@ -441,6 +531,9 @@
     score = Number.isFinite(s.score) ? Math.max(0, s.score) : 0;
     level = Number.isFinite(s.level) ? Math.max(1, Math.min(12, s.level)) : 1;
     clearedTotal = Number.isFinite(s.clearedTotal) ? Math.max(0, s.clearedTotal) : 0;
+    runMaxChain = Number.isFinite(s.runMaxChain) ? Math.max(0, s.runMaxChain) : 0;
+    hiAtStart = Number.isFinite(s.hiAtStart) ? Math.max(0, s.hiAtStart) : hi;
+    bestChainAtStart = Number.isFinite(s.bestChainAtStart) ? Math.max(0, s.bestChainAtStart) : bestChain;
     fillQueue();
     if (!pair || collidesAt(pair.x, pair.y, pair.rot)) spawnPair();
     updateHud();
@@ -474,6 +567,7 @@
     else if (name === 'drop') { freq = 190; dur = 0.12; type = 'sawtooth'; }
     else if (name === 'clear') { freq = 560; dur = 0.16; type = 'triangle'; vol = 0.1; }
     else if (name === 'chain') { freq = 520 + Math.min(chain || 1, 10) * 75; dur = 0.22; type = 'triangle'; vol = 0.11; }
+    else if (name === 'level') { freq = 520 + Math.min(chain || 1, 12) * 24; dur = 0.32; type = 'triangle'; vol = 0.1; }
     else if (name === 'start') { freq = 390; dur = 0.18; type = 'triangle'; vol = 0.09; }
     else if (name === 'over') { freq = 260; dur = 0.6; type = 'sawtooth'; vol = 0.1; }
     else if (name === 'move') { freq = 190; dur = 0.025; vol = 0.025; }
@@ -489,6 +583,19 @@
     gain.connect(ac.destination);
     osc.start(now);
     osc.stop(now + dur + 0.02);
+    if (name === 'chain' || name === 'level') {
+      const upper = ac.createOscillator();
+      const upperGain = ac.createGain();
+      upper.type = 'sine';
+      upper.frequency.setValueAtTime(freq * (name === 'chain' ? 1.5 : 1.25), now + 0.055);
+      upperGain.gain.setValueAtTime(0.001, now);
+      upperGain.gain.exponentialRampToValueAtTime(vol * 0.7, now + 0.06);
+      upperGain.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.08);
+      upper.connect(upperGain);
+      upperGain.connect(ac.destination);
+      upper.start(now + 0.05);
+      upper.stop(now + dur + 0.1);
+    }
   }
 
   function haptic(pattern) {
@@ -514,8 +621,8 @@
     boardWrap.style.height = h + 'px';
     boardWrap.style.setProperty('--cell', cell + 'px');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    nextCanvas.width = 128;
-    nextCanvas.height = 152;
+    nextCanvas.width = 144;
+    nextCanvas.height = 248;
     nextCtx.setTransform(2, 0, 0, 2, 0, 0);
     drawNext();
   }
@@ -587,6 +694,9 @@
 
   function drawBoard() {
     const w = cell * COLS, h = cell * ROWS;
+    const now = performance.now();
+    const fallT = Math.min(1, Math.max(0, (now - fallStartedAt) / fallDuration));
+    const fallEase = 1 - Math.pow(1 - fallT, 3);
     ctx.clearRect(0, 0, w, h);
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, '#272044');
@@ -603,8 +713,10 @@
       for (let x = 0; x < COLS; x++) {
         const color = board[y][x];
         if (!color) continue;
-        if (x + 1 < COLS && board[y][x + 1] === color) drawBridge(x, y, color, x + 1, y);
-        if (y + 1 < ROWS && board[y + 1][x] === color) drawBridge(x, y, color, x, y + 1);
+        if (popCells.has(x + ',' + y)) continue;
+        if (fallT < 1 && fallOffsets.has(x + ',' + y)) continue;
+        if (x + 1 < COLS && board[y][x + 1] === color && !popCells.has((x + 1) + ',' + y) && !fallOffsets.has((x + 1) + ',' + y)) drawBridge(x, y, color, x + 1, y);
+        if (y + 1 < ROWS && board[y + 1][x] === color && !popCells.has(x + ',' + (y + 1)) && !fallOffsets.has(x + ',' + (y + 1))) drawBridge(x, y, color, x, y + 1);
       }
     }
     for (let y = 0; y < ROWS; y++) {
@@ -612,8 +724,30 @@
         const color = board[y][x];
         if (!color) continue;
         const popping = popCells.has(x + ',' + y);
-        const pulse = popping ? 0.78 + Math.sin(performance.now() / 45) * 0.12 : 1;
-        drawBlob(ctx, (x + 0.5) * cell, (y + 0.5) * cell, cell * 0.44 * pulse, color, popping ? 0.78 : 1, true);
+        let scale = 1;
+        let alpha = 1;
+        let flash = 0;
+        if (popping) {
+          const t = Math.min(1, Math.max(0, (now - popStartedAt) / popDuration));
+          if (t < 0.36) {
+            scale = 1 + Math.sin(t * Math.PI * 5) * 0.1;
+            flash = Math.max(0, Math.sin((t / 0.36) * Math.PI * 3)) * 0.32;
+          }
+          else {
+            const shrink = (t - 0.36) / 0.64;
+            scale = Math.max(0.08, 1 - shrink * 0.92);
+            alpha = 1 - shrink * 0.72;
+          }
+        }
+        const offset = fallOffsets.get(x + ',' + y) || 0;
+        const drawY = y + 0.5 - offset * (1 - fallEase);
+        drawBlob(ctx, (x + 0.5) * cell, drawY * cell, cell * 0.44 * scale, color, alpha, true);
+        if (flash > 0) {
+          ctx.fillStyle = 'rgba(255,255,255,' + flash.toFixed(3) + ')';
+          ctx.beginPath();
+          ctx.arc((x + 0.5) * cell, drawY * cell, cell * 0.42 * scale, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
 
@@ -636,15 +770,24 @@
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+    if (fallT >= 1 && fallOffsets.size) fallOffsets.clear();
   }
 
   function drawNext() {
     if (!nextCtx) return;
-    nextCtx.clearRect(0, 0, 64, 76);
-    const upcoming = queue[0];
-    if (!upcoming) return;
-    drawBlob(nextCtx, 32, 45, 17, upcoming[0], 1, true);
-    drawBlob(nextCtx, 32, 16, 17, upcoming[1], 1, true);
+    nextCtx.clearRect(0, 0, 72, 124);
+    const first = queue[0];
+    const second = queue[1];
+    if (first) {
+      drawBlob(nextCtx, 36, 47, 19, first[0], 1, true);
+      drawBlob(nextCtx, 36, 15, 19, first[1], 1, true);
+    }
+    if (second) {
+      nextCtx.strokeStyle = 'rgba(255,255,255,.12)';
+      nextCtx.beginPath(); nextCtx.moveTo(15, 68); nextCtx.lineTo(57, 68); nextCtx.stroke();
+      drawBlob(nextCtx, 36, 105, 14, second[0], 0.82, true);
+      drawBlob(nextCtx, 36, 80, 14, second[1], 0.82, true);
+    }
   }
 
   function frame(now) {
@@ -670,25 +813,34 @@
 
   let holdTimer = null;
   let repeatTimer = null;
+  let heldButton = null;
   function stopHold() {
     clearTimeout(holdTimer);
     clearInterval(repeatTimer);
     holdTimer = null;
     repeatTimer = null;
+    if (heldButton) heldButton.classList.remove('is-pressed');
+    heldButton = null;
   }
 
   document.querySelectorAll('.ctl').forEach((btn) => {
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      stopHold();
+      heldButton = btn;
+      btn.classList.add('is-pressed');
+      if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
       const name = btn.dataset.a;
       action(name);
       if (name === 'left' || name === 'right' || name === 'down') {
-        holdTimer = setTimeout(() => { repeatTimer = setInterval(() => action(name), name === 'down' ? 55 : 90); }, 220);
+        holdTimer = setTimeout(() => {
+          repeatTimer = setInterval(() => action(name), name === 'down' ? 42 : 76);
+        }, 185);
       }
     });
     btn.addEventListener('pointerup', stopHold);
     btn.addEventListener('pointercancel', stopHold);
-    btn.addEventListener('pointerleave', stopHold);
+    btn.addEventListener('lostpointercapture', stopHold);
   });
 
   document.addEventListener('keydown', (e) => {
@@ -754,7 +906,7 @@
   if (saved && validBoard(saved.board)) {
     if (restoreState(saved)) {
       mode = 'resume';
-      resumeSub.textContent = '得分 ' + score + ' · 等级 ' + level + ' · 最高连锁 ' + bestChain;
+      resumeSub.textContent = '得分 ' + score + ' · 等级 ' + level + ' · 本局连锁 ' + runMaxChain;
       resumeOverlay.hidden = false;
       btnPause.hidden = true;
     } else {
@@ -773,8 +925,14 @@
 
   if (window.__DSH_TEST__ || new URLSearchParams(location.search).has('test')) {
     window.__puyoTest = {
-      getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, bestChain }),
+      getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, runMaxChain, bestChain, clearedTotal }),
       setBoard: (next) => { if (validBoard(next)) board = next.map((r) => r.slice()); },
+      setProgress: (cleared, nextScore) => {
+        clearedTotal = Math.max(0, Number(cleared) || 0);
+        level = Math.min(12, Math.floor(clearedTotal / 35) + 1);
+        if (Number.isFinite(nextScore)) score = Math.max(0, nextScore);
+        updateHud();
+      },
       resolve: () => { mode = 'resolving'; pair = null; resolveStep(1, ++resolveToken); },
       newGame: newGame,
     };
