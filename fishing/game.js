@@ -275,7 +275,7 @@
     zoneV = Math.max(-.88, Math.min(.84, Number(saved.zoneV) || 0));
     catchProgress = Math.max(.08, Math.min(.96, Number(saved.catchProgress) || .25));
     streak = Math.max(0, Number(saved.streak) || 0);
-    if (fish) setFishSprite(fishMarker.querySelector('span'), fish);
+    if (fish) setFishSprite(fishMarker.querySelector('span'), FISH[0]);
     pendingResume = null;
     motionTestHold = false;
     modalNew.hidden = true;
@@ -405,7 +405,7 @@
   function hookFish() {
     if (mode !== 'bite') return;
     fish = chooseFish();
-    setFishSprite(fishMarker.querySelector('span'), fish);
+    setFishSprite(fishMarker.querySelector('span'), FISH[0]);
     fishY = .5;
     fishTarget = .5;
     fishMoveLeft = .45;
@@ -730,7 +730,7 @@
       ctx.fillStyle = '#f5f1df'; ctx.beginPath(); ctx.arc(bobX, bobY + 1, 4, 0, Math.PI * 2); ctx.fill();
       ctx.save();
       ctx.globalAlpha = .3;
-      ctx.fillStyle = fish ? fish.color : '#8fd3c7';
+      ctx.fillStyle = 'rgba(8,16,29,.82)';
       ctx.beginPath(); ctx.ellipse(bobX - 8, targetBobY + 35 + Math.sin(hookT * 12) * 5, 12, 5, .15, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       ctx.strokeStyle = 'rgba(220,245,242,.6)'; ctx.lineWidth = 2;
@@ -741,7 +741,7 @@
       const bobY = targetBobY - Math.sin(Math.PI * finishT) * h * .3 - finishT * 20;
       ctx.strokeStyle = 'rgba(245,241,223,.85)'; ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY); ctx.quadraticCurveTo(w * .52, lakeY - 80, bobX, bobY); ctx.stroke();
-      ctx.fillStyle = fish ? fish.color : '#8fd3c7';
+      ctx.fillStyle = '#0a1323';
       ctx.beginPath(); ctx.ellipse(bobX - 10, bobY + 7, 11, 6, -.25, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.moveTo(bobX - 20, bobY + 6); ctx.lineTo(bobX - 29, bobY); ctx.lineTo(bobX - 27, bobY + 13); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#17213b'; ctx.beginPath(); ctx.arc(bobX - 5, bobY + 5, 1.4, 0, Math.PI * 2); ctx.fill();
