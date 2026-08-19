@@ -1,12 +1,17 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishData || !window.FishingEnvironments) {
+  if (!window.FishingFishData || !window.FishingEnvironments || !window.FishingStorage || !window.FishingAudio || !window.FishingUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
   const { FISH, RARITY_RANK } = window.FishingFishData;
   const { ENVIRONMENTS, environmentForStep, chooseFish: chooseFishForEnvironment } = window.FishingEnvironments;
+  const storage = window.FishingStorage;
+  const audio = window.FishingAudio.create({ muted: storage.readInt(storage.KEYS.MUTED) === 1 });
+  const play = audio.play;
+  const vibrate = audio.vibrate;
+  const formatWeight = window.FishingUI.formatWeight;
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('scene');
@@ -27,8 +32,6 @@
   const catalog = $('catalog');
   const catalogBtn = $('catalogBtn');
   const catalogClose = $('catalogClose');
-  const catalogGrid = $('catalogGrid');
-  const catalogProgress = $('catalogProgress');
   const actionBtn = $('actionBtn');
   const actionHint = $('actionHint');
   const powerWrap = $('powerWrap');
@@ -42,22 +45,33 @@
   const noticeTitle = $('noticeTitle');
   const noticeSub = $('noticeSub');
   const soundBtn = $('soundBtn');
-  const soundOn = $('soundOn');
-  const soundOff = $('soundOff');
   const pauseBtn = $('pauseBtn');
-  const totalCaughtEl = $('totalCaught');
-  const bestWeightEl = $('bestWeight');
-  const streakEl = $('streak');
-  const bestStreakEl = $('bestStreak');
-  const environmentLabel = $('environmentLabel');
+  const ui = window.FishingUI.create({
+    fish: FISH,
+    elements: {
+      catalogGrid: $('catalogGrid'),
+      catalogProgress: $('catalogProgress'),
+      soundButton: soundBtn,
+      soundOn: $('soundOn'),
+      soundOff: $('soundOff'),
+      totalCaught: $('totalCaught'),
+      bestWeight: $('bestWeight'),
+      streak: $('streak'),
+      bestStreak: $('bestStreak'),
+      environmentLabel: $('environmentLabel'),
+    },
+  });
+  const setFishSprite = ui.setFishSprite;
 
-  const TOTAL_KEY = 'fishing_total_v1';
-  const WEIGHT_KEY = 'fishing_best_weight_v1';
-  const STREAK_KEY = 'fishing_best_streak_v1';
-  const MUTE_KEY = 'fishing_muted_v1';
-  const SAVE_KEY = 'fishing_save_v1';
-  const COLLECTION_KEY = 'fishing_collection_v1';
-  const ENV_KEY = 'fishing_environment_step_v1';
+  const {
+    TOTAL: TOTAL_KEY,
+    BEST_WEIGHT: WEIGHT_KEY,
+    BEST_STREAK: STREAK_KEY,
+    MUTED: MUTE_KEY,
+    SAVE: SAVE_KEY,
+    COLLECTION: COLLECTION_KEY,
+    ENVIRONMENT_STEP: ENV_KEY,
+  } = storage.KEYS;
   let mode = 'menu';
   let beforePause = 'ready';
   let lastTime = 0;
@@ -79,12 +93,10 @@
   let zoneY = .22;
   let zoneV = 0;
   let catchProgress = .24;
-  let totalCaught = readInt(TOTAL_KEY);
-  let bestWeight = readInt(WEIGHT_KEY);
+  let totalCaught = storage.readInt(TOTAL_KEY);
+  let bestWeight = storage.readInt(WEIGHT_KEY);
   let streak = 0;
-  let bestStreak = readInt(STREAK_KEY);
-  let muted = readInt(MUTE_KEY) === 1;
-  let audioCtx = null;
+  let bestStreak = storage.readInt(STREAK_KEY);
   let ripple = 0;
   let caughtFlash = 0;
   let finishLeft = 0;
@@ -94,42 +106,26 @@
   let saveAcc = 0;
   let pendingResume = null;
   let collection = loadCollection();
-  let environmentStep = readInt(ENV_KEY);
+  let environmentStep = storage.readInt(ENV_KEY);
   let environment = environmentForStep(environmentStep);
-
-  function readInt(key) {
-    try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
-  }
 
   function updateEnvironment() {
     environment = environmentForStep(environmentStep);
-    environmentLabel.textContent = environment.label;
+    ui.renderEnvironment(environment);
   }
 
   function advanceEnvironment() {
     environmentStep++;
-    try { localStorage.setItem(ENV_KEY, String(environmentStep)); } catch (e) {}
+    storage.writeInt(ENV_KEY, environmentStep);
     updateEnvironment();
   }
 
   function loadCollection() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(COLLECTION_KEY));
-      return saved && typeof saved === 'object' ? saved : {};
-    } catch (e) { return {}; }
+    return storage.readObject(COLLECTION_KEY, {});
   }
 
   function saveCollection() {
-    try { localStorage.setItem(COLLECTION_KEY, JSON.stringify(collection)); } catch (e) {}
-  }
-
-  function setFishSprite(el, item) {
-    if (!el || !item) return;
-    const col = item.sprite % 4;
-    const row = Math.floor(item.sprite / 4);
-    const sheets = ['common', 'uncommon', 'rare'];
-    el.style.backgroundImage = 'url("assets/moonlake-fish-' + sheets[row] + '-v1.png")';
-    el.style.setProperty('--fish-x', (col * 100 / 3) + '%');
+    storage.writeObject(COLLECTION_KEY, collection);
   }
 
   function recordCatch(item, weight) {
@@ -142,28 +138,7 @@
   }
 
   function renderCatalog() {
-    const found = FISH.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
-    catalogProgress.textContent = '已发现 ' + found + ' / ' + FISH.length;
-    catalogGrid.innerHTML = '';
-    FISH.forEach((item) => {
-      const record = collection[item.id];
-      const discovered = record && record.count > 0;
-      const card = document.createElement('article');
-      card.className = 'fish-card' + (discovered ? '' : ' is-locked');
-      card.dataset.rarity = item.rarity;
-      const art = document.createElement('div');
-      art.className = 'fish-card__art fish-sprite';
-      setFishSprite(art, item);
-      const name = document.createElement('h3');
-      name.textContent = discovered ? item.name : '？？？';
-      const rarity = document.createElement('p');
-      rarity.className = 'fish-card__rarity';
-      rarity.textContent = discovered ? item.rarity : '尚未发现';
-      const detail = document.createElement('p');
-      detail.textContent = discovered ? item.habitat + '\n捕获 ' + record.count + ' 次 · 最大 ' + formatWeight(record.best) : item.hint;
-      card.append(art, name, rarity, detail);
-      catalogGrid.appendChild(card);
-    });
+    ui.renderCatalog(collection);
   }
 
   function openCatalog() {
@@ -177,11 +152,9 @@
   }
 
   function saveStats() {
-    try {
-      localStorage.setItem(TOTAL_KEY, String(totalCaught));
-      localStorage.setItem(WEIGHT_KEY, String(bestWeight));
-      localStorage.setItem(STREAK_KEY, String(bestStreak));
-    } catch (e) {}
+    storage.writeInt(TOTAL_KEY, totalCaught);
+    storage.writeInt(WEIGHT_KEY, bestWeight);
+    storage.writeInt(STREAK_KEY, bestStreak);
   }
 
   function saveState() {
@@ -191,8 +164,7 @@
       return;
     }
     if (!['waiting', 'bite', 'hooking', 'fishing'].includes(phase)) return;
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({
+    storage.writeObject(SAVE_KEY, {
         phase: phase,
         castDistance: castDistance,
         castTime: castTime,
@@ -210,19 +182,15 @@
         zoneV: zoneV,
         catchProgress: catchProgress,
         streak: streak,
-      }));
-    } catch (e) {}
+      });
   }
 
   function loadState() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
-      return saved && typeof saved === 'object' ? saved : null;
-    } catch (e) { return null; }
+    return storage.readObject(SAVE_KEY, null);
   }
 
   function clearState() {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    storage.remove(SAVE_KEY);
   }
 
   function showResumePrompt(saved) {
@@ -270,14 +238,7 @@
   }
 
   function updateHud() {
-    totalCaughtEl.textContent = String(totalCaught);
-    bestWeightEl.textContent = bestWeight ? formatWeight(bestWeight) : '--';
-    streakEl.textContent = String(streak);
-    bestStreakEl.textContent = String(bestStreak);
-  }
-
-  function formatWeight(grams) {
-    return grams >= 1000 ? (grams / 1000).toFixed(2) + ' kg' : grams + ' g';
+    ui.renderHud({ totalCaught, bestWeight, streak, bestStreak });
   }
 
   function sizeGrade(item, weight) {
@@ -810,47 +771,8 @@
     requestAnimationFrame(frame);
   }
 
-  function ensureAudio() {
-    if (muted) return null;
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    return audioCtx;
-  }
-
-  function play(name) {
-    const ac = ensureAudio();
-    if (!ac) return;
-    const settings = {
-      start: [420, .16, 'triangle'], cast: [250, .18, 'sine'], bite: [760, .22, 'triangle'],
-      hook: [520, .13, 'square'], success: [610, .32, 'triangle'], rare: [780, .5, 'sine'],
-      reel: [185, .48, 'triangle'], splash: [330, .18, 'sine'], lose: [190, .35, 'sawtooth'],
-    }[name] || [320, .08, 'sine'];
-    const osc = ac.createOscillator();
-    const gain = ac.createGain();
-    const now = ac.currentTime;
-    osc.type = settings[2];
-    osc.frequency.setValueAtTime(settings[0], now);
-    if (name === 'success' || name === 'rare') osc.frequency.exponentialRampToValueAtTime(settings[0] * 1.7, now + settings[1]);
-    if (name === 'reel') osc.frequency.linearRampToValueAtTime(290, now + settings[1]);
-    if (name === 'splash') osc.frequency.exponentialRampToValueAtTime(120, now + settings[1]);
-    if (name === 'lose') osc.frequency.exponentialRampToValueAtTime(90, now + settings[1]);
-    gain.gain.setValueAtTime(.08, now);
-    gain.gain.exponentialRampToValueAtTime(.001, now + settings[1]);
-    osc.connect(gain); gain.connect(ac.destination);
-    osc.start(now); osc.stop(now + settings[1] + .02);
-  }
-
-  function vibrate(pattern) {
-    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
-  }
-
   function applyMuted() {
-    soundOn.hidden = muted;
-    soundOff.hidden = !muted;
-    soundBtn.setAttribute('aria-label', muted ? '开启声音' : '关闭声音');
+    ui.renderMuted(audio.isMuted());
   }
 
   modalBtn.addEventListener('click', () => {
@@ -866,9 +788,9 @@
   catalogClose.addEventListener('click', closeCatalog);
   pauseBtn.addEventListener('click', showPause);
   soundBtn.addEventListener('click', () => {
-    muted = !muted;
+    const muted = audio.toggleMuted();
     applyMuted();
-    try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
+    storage.writeInt(MUTE_KEY, muted ? 1 : 0);
     if (!muted) play('start');
   });
   actionBtn.addEventListener('pointerdown', (e) => {
@@ -911,7 +833,7 @@
   requestAnimationFrame(frame);
 
   window.__fishingTest = {
-    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: fish && fish.id, fishY, zoneY, zoneV, catchProgress, totalCaught, bestWeight, streak, bestStreak, environmentStep, environment: environment.time + '-' + environment.weather }),
+    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: fish && fish.id, fishY, zoneY, zoneV, catchProgress, totalCaught, bestWeight, streak, bestStreak, muted: audio.isMuted(), environmentStep, environment: environment.time + '-' + environment.weather }),
     start: startSession,
     showCast: (progress) => {
       motionTestHold = true;
