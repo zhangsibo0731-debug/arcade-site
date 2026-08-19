@@ -11,18 +11,29 @@
 
     function setFishSprite(element, item) {
       if (!element || !item) return;
+      element.classList.remove('catchable-art');
+      element.classList.add('fish-sprite');
+      element.textContent = '';
       const column = item.sprite % 4;
-      const row = Math.floor(item.sprite / 4);
-      const sheets = ['common', 'uncommon', 'rare'];
-      element.style.backgroundImage = 'url("assets/moonlake-fish-' + sheets[row] + '-v1.png")';
-      element.style.setProperty('--fish-x', (column * 100 / 3) + '%');
+      if (item.sheet) {
+        element.style.backgroundImage = 'url("assets/' + item.sheet + '")';
+      } else {
+        const row = Math.floor(item.sprite / 4);
+        const sheets = ['common', 'uncommon', 'rare'];
+        element.style.backgroundImage = 'url("assets/moonlake-fish-' + sheets[row] + '-v1.png")';
+      }
+      element.style.setProperty('--fish-x', (typeof item.spriteX === 'number' ? item.spriteX : column * 100 / 3) + '%');
+      element.style.setProperty('--fish-size', item.spriteSize || '400%');
+      element.style.backgroundSize = item.standalone ? 'contain' : '';
     }
 
-    function renderCatalog(collection) {
-      const found = fish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
-      elements.catalogProgress.textContent = '已发现 ' + found + ' / ' + fish.length;
+    function renderCatalog(collection, visibleFish, kicker) {
+      const catalogFish = visibleFish || fish;
+      const found = catalogFish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
+      elements.catalogKicker.textContent = kicker;
+      elements.catalogProgress.textContent = '已发现 ' + found + ' / ' + catalogFish.length;
       elements.catalogGrid.innerHTML = '';
-      fish.forEach((item) => {
+      catalogFish.forEach((item) => {
         const record = collection[item.id];
         const discovered = record && record.count > 0;
         const card = document.createElement('article');
@@ -60,7 +71,73 @@
       elements.environmentLabel.textContent = environment.label;
     }
 
-    return Object.freeze({ setFishSprite, renderCatalog, renderHud, renderMuted, renderEnvironment });
+    function renderLocations(locations) {
+      elements.locationsGrid.innerHTML = '';
+      locations.forEach((location) => {
+        const card = document.createElement('article');
+        card.className = 'location-card' + (location.unlocked ? ' is-unlocked' : ' is-locked') + (location.current ? ' is-current' : '');
+        card.dataset.location = location.id;
+        const art = document.createElement('div');
+        art.className = 'location-card__art location-card__art--' + location.id;
+        art.innerHTML = '<span>' + location.icon + '</span>';
+        const copy = document.createElement('div');
+        copy.className = 'location-card__copy';
+        const status = document.createElement('span');
+        status.className = 'location-card__status';
+        status.textContent = location.current ? '当前钓场' : (location.unlocked ? '已解锁' : '尚未解锁');
+        const title = document.createElement('h3');
+        title.textContent = location.name;
+        const subtitle = document.createElement('p');
+        subtitle.textContent = location.subtitle;
+        const progress = document.createElement('p');
+        progress.className = 'location-card__progress';
+        progress.textContent = location.progressText;
+        const button = document.createElement('button');
+        button.className = 'location-card__button';
+        button.type = 'button';
+        button.dataset.location = location.id;
+        button.disabled = !location.available;
+        button.textContent = location.actionText;
+        copy.append(status, title, subtitle, progress, button);
+        card.append(art, copy);
+        elements.locationsGrid.appendChild(card);
+      });
+    }
+
+    function setCatchableArt(element, item) {
+      element.classList.remove('fish-sprite');
+      element.classList.add('catchable-art');
+      element.style.backgroundImage = '';
+      element.textContent = item.icon;
+    }
+
+    function renderItems(items, records) {
+      const treasures = items.filter((item) => item.type === 'treasure');
+      const foundTreasures = treasures.filter((item) => records[item.id]).length;
+      elements.itemsProgress.textContent = '已发现 ' + foundTreasures + ' / ' + treasures.length + ' 件探索物品';
+      elements.itemsGrid.innerHTML = '';
+      items.forEach((item) => {
+        const count = Number(records[item.id]) || 0;
+        const discovered = count > 0;
+        const card = document.createElement('article');
+        card.className = 'fish-card item-card' + (discovered ? '' : ' is-locked');
+        card.dataset.rarity = item.type === 'treasure' ? '稀有' : '常见';
+        const art = document.createElement('div');
+        art.className = 'fish-card__art catchable-art';
+        art.textContent = discovered ? item.icon : '？';
+        const name = document.createElement('h3');
+        name.textContent = discovered ? item.name : '？？？';
+        const rarity = document.createElement('p');
+        rarity.className = 'fish-card__rarity';
+        rarity.textContent = discovered ? item.rarity : (item.type === 'treasure' ? '尚未发现' : '水底杂物');
+        const detail = document.createElement('p');
+        detail.textContent = discovered ? item.line + '\n获得 ' + count + ' 次' : (item.type === 'treasure' ? '似乎沉在某片水域里。' : '继续垂钓就可能遇见。');
+        card.append(art, name, rarity, detail);
+        elements.itemsGrid.appendChild(card);
+      });
+    }
+
+    return Object.freeze({ setFishSprite, setCatchableArt, renderCatalog, renderItems, renderHud, renderMuted, renderEnvironment, renderLocations });
   }
 
   global.FishingUI = Object.freeze({ formatWeight, create });

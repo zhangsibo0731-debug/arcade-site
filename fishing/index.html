@@ -7,7 +7,7 @@
 <title>月光垂钓 · 湖畔钓鱼</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=9" />
+<link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
 <main class="app">
@@ -26,7 +26,9 @@
       <canvas id="scene" aria-label="月夜湖泊钓鱼场景"></canvas>
       <div class="environment" id="environmentLabel">🌙 夜晚 · ☀️ 晴天</div>
       <div class="top-actions">
+        <button class="icon-btn" id="locationBtn" type="button" aria-label="选择钓场" title="选择钓场">地</button>
         <button class="icon-btn" id="catalogBtn" type="button" aria-label="鱼类图鉴" title="鱼类图鉴">册</button>
+        <button class="icon-btn" id="itemsBtn" type="button" aria-label="物品收藏" title="物品收藏">藏</button>
         <button class="icon-btn" id="soundBtn" type="button" aria-label="关闭声音">
           <svg id="soundOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a8.5 8.5 0 0 1 0 12"/></svg>
           <svg id="soundOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/></svg>
@@ -40,6 +42,7 @@
       </div>
 
       <section class="catch-game" id="catchGame" aria-label="遛鱼区域" hidden>
+        <div class="current-indicator" id="currentIndicator" hidden>水流 ≋</div>
         <div class="catch-track" id="catchTrack">
           <div class="fish-marker" id="fishMarker" aria-hidden="true"><span class="fish-sprite"></span><i></i></div>
           <div class="catch-zone" id="catchZone"><span>捕获区</span></div>
@@ -63,7 +66,7 @@
           <div class="result-fish fish-sprite" id="resultFish" aria-hidden="true" hidden></div>
           <h2 id="modalTitle">月光垂钓</h2>
           <p id="modalText">按住蓄力，松开抛竿<br />鱼咬钩后及时提竿</p>
-          <button class="primary" id="modalBtn" type="button">去湖边</button>
+          <button class="primary" id="modalBtn" type="button">选择钓场</button>
           <button class="modal__back" id="modalNew" type="button">查看鱼类图鉴</button>
           <a class="modal__back" id="modalBack" href="../" hidden>返回游戏厅</a>
         </div>
@@ -86,18 +89,37 @@
 
   <section class="catalog" id="catalog" aria-label="鱼类图鉴" hidden>
     <div class="catalog__head">
-      <div><span>MOONLAKE COLLECTION</span><h2>鱼类图鉴</h2><p id="catalogProgress">已发现 0 / 12</p></div>
+      <div><span id="catalogKicker">MOONLAKE COLLECTION</span><h2>鱼类图鉴</h2><p id="catalogProgress">已发现 0 / 12</p></div>
       <button class="icon-btn" id="catalogClose" type="button" aria-label="关闭图鉴">×</button>
     </div>
     <div class="catalog__grid" id="catalogGrid"></div>
   </section>
+
+  <section class="locations" id="locationsPanel" aria-label="选择钓场" hidden>
+    <div class="locations__head">
+      <div><span>CHOOSE YOUR WATER</span><h2>选择钓场</h2><p>每片水域都有自己的鱼与故事</p></div>
+      <button class="icon-btn" id="locationsClose" type="button" aria-label="关闭钓场选择">×</button>
+    </div>
+    <div class="locations__grid" id="locationsGrid"></div>
+  </section>
+
+  <section class="catalog" id="itemsPanel" aria-label="物品收藏" hidden>
+    <div class="catalog__head">
+      <div><span>WATERSIDE FINDS</span><h2>水边收藏</h2><p id="itemsProgress">已发现 0 / 3 件探索物品</p></div>
+      <button class="icon-btn" id="itemsClose" type="button" aria-label="关闭物品收藏">×</button>
+    </div>
+    <div class="catalog__grid" id="itemsGrid"></div>
+  </section>
 </main>
 <script src="../input-guard.js?v=6"></script>
 <script src="fish-data.js?v=1"></script>
+<script src="river-fish-data.js?v=1"></script>
+<script src="catchables.js?v=1"></script>
 <script src="environments.js?v=1"></script>
+<script src="locations.js?v=1"></script>
 <script src="storage.js?v=1"></script>
 <script src="audio.js?v=1"></script>
 <script src="ui.js?v=1"></script>
-<script src="game.js?v=21"></script>
+<script src="game.js?v=25"></script>
 </body>
 </html>

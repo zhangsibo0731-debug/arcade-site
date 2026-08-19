@@ -9,6 +9,9 @@
     SAVE: 'fishing_save_v1',
     COLLECTION: 'fishing_collection_v1',
     ENVIRONMENT_STEP: 'fishing_environment_step_v1',
+    CURRENT_LOCATION: 'fishing_current_location_v1',
+    UNLOCKED_LOCATIONS: 'fishing_unlocked_locations_v1',
+    ITEM_COLLECTION: 'fishing_item_collection_v1',
   });
 
   function readInt(key) {
@@ -16,6 +19,17 @@
   }
 
   function writeInt(key, value) {
+    try {
+      localStorage.setItem(key, String(value));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function readString(key, fallback) {
+    try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; }
+  }
+
+  function writeString(key, value) {
     try {
       localStorage.setItem(key, String(value));
       return true;
@@ -43,5 +57,5 @@
     } catch (e) { return false; }
   }
 
-  global.FishingStorage = Object.freeze({ KEYS, readInt, writeInt, readObject, writeObject, remove });
+  global.FishingStorage = Object.freeze({ KEYS, readInt, writeInt, readString, writeString, readObject, writeObject, remove });
 })(window);

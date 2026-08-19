@@ -32,17 +32,23 @@ button, a { font: inherit; }
 .top-actions { position: absolute; z-index: 8; top: 12px; right: 12px; display: flex; gap: 7px; }
 .top-actions .icon-btn { background: rgba(8,17,35,.62); backdrop-filter: blur(8px); }
 .environment { position: absolute; z-index: 7; top: 13px; left: 13px; padding: 7px 10px; color: var(--ink); font-size: 10px; font-weight: 600; border: 1px solid var(--line); border-radius: 11px; background: rgba(8,17,35,.62); backdrop-filter: blur(8px); }
-.fish-sprite { background-size: 400% auto; background-position: var(--fish-x, 0%) 50%; background-repeat: no-repeat; image-rendering: pixelated; }
+.fish-sprite { background-size: var(--fish-size, 400%) auto; background-position: var(--fish-x, 0%) 50%; background-repeat: no-repeat; image-rendering: pixelated; }
 .notice { position: absolute; z-index: 7; left: 50%; top: 22%; min-width: 170px; padding: 12px 18px; text-align: center; border: 1px solid rgba(255,212,122,.45); border-radius: 17px; background: rgba(17,26,49,.88); box-shadow: 0 12px 36px rgba(0,0,0,.28); transform: translateX(-50%); animation: notice-pop .48s ease both; }
 .notice strong, .notice span { display: block; }
 .notice strong { color: var(--gold); font-size: 20px; }
 .notice span { margin-top: 2px; color: var(--soft); font-size: 12px; }
 @keyframes notice-pop { from { opacity: 0; transform: translate(-50%, 12px) scale(.8); } 65% { transform: translate(-50%, 0) scale(1.08); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 .catch-game { position: absolute; z-index: 6; inset: 64px 18px 18px auto; width: min(170px, 43%); display: flex; flex-direction: column; padding: 13px; border: 1px solid rgba(255,255,255,.18); border-radius: 20px; background: rgba(8,19,39,.82); backdrop-filter: blur(9px); box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+.current-indicator { margin: -3px 0 7px; color: #9af0d1; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-align: center; animation: current-pulse 1.4s ease-in-out infinite alternate; }
+@keyframes current-pulse { to { opacity: .55; transform: translateY(1px); } }
 .catch-track { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; border-radius: 14px; background: linear-gradient(180deg, rgba(57,129,160,.48), rgba(14,52,83,.75)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.stage[data-location="river"] .catch-track { background: linear-gradient(180deg, rgba(66,149,143,.55), rgba(11,66,77,.82)); }
+.stage[data-location="river"] .catch-track::after { content: "≋  ≋  ≋"; position: absolute; left: 12px; top: 45%; color: rgba(210,255,241,.22); font-size: 14px; letter-spacing: 8px; animation: stream-flow 2.2s linear infinite; }
+@keyframes stream-flow { from { transform: translateY(-12px); } to { transform: translateY(58px); } }
 .catch-track::before { content: ""; position: absolute; inset: 0; opacity: .22; background: repeating-linear-gradient(0deg, transparent 0 28px, rgba(255,255,255,.15) 29px 30px); }
 .fish-marker { position: absolute; z-index: 3; left: 50%; width: 76px; height: 76px; display: grid; place-items: center; transform: translate(-50%, 50%); transition: filter .15s; }
 .fish-marker span { width: 74px; height: 74px; display: block; opacity: .86; filter: grayscale(1) brightness(0) drop-shadow(0 2px 2px rgba(0,0,0,.78)) drop-shadow(0 0 4px rgba(214,238,244,.42)); }
+.fish-marker span.catchable-art { display: grid; place-items: center; color: #07101d; font-size: 45px; filter: grayscale(1) brightness(.12) drop-shadow(0 2px 2px rgba(0,0,0,.78)); }
 .fish-marker i { position: absolute; inset: -5px; border: 1px solid rgba(255,212,122,.7); border-radius: 50%; opacity: 0; }
 .fish-marker.is-warning i { opacity: 1; animation: pulse .42s ease infinite alternate; }
 @keyframes pulse { to { transform: scale(1.25); opacity: .2; } }
@@ -55,6 +61,9 @@ button, a { font: inherit; }
 .catch-reveal { position: absolute; z-index: 9; inset: 0; display: grid; place-content: center; justify-items: center; overflow: hidden; pointer-events: none; background: rgba(5,13,28,.35); animation: reveal-backdrop .28s ease both; }
 .catch-reveal__burst { position: absolute; left: 50%; top: 47%; width: 220px; height: 220px; border: 2px solid var(--reveal-color, #7de3c3); border-radius: 50%; box-shadow: 0 0 35px var(--reveal-glow, rgba(125,227,195,.32)), inset 0 0 35px var(--reveal-glow, rgba(125,227,195,.2)); transform: translate(-50%, -50%); animation: reveal-ring .8s ease-out infinite; }
 .catch-reveal__fish { position: relative; z-index: 2; width: 190px; height: 190px; filter: drop-shadow(0 12px 13px rgba(0,0,0,.45)) drop-shadow(0 0 13px var(--reveal-color, #7de3c3)); animation: reveal-fish .72s cubic-bezier(.16,.9,.26,1.18) both; }
+.catchable-art { display: grid; place-items: center; background: none !important; font-size: 82px; line-height: 1; }
+.catch-reveal__fish.catchable-art { font-size: 112px; }
+.result-fish.catchable-art { font-size: 78px; }
 .catch-reveal strong, .catch-reveal span { position: relative; z-index: 2; text-shadow: 0 3px 10px rgba(0,0,0,.6); }
 .catch-reveal strong { margin-top: -22px; font-size: 27px; }
 .catch-reveal span { margin-top: 4px; color: var(--reveal-color, var(--gold)); font-size: 12px; font-weight: 700; letter-spacing: .12em; }
@@ -96,14 +105,43 @@ button, a { font: inherit; }
 .catalog__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .fish-card { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 17px; background: rgba(20,35,61,.78); }
 .fish-card__art { width: 100%; aspect-ratio: 1; border-radius: 12px; background-color: rgba(5,15,31,.38); }
+.item-card .fish-card__art { font-size: 54px; }
+.item-card.is-locked .fish-card__art { color: rgba(255,255,255,.28); filter: none; }
 .fish-card.is-locked .fish-card__art { filter: grayscale(1) brightness(.16); }
 .fish-card h3 { margin-top: 7px; overflow: hidden; color: var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .fish-card p { margin-top: 3px; color: var(--soft); font-size: 9px; line-height: 1.45; white-space: pre-line; }
 .fish-card__rarity { color: var(--gold) !important; }
 .fish-card[data-rarity="稀有"] { border-color: rgba(183,168,255,.38); }
 .fish-card[data-rarity="传说"] { border-color: rgba(255,212,122,.65); box-shadow: inset 0 0 28px rgba(255,212,122,.07); }
+.locations { position: fixed; z-index: 32; inset: 0; overflow: auto; padding: max(24px, env(safe-area-inset-top)) max(16px, calc((100vw - 760px) / 2 + 16px)) max(30px, env(safe-area-inset-bottom)); background: radial-gradient(circle at 50% 0, rgba(48,75,117,.98), rgba(12,19,39,.99) 54%); }
+.locations__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.locations__head span { color: var(--gold); font-size: 9px; letter-spacing: .14em; }
+.locations__head h2 { margin-top: 3px; font-size: 27px; }
+.locations__head p { margin-top: 3px; color: var(--soft); font-size: 12px; }
+.locations__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.location-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: rgba(16,29,54,.9); box-shadow: 0 18px 45px rgba(0,0,0,.22); }
+.location-card.is-current { border-color: rgba(255,212,122,.58); box-shadow: 0 18px 45px rgba(0,0,0,.22), inset 0 0 30px rgba(255,212,122,.06); }
+.location-card.is-locked { opacity: .68; }
+.location-card__art { position: relative; height: 165px; display: grid; place-items: center; overflow: hidden; }
+.location-card__art::before, .location-card__art::after { content: ""; position: absolute; inset: auto -10% 0; height: 48%; border-radius: 50% 50% 0 0; }
+.location-card__art::after { bottom: -18%; opacity: .55; transform: scaleX(1.25); }
+.location-card__art span { position: relative; z-index: 2; font-size: 56px; filter: drop-shadow(0 10px 16px rgba(0,0,0,.35)); }
+.location-card__art--lake { background: linear-gradient(180deg, #182a50, #173f60); }
+.location-card__art--lake::before { background: rgba(39,113,143,.68); }
+.location-card__art--lake::after { background: rgba(12,53,84,.9); }
+.location-card__art--river { background: linear-gradient(180deg, #375b67, #29556c); }
+.location-card__art--river::before { background: rgba(93,176,173,.7); transform: rotate(-3deg); }
+.location-card__art--river::after { background: rgba(29,94,109,.92); transform: scaleX(1.3) rotate(4deg); }
+.location-card__copy { padding: 16px; }
+.location-card__status { color: var(--gold); font-size: 9px; font-weight: 700; letter-spacing: .1em; }
+.location-card h3 { margin-top: 4px; font-size: 22px; }
+.location-card p { margin-top: 5px; color: var(--soft); font-size: 11px; line-height: 1.5; }
+.location-card__progress { min-height: 17px; color: var(--mint) !important; }
+.location-card__button { width: 100%; margin-top: 13px; padding: 11px; color: #17213b; font-weight: 700; border: 0; border-radius: 12px; background: var(--gold); cursor: pointer; }
+.location-card__button:disabled { color: var(--soft); background: rgba(255,255,255,.08); cursor: not-allowed; }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 @media (max-height: 720px) { .app { gap: 8px; padding-top: 8px; } .stage { height: 52svh; min-height: 330px; } .catch-game { top: 52px; } .hud > div { padding-block: 6px; } .action-btn { min-height: 48px; } }
 @media (max-width: 420px) { .app { padding-inline: 11px; } .stage { min-height: 365px; border-radius: 20px; } .catch-game { right: 11px; width: 44%; } .hud { gap: 4px; } .hud > div { padding-inline: 3px; } .hud strong { font-size: 12px; } }
 @media (max-width: 520px) { .catalog__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .locations__grid { grid-template-columns: 1fr; } .location-card { display: grid; grid-template-columns: 38% 62%; } .location-card__art { height: auto; min-height: 175px; } .location-card__art span { font-size: 46px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
