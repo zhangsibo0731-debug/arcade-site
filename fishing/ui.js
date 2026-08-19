@@ -12,7 +12,7 @@
 
     function setFishSprite(element, item) {
       if (!element || !item) return;
-      element.classList.remove('catchable-art');
+      element.classList.remove('catchable-art', 'mystery-silhouette');
       element.classList.add('fish-sprite');
       element.textContent = '';
       const column = item.sprite % 4;
@@ -106,10 +106,19 @@
     }
 
     function setCatchableArt(element, item) {
-      element.classList.remove('fish-sprite');
+      element.classList.remove('fish-sprite', 'mystery-silhouette');
       element.classList.add('catchable-art');
       element.style.backgroundImage = '';
       element.textContent = item.icon;
+    }
+
+    function setMysteryArt(element) {
+      if (!element) return;
+      element.classList.remove('fish-sprite', 'catchable-art');
+      element.classList.add('mystery-silhouette');
+      element.style.backgroundImage = '';
+      element.style.backgroundSize = '';
+      element.textContent = '';
     }
 
     function renderItems(items, records) {
@@ -196,7 +205,7 @@
       elements.buyBaitBtn.textContent = config.packPrice + ' 🪙';
     }
 
-    return Object.freeze({ setFishSprite, setCatchableArt, renderCatalog, renderItems, renderTackle, renderEconomyBar, renderBasket, renderHud, renderMuted, renderEnvironment, renderLocations });
+    return Object.freeze({ setFishSprite, setCatchableArt, setMysteryArt, renderCatalog, renderItems, renderTackle, renderEconomyBar, renderBasket, renderHud, renderMuted, renderEnvironment, renderLocations });
   }
 
   global.FishingUI = Object.freeze({ formatWeight, create });

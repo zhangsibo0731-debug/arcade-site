@@ -102,6 +102,7 @@
   });
   const setFishSprite = ui.setFishSprite;
   const setCatchableArt = ui.setCatchableArt;
+  const setMysteryArt = ui.setMysteryArt;
 
   const {
     TOTAL: TOTAL_KEY,
@@ -591,7 +592,7 @@
   function setMysteryMarker() {
     const marker = fishMarker.querySelector('span');
     if (catchable && catchable.type !== 'fish') setCatchableArt(marker, catchable);
-    else setFishSprite(marker, currentFishPool()[0]);
+    else setMysteryArt(marker);
   }
 
   function hookFish() {
@@ -1162,7 +1163,7 @@
   refreshLocationUnlocks();
   updateLocationPresentation();
   updateEnvironment();
-  setFishSprite(fishMarker.querySelector('span'), currentFishPool()[0]);
+  setMysteryArt(fishMarker.querySelector('span'));
   updateHud();
   renderEconomyBar();
   resize();
