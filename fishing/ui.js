@@ -122,9 +122,8 @@
     }
 
     function renderItems(items, records) {
-      const treasures = items.filter((item) => item.type === 'treasure');
-      const foundTreasures = treasures.filter((item) => records[item.id]).length;
-      elements.itemsProgress.textContent = '已发现 ' + foundTreasures + ' / ' + treasures.length + ' 件探索物品';
+      const foundItems = items.filter((item) => records[item.id]).length;
+      elements.itemsProgress.textContent = '已发现 ' + foundItems + ' / ' + items.length + ' 件水边收藏';
       elements.itemsGrid.innerHTML = '';
       items.forEach((item) => {
         const count = Number(records[item.id]) || 0;

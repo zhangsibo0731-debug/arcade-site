@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v45';
+const CACHE = 'arcade-v46';
 const ASSETS = [
   './',
   './index.html',
@@ -40,7 +40,7 @@ const ASSETS = [
   './fishing/locations.js?v=1',
   './fishing/storage.js?v=1',
   './fishing/audio.js?v=1',
-  './fishing/ui.js?v=3',
+  './fishing/ui.js?v=4',
   './fishing/game.js?v=29',
   './fishing/assets/moonlake-fish-common-v1.png',
   './fishing/assets/moonlake-fish-uncommon-v1.png',
