@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCatchables || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAudio || !window.FishingUI) {
+  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAudio || !window.FishingUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
@@ -10,6 +10,7 @@
   const ALL_FISH = FISH.concat(RIVER_FISH);
   const FISH_BY_ID = new Map(ALL_FISH.map((item) => [item.id, item]));
   const { ITEMS, ITEM_BY_ID, choose: chooseItem } = window.FishingCatchables;
+  const economy = window.FishingEconomy;
   const { ENVIRONMENTS, environmentForStep, chooseFish: chooseFishForEnvironment } = window.FishingEnvironments;
   const { LOCATIONS, resolveUnlocked, progressFor } = window.FishingLocations;
   const storage = window.FishingStorage;
@@ -40,6 +41,19 @@
   const itemsBtn = $('itemsBtn');
   const itemsPanel = $('itemsPanel');
   const itemsClose = $('itemsClose');
+  const tackleBtn = $('tackleBtn');
+  const tacklePanel = $('tacklePanel');
+  const tackleClose = $('tackleClose');
+  const premiumBaitCount = $('premiumBaitCount');
+  const basketBtn = $('basketBtn');
+  const basketPanel = $('basketPanel');
+  const basketClose = $('basketClose');
+  const basketList = $('basketList');
+  const basketSummary = $('basketSummary');
+  const sellAllBtn = $('sellAllBtn');
+  const buyBaitBtn = $('buyBaitBtn');
+  const coinCount = $('coinCount');
+  const bagCount = $('bagCount');
   const locationBtn = $('locationBtn');
   const locationsPanel = $('locationsPanel');
   const locationsClose = $('locationsClose');
@@ -76,6 +90,14 @@
       locationsGrid,
       itemsGrid: $('itemsGrid'),
       itemsProgress: $('itemsProgress'),
+      tacklePanel,
+      premiumBaitCount,
+      coinCount,
+      bagCount,
+      basketList,
+      basketSummary,
+      sellAllBtn,
+      buyBaitBtn,
     },
   });
   const setFishSprite = ui.setFishSprite;
@@ -92,6 +114,9 @@
     CURRENT_LOCATION: CURRENT_LOCATION_KEY,
     UNLOCKED_LOCATIONS: UNLOCKED_LOCATIONS_KEY,
     ITEM_COLLECTION: ITEM_COLLECTION_KEY,
+    TACKLE: TACKLE_KEY,
+    COINS: COINS_KEY,
+    FISH_BAG: FISH_BAG_KEY,
   } = storage.KEYS;
   let mode = 'menu';
   let beforePause = 'ready';
@@ -129,6 +154,9 @@
   let pendingResume = null;
   let collection = loadCollection();
   let itemCollection = storage.readObject(ITEM_COLLECTION_KEY, {});
+  let tackle = economy.normalizeTackle(storage.readObject(TACKLE_KEY, {}));
+  let coins = economy.normalizeCoins(storage.readInt(COINS_KEY));
+  let fishBag = economy.normalizeBag(storage.readObject(FISH_BAG_KEY, []), FISH_BY_ID);
   let unlockedLocations = resolveUnlocked(collection, storage.readObject(UNLOCKED_LOCATIONS_KEY, ['lake']));
   let currentLocationId = storage.readString(CURRENT_LOCATION_KEY, 'lake');
   if (!LOCATIONS[currentLocationId] || !unlockedLocations.includes(currentLocationId)) currentLocationId = 'lake';
@@ -197,6 +225,8 @@
     if (['casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
     locationsPanel.hidden = true;
     itemsPanel.hidden = true;
+    tacklePanel.hidden = true;
+    basketPanel.hidden = true;
     renderCatalog();
     catalog.hidden = false;
   }
@@ -209,12 +239,90 @@
     if (['ready', 'casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
     locationsPanel.hidden = true;
     catalog.hidden = true;
+    tacklePanel.hidden = true;
+    basketPanel.hidden = true;
     ui.renderItems(ITEMS, itemCollection);
     itemsPanel.hidden = false;
   }
 
   function closeItems() {
     itemsPanel.hidden = true;
+  }
+
+  function saveTackle() {
+    storage.writeObject(TACKLE_KEY, tackle);
+  }
+
+  function renderTackle() {
+    ui.renderTackle(tackle);
+  }
+
+  function openTackle() {
+    if (['casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
+    catalog.hidden = true;
+    itemsPanel.hidden = true;
+    locationsPanel.hidden = true;
+    basketPanel.hidden = true;
+    renderTackle();
+    tacklePanel.hidden = false;
+  }
+
+  function closeTackle() {
+    tacklePanel.hidden = true;
+  }
+
+  function saveEconomy() {
+    storage.writeInt(COINS_KEY, coins);
+    storage.writeObject(FISH_BAG_KEY, fishBag);
+  }
+
+  function renderEconomyBar() {
+    ui.renderEconomyBar({ coins, bagCount: fishBag.length, capacity: economy.BAG_CAPACITY });
+  }
+
+  function renderBasket() {
+    const total = economy.bagValue(fishBag);
+    ui.renderBasket(fishBag, coins, {
+      total,
+      capacity: economy.BAG_CAPACITY,
+      packPrice: economy.premiumBaitPack.price,
+    });
+  }
+
+  function openBasket() {
+    if (['casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
+    catalog.hidden = true;
+    itemsPanel.hidden = true;
+    locationsPanel.hidden = true;
+    tacklePanel.hidden = true;
+    renderBasket();
+    basketPanel.hidden = false;
+  }
+
+  function closeBasket() {
+    basketPanel.hidden = true;
+  }
+
+  function sellAllFish() {
+    if (!fishBag.length) return;
+    coins = Math.min(economy.MAX_COINS, coins + economy.bagValue(fishBag));
+    fishBag = [];
+    saveEconomy();
+    renderEconomyBar();
+    renderBasket();
+    play('success');
+  }
+
+  function buyPremiumBait() {
+    const pack = economy.premiumBaitPack;
+    if (coins < pack.price) return;
+    coins -= pack.price;
+    tackle.premiumBait = Math.min(economy.MAX_BAIT, tackle.premiumBait + pack.amount);
+    saveTackle();
+    saveEconomy();
+    renderEconomyBar();
+    renderBasket();
+    play('success');
   }
 
   function locationViewModels() {
@@ -242,6 +350,8 @@
     if (['ready', 'casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
     catalog.hidden = true;
     itemsPanel.hidden = true;
+    tacklePanel.hidden = true;
+    basketPanel.hidden = true;
     ui.renderLocations(locationViewModels());
     locationsPanel.hidden = false;
   }
@@ -370,10 +480,6 @@
     return '小型';
   }
 
-  function streakBonus() {
-    return Math.min(10, streak * 2);
-  }
-
   function setMode(next) {
     mode = next;
     held = false;
@@ -389,7 +495,8 @@
 
     if (next === 'ready') {
       actionBtn.textContent = '按住蓄力';
-      actionHint.textContent = streak ? '连续上鱼 ×' + streak + ' · 稀有鱼概率 +' + streakBonus() + '%' : '按住按钮蓄力，松开抛竿';
+      const baitLabel = tackle.selectedBait === 'premium' ? '🦐 高级鱼饵 × ' + tackle.premiumBait : '🪱 普通鱼饵';
+      actionHint.textContent = streak ? '连续上鱼 ×' + streak + ' · ' + baitLabel : baitLabel + ' · 按住蓄力，松开抛竿';
     } else if (next === 'casting') {
       actionBtn.textContent = '松开抛竿';
       actionHint.textContent = '越接近右端，抛得越远';
@@ -431,6 +538,11 @@
 
   function beginCast() {
     if (mode !== 'ready') return;
+    if (fishBag.length >= economy.BAG_CAPACITY) {
+      actionHint.textContent = '鱼篓已满，请先出售一些鱼';
+      openBasket();
+      return;
+    }
     power = 0;
     powerDir = 1;
     held = true;
@@ -465,13 +577,14 @@
     vibrate([20, 35, 35]);
   }
 
-  function chooseFish() {
+  function chooseFish(usingPremiumBait) {
     return chooseFishForEnvironment({
       fish: currentFishPool(),
       rarityRank: RARITY_RANK,
       environment,
       castDistance,
       streak,
+      premiumBait: usingPremiumBait,
     });
   }
 
@@ -483,12 +596,19 @@
 
   function hookFish() {
     if (mode !== 'bite') return;
-    const foundItem = Math.random() < .12 ? chooseItem(currentLocationId) : null;
+    const usingPremiumBait = tackle.selectedBait === 'premium' && tackle.premiumBait > 0;
+    const itemChance = tackle.magnet ? .2 : .12;
+    const foundItem = Math.random() < itemChance ? chooseItem(currentLocationId, { magnet: tackle.magnet }) : null;
     if (foundItem) {
       catchable = foundItem;
       fish = { id: foundItem.id, behavior: 'calm', difficulty: .58 };
     } else {
-      fish = chooseFish();
+      if (usingPremiumBait) {
+        tackle.premiumBait--;
+        if (tackle.premiumBait <= 0) tackle.selectedBait = 'normal';
+        saveTackle();
+      }
+      fish = chooseFish(usingPremiumBait);
       catchable = Object.assign({ type: 'fish' }, fish);
     }
     setMysteryMarker();
@@ -562,7 +682,8 @@
     zoneV *= Math.pow(.2, dt);
     zoneV = Math.max(-.88, Math.min(.84, zoneV));
     zoneY += zoneV * dt;
-    const zoneHalf = catchable && catchable.type !== 'fish' ? .22 : (fish.id === 'crucian' && totalCaught === 0 ? .19 : .16);
+    const baseZoneHalf = catchable && catchable.type !== 'fish' ? .22 : (fish.id === 'crucian' && totalCaught === 0 ? .19 : .16);
+    const zoneHalf = baseZoneHalf * (tackle.stableHook ? 1.1 : 1);
     if (zoneY < zoneHalf) { zoneY = zoneHalf; zoneV = Math.abs(zoneV) * .22; }
     if (zoneY > 1 - zoneHalf) { zoneY = 1 - zoneHalf; zoneV = -Math.abs(zoneV) * .28; }
     const inside = Math.abs(fishY - zoneY) <= zoneHalf;
@@ -600,12 +721,16 @@
     const caughtEnvironment = environment.label.replace(/^[^ ]+ /, '');
     const isRecord = weight > bestWeight;
     const species = recordCatch(fish, weight);
+    const value = economy.fishValue(fish, weight);
+    fishBag.push({ id: fish.id, weight: weight, value: value });
+    saveEconomy();
     totalCaught++;
     streak++;
     bestStreak = Math.max(bestStreak, streak);
     bestWeight = Math.max(bestWeight, weight);
     saveStats();
     updateHud();
+    renderEconomyBar();
     caughtFlash = 1;
     const badges = [];
     if (species.first) badges.push('✨ 新物种发现！');
@@ -613,7 +738,7 @@
     if (isRecord) badges.push(currentLocationId === 'river' ? '本溪最大重量！' : '本湖最大重量！');
     if (species.newlyUnlocked.includes('river')) badges.push('🏞️ 发现新钓场：清溪！');
     const title = fish.rarity === '传说' ? (currentLocationId === 'river' ? '溪谷传说！' : '月光奇迹！') : '钓到了！';
-    const text = fish.name + ' · ' + fish.rarity + '\n' + formatWeight(weight) + ' · ' + grade + '\n' + caughtEnvironment + (badges.length ? '\n' + badges.join(' · ') : '');
+    const text = fish.name + ' · ' + fish.rarity + '\n' + formatWeight(weight) + ' · ' + grade + ' · 估价 ' + value + ' 🪙\n' + caughtEnvironment + (badges.length ? '\n' + badges.join(' · ') : '');
     clearState();
     advanceEnvironment();
     beginReveal({ fish: fish, title: title, text: text });
@@ -623,9 +748,13 @@
     const first = !itemCollection[item.id];
     itemCollection[item.id] = (Number(itemCollection[item.id]) || 0) + 1;
     storage.writeObject(ITEM_COLLECTION_KEY, itemCollection);
+    if (item.type === 'treasure') {
+      tackle.premiumBait = Math.min(economy.MAX_BAIT, tackle.premiumBait + 1);
+      saveTackle();
+    }
     caughtFlash = 1;
     const title = item.type === 'treasure' ? '发现了宝物！' : '捞到了……';
-    const text = item.name + ' · ' + item.rarity + '\n' + item.line + (first && item.type === 'treasure' ? '\n✨ 已登记到水边收藏' : '');
+    const text = item.name + ' · ' + item.rarity + '\n' + item.line + (first && item.type === 'treasure' ? '\n✨ 已登记到水边收藏' : '') + (item.type === 'treasure' ? '\n🦐 获得高级鱼饵 × 1' : '');
     clearState();
     advanceEnvironment();
     beginReveal({ item: item, title: title, text: text });
@@ -761,7 +890,8 @@
   function renderCatchGame() {
     if (mode !== 'fishing' && mode !== 'finishing') return;
     const height = catchTrack.clientHeight;
-    const zonePx = Math.max(72, Math.min(110, height * (catchable && catchable.type !== 'fish' ? .44 : (fish.id === 'crucian' && totalCaught === 0 ? .38 : .32))));
+    const baseZoneRatio = catchable && catchable.type !== 'fish' ? .44 : (fish.id === 'crucian' && totalCaught === 0 ? .38 : .32);
+    const zonePx = Math.max(72, Math.min(118, height * baseZoneRatio * (tackle.stableHook ? 1.1 : 1)));
     catchZone.style.height = zonePx + 'px';
     catchZone.style.bottom = 'calc(' + Math.round(zoneY * 100) + '% - ' + Math.round(zonePx / 2) + 'px)';
     fishMarker.style.bottom = 'calc(' + Math.round(fishY * 100) + '% - 17px)';
@@ -968,6 +1098,27 @@
   catalogClose.addEventListener('click', closeCatalog);
   itemsBtn.addEventListener('click', openItems);
   itemsClose.addEventListener('click', closeItems);
+  tackleBtn.addEventListener('click', openTackle);
+  tackleClose.addEventListener('click', closeTackle);
+  basketBtn.addEventListener('click', openBasket);
+  basketClose.addEventListener('click', closeBasket);
+  sellAllBtn.addEventListener('click', sellAllFish);
+  buyBaitBtn.addEventListener('click', buyPremiumBait);
+  tacklePanel.addEventListener('click', (event) => {
+    const bait = event.target.closest('[data-bait]');
+    if (bait && !bait.disabled) {
+      tackle.selectedBait = bait.dataset.bait;
+      saveTackle();
+      renderTackle();
+      return;
+    }
+    const gear = event.target.closest('[data-gear]');
+    if (gear) {
+      tackle[gear.dataset.gear] = !tackle[gear.dataset.gear];
+      saveTackle();
+      renderTackle();
+    }
+  });
   pauseBtn.addEventListener('click', showPause);
   soundBtn.addEventListener('click', () => {
     const muted = audio.toggleMuted();
@@ -1006,11 +1157,14 @@
   window.addEventListener('resize', resize);
 
   applyMuted();
+  saveTackle();
+  saveEconomy();
   refreshLocationUnlocks();
   updateLocationPresentation();
   updateEnvironment();
   setFishSprite(fishMarker.querySelector('span'), currentFishPool()[0]);
   updateHud();
+  renderEconomyBar();
   resize();
   const savedState = loadState();
   if (savedState) showResumePrompt(savedState);
@@ -1018,7 +1172,7 @@
   requestAnimationFrame(frame);
 
   window.__fishingTest = {
-    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: catchable && catchable.type === 'fish' ? fish.id : null, catchable: catchable && catchable.id, catchableType: catchable && catchable.type, fishY, zoneY, zoneV, catchProgress, totalCaught, bestWeight, streak, bestStreak, muted: audio.isMuted(), currentLocationId, unlockedLocations: unlockedLocations.slice(), environmentStep, environment: environment.time + '-' + environment.weather }),
+    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: catchable && catchable.type === 'fish' ? fish.id : null, catchable: catchable && catchable.id, catchableType: catchable && catchable.type, fishY, zoneY, zoneV, catchProgress, totalCaught, bestWeight, streak, bestStreak, muted: audio.isMuted(), tackle: Object.assign({}, tackle), coins, fishBag: fishBag.slice(), currentLocationId, unlockedLocations: unlockedLocations.slice(), environmentStep, environment: environment.time + '-' + environment.weather }),
     getLocations: () => Object.values(LOCATIONS).map((location) => ({
       id: location.id,
       name: location.name,
@@ -1027,6 +1181,10 @@
     })),
     openLocations,
     openItems,
+    openTackle,
+    openBasket,
+    sellAllFish,
+    buyPremiumBait,
     selectLocation,
     start: startSession,
     showCast: (progress) => {

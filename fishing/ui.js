@@ -8,6 +8,7 @@
   function create(options) {
     const elements = options.elements;
     const fish = options.fish;
+    const fishById = new Map(fish.map((item) => [item.id, item]));
 
     function setFishSprite(element, item) {
       if (!element || !item) return;
@@ -137,7 +138,65 @@
       });
     }
 
-    return Object.freeze({ setFishSprite, setCatchableArt, renderCatalog, renderItems, renderHud, renderMuted, renderEnvironment, renderLocations });
+    function renderTackle(tackle) {
+      elements.tacklePanel.querySelectorAll('[data-bait]').forEach((button) => {
+        const active = button.dataset.bait === tackle.selectedBait;
+        button.classList.toggle('is-active', active);
+        button.disabled = button.dataset.bait === 'premium' && tackle.premiumBait <= 0;
+        if (button.dataset.bait === 'normal') button.querySelector('em').textContent = active ? '使用中' : '选择';
+      });
+      const premium = elements.tacklePanel.querySelector('[data-bait="premium"]');
+      premium.classList.toggle('is-active', tackle.selectedBait === 'premium');
+      elements.premiumBaitCount.textContent = tackle.selectedBait === 'premium' ? '使用中 · × ' + tackle.premiumBait : '× ' + tackle.premiumBait;
+      elements.tacklePanel.querySelectorAll('[data-gear]').forEach((button) => {
+        const active = !!tackle[button.dataset.gear];
+        button.classList.toggle('is-active', active);
+        button.querySelector('em').textContent = active ? '已开启' : '已关闭';
+      });
+    }
+
+    function renderEconomyBar(stats) {
+      elements.coinCount.textContent = String(stats.coins);
+      elements.bagCount.textContent = stats.bagCount + ' / ' + stats.capacity;
+    }
+
+    function renderBasket(bag, coins, config) {
+      const total = config.total;
+      elements.basketSummary.textContent = bag.length ? bag.length + ' / ' + config.capacity + ' 条鱼 · 预计价值 ' + total + ' 🪙' : '鱼篓还是空的 · 容量 ' + config.capacity;
+      elements.basketList.innerHTML = '';
+      if (!bag.length) {
+        const empty = document.createElement('p');
+        empty.className = 'basket-empty';
+        empty.textContent = '下一条收获会安静地躺在这里。';
+        elements.basketList.appendChild(empty);
+      } else {
+        bag.slice().reverse().forEach((entry) => {
+          const item = fishById.get(entry.id);
+          if (!item) return;
+          const row = document.createElement('article');
+          row.className = 'basket-row';
+          const art = document.createElement('div');
+          art.className = 'basket-row__art fish-sprite';
+          setFishSprite(art, item);
+          const copy = document.createElement('span');
+          const name = document.createElement('b');
+          name.textContent = item.name;
+          const detail = document.createElement('small');
+          detail.textContent = formatWeight(entry.weight) + ' · ' + item.rarity;
+          copy.append(name, detail);
+          const value = document.createElement('em');
+          value.textContent = entry.value + ' 🪙';
+          row.append(art, copy, value);
+          elements.basketList.appendChild(row);
+        });
+      }
+      elements.sellAllBtn.disabled = !bag.length;
+      elements.sellAllBtn.textContent = bag.length ? '全部出售 · +' + total + ' 🪙' : '全部出售';
+      elements.buyBaitBtn.disabled = coins < config.packPrice;
+      elements.buyBaitBtn.textContent = config.packPrice + ' 🪙';
+    }
+
+    return Object.freeze({ setFishSprite, setCatchableArt, renderCatalog, renderItems, renderTackle, renderEconomyBar, renderBasket, renderHud, renderMuted, renderEnvironment, renderLocations });
   }
 
   global.FishingUI = Object.freeze({ formatWeight, create });

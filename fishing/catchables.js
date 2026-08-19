@@ -12,8 +12,8 @@
 
   const ITEM_BY_ID = new Map(ITEMS.map((item) => [item.id, item]));
 
-  function choose(locationId) {
-    const treasure = Math.random() < .24;
+  function choose(locationId, options) {
+    const treasure = Math.random() < (options && options.magnet ? .34 : .24);
     const pool = ITEMS.filter((item) => item.type === (treasure ? 'treasure' : 'junk') && item.locations.includes(locationId));
     return pool[Math.floor(Math.random() * pool.length)] || null;
   }

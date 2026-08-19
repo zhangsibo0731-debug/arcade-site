@@ -7,7 +7,7 @@
 <title>月光垂钓 · 湖畔钓鱼</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=12" />
+<link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
 <main class="app">
@@ -29,6 +29,7 @@
         <button class="icon-btn" id="locationBtn" type="button" aria-label="选择钓场" title="选择钓场">地</button>
         <button class="icon-btn" id="catalogBtn" type="button" aria-label="鱼类图鉴" title="鱼类图鉴">册</button>
         <button class="icon-btn" id="itemsBtn" type="button" aria-label="物品收藏" title="物品收藏">藏</button>
+        <button class="icon-btn" id="tackleBtn" type="button" aria-label="鱼饵与道具" title="鱼饵与道具">具</button>
         <button class="icon-btn" id="soundBtn" type="button" aria-label="关闭声音">
           <svg id="soundOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a8.5 8.5 0 0 1 0 12"/></svg>
           <svg id="soundOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/></svg>
@@ -82,6 +83,7 @@
 
     <div class="action-area">
       <div class="power" id="powerWrap" hidden><i id="powerFill"></i></div>
+      <div class="economy-bar"><span>🪙 <b id="coinCount">0</b></span><button id="basketBtn" type="button">🎒 鱼篓 <b id="bagCount">0</b></button></div>
       <button class="action-btn" id="actionBtn" type="button">按住蓄力</button>
       <p id="actionHint">按住按钮蓄力，松开抛竿</p>
     </div>
@@ -110,16 +112,40 @@
     </div>
     <div class="catalog__grid" id="itemsGrid"></div>
   </section>
+
+  <section class="tackle" id="tacklePanel" aria-label="鱼饵与道具" hidden>
+    <div class="tackle__sheet">
+      <div class="tackle__head"><div><span>LIGHT TACKLE</span><h2>出钓准备</h2><p>选择下一竿使用的鱼饵与辅助道具</p></div><button class="icon-btn" id="tackleClose" type="button" aria-label="关闭出钓准备">×</button></div>
+      <div class="tackle__group"><strong>鱼饵</strong>
+        <button class="tackle-option" data-bait="normal" type="button"><i>🪱</i><span><b>普通鱼饵</b><small>稳定吸引常见鱼类 · 无限</small></span><em>使用中</em></button>
+        <button class="tackle-option" data-bait="premium" type="button"><i>🦐</i><span><b>高级鱼饵</b><small>小幅提高少见及稀有鱼权重</small></span><em id="premiumBaitCount">× 5</em></button>
+      </div>
+      <div class="tackle__group"><strong>辅助道具</strong>
+        <button class="tackle-option" data-gear="stableHook" type="button"><i>🪝</i><span><b>稳定鱼钩</b><small>捕获区域扩大 10%</small></span><em>已开启</em></button>
+        <button class="tackle-option" data-gear="magnet" type="button"><i>🧲</i><span><b>旧磁铁</b><small>更容易遇到水底物品与宝物</small></span><em>已开启</em></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="tackle" id="basketPanel" aria-label="鱼篓与湖边小店" hidden>
+    <div class="tackle__sheet basket-sheet">
+      <div class="tackle__head"><div><span>CREEL &amp; LAKESIDE SHOP</span><h2>今日鱼篓</h2><p id="basketSummary">鱼篓还是空的</p></div><button class="icon-btn" id="basketClose" type="button" aria-label="关闭鱼篓">×</button></div>
+      <div class="basket-list" id="basketList"></div>
+      <button class="primary basket-sell" id="sellAllBtn" type="button">全部出售</button>
+      <div class="shop-card"><i>🦐</i><span><b>高级鱼饵 × 3</b><small>提高少见及稀有鱼权重</small></span><button id="buyBaitBtn" type="button">90 🪙</button></div>
+    </div>
+  </section>
 </main>
 <script src="../input-guard.js?v=6"></script>
 <script src="fish-data.js?v=1"></script>
 <script src="river-fish-data.js?v=1"></script>
 <script src="catchables.js?v=1"></script>
+<script src="economy.js?v=1"></script>
 <script src="environments.js?v=1"></script>
 <script src="locations.js?v=1"></script>
 <script src="storage.js?v=1"></script>
 <script src="audio.js?v=1"></script>
-<script src="ui.js?v=1"></script>
-<script src="game.js?v=25"></script>
+<script src="ui.js?v=2"></script>
+<script src="game.js?v=28"></script>
 </body>
 </html>

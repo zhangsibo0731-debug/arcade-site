@@ -12,6 +12,9 @@
     CURRENT_LOCATION: 'fishing_current_location_v1',
     UNLOCKED_LOCATIONS: 'fishing_unlocked_locations_v1',
     ITEM_COLLECTION: 'fishing_item_collection_v1',
+    TACKLE: 'fishing_tackle_v1',
+    COINS: 'fishing_coins_v1',
+    FISH_BAG: 'fishing_fish_bag_v1',
   });
 
   function readInt(key) {
