@@ -13,6 +13,10 @@
   const modalNew = $('modalNew');
   const modalBack = $('modalBack');
   const resultFish = $('resultFish');
+  const catchReveal = $('catchReveal');
+  const revealFish = $('revealFish');
+  const revealTitle = $('revealTitle');
+  const revealRarity = $('revealRarity');
   const catalog = $('catalog');
   const catalogBtn = $('catalogBtn');
   const catalogClose = $('catalogClose');
@@ -101,6 +105,8 @@
   let ripple = 0;
   let caughtFlash = 0;
   let finishLeft = 0;
+  let revealLeft = 0;
+  let pendingCatchResult = null;
   let motionTestHold = false;
   let saveAcc = 0;
   let pendingResume = null;
@@ -246,8 +252,8 @@
     overlay.hidden = false;
     modalEyebrow.textContent = '湖面还记得这一竿';
     modalTitle.textContent = '继续上次垂钓？';
-    const fishName = saved.fish && FISH.find((item) => item.id === saved.fish);
-    modalText.textContent = fishName ? fishName.name + ' · 捕获进度 ' + Math.round((saved.catchProgress || 0) * 100) + '%' : '鱼竿和浮标都还在原处';
+    const hasHookedFish = saved.fish && FISH.some((item) => item.id === saved.fish);
+    modalText.textContent = hasHookedFish ? '神秘鱼影 · 捕获进度 ' + Math.round((saved.catchProgress || 0) * 100) + '%' : '鱼竿和浮标都还在原处';
     modalBtn.textContent = '继续上次';
     modalNew.textContent = '新钓一局';
     modalNew.hidden = false;
@@ -295,6 +301,19 @@
     return grams >= 1000 ? (grams / 1000).toFixed(2) + ' kg' : grams + ' g';
   }
 
+  function sizeGrade(item, weight) {
+    const ratio = (weight - item.min) / Math.max(1, item.max - item.min);
+    if (ratio >= .95) return '👑 纪录级';
+    if (ratio >= .82) return '巨型';
+    if (ratio >= .6) return '大型';
+    if (ratio >= .25) return '普通';
+    return '小型';
+  }
+
+  function streakBonus() {
+    return Math.min(10, streak * 2);
+  }
+
   function setMode(next) {
     mode = next;
     held = false;
@@ -302,6 +321,7 @@
     overlay.hidden = true;
     notice.hidden = true;
     resultFish.hidden = true;
+    catchReveal.hidden = true;
     catchGame.hidden = next !== 'fishing' && next !== 'finishing';
     powerWrap.hidden = next !== 'casting';
     pauseBtn.hidden = !['ready', 'casting', 'waiting', 'bite', 'fishing'].includes(next);
@@ -309,7 +329,7 @@
 
     if (next === 'ready') {
       actionBtn.textContent = '按住蓄力';
-      actionHint.textContent = '按住按钮蓄力，松开抛竿';
+      actionHint.textContent = streak ? '连续上鱼 ×' + streak + ' · 稀有鱼概率 +' + streakBonus() + '%' : '按住按钮蓄力，松开抛竿';
     } else if (next === 'casting') {
       actionBtn.textContent = '松开抛竿';
       actionHint.textContent = '越接近右端，抛得越远';
@@ -362,7 +382,7 @@
     actionBtn.classList.remove('is-held');
     castDistance = .3 + power * .62;
     castTime = .72;
-    waitLeft = 1.15 + Math.random() * 1.75;
+    waitLeft = (1.15 + Math.random() * 1.75) * (1 - Math.min(.15, streak * .03));
     ripple = 0;
     setMode('waiting');
     saveState();
@@ -392,7 +412,8 @@
       if (item.id === 'icefin') environmentBoost = 2.2;
       if (item.id === 'starlight' && environment.weather === 'clear') environmentBoost = 1.5;
       if (item.id === 'moon' && environment.weather === 'rain') environmentBoost = 1.35;
-      return item.weight * environmentBoost * (1 + RARITY_RANK[item.rarity] * rareBoost);
+      const streakFactor = RARITY_RANK[item.rarity] > 0 ? 1 + streakBonus() / 100 : 1;
+      return item.weight * environmentBoost * streakFactor * (1 + RARITY_RANK[item.rarity] * rareBoost);
     });
     let roll = Math.random() * weighted.reduce((sum, value) => sum + value, 0);
     for (let i = 0; i < FISH.length; i++) {
@@ -440,26 +461,30 @@
     if (fishMoveLeft <= 0) {
       if (fish.behavior === 'calm') {
         fishTarget = .16 + Math.random() * .68;
-        fishMoveLeft = .75 + Math.random() * .75;
+        fishMoveLeft = (fish.id === 'carp' ? 1.05 : .82) + Math.random() * .72;
       } else if (fish.behavior === 'active') {
-        fishTarget = .08 + Math.random() * .84;
-        fishMoveLeft = .32 + Math.random() * .48;
+        if (fish.id === 'eel') fishTarget = fishY > .5 ? .12 + Math.random() * .24 : .64 + Math.random() * .24;
+        else fishTarget = .08 + Math.random() * .84;
+        fishMoveLeft = fish.id === 'eel' ? .2 + Math.random() * .24 : .32 + Math.random() * .48;
       } else if (!dashPending) {
-        fishWarning = .5;
-        fishMoveLeft = .5;
-        fishTarget = fishY;
+        fishWarning = fish.id === 'moon' ? .68 : fish.id === 'icefin' ? .58 : .48;
+        fishMoveLeft = fishWarning;
+        if (fish.id === 'starlight') fishTarget = Math.max(.1, Math.min(.9, fishY + (Math.random() < .5 ? -.12 : .12)));
+        else if (fish.id === 'moon') fishTarget = Math.max(.1, Math.min(.9, fishY + (Math.random() < .5 ? -.08 : .08)));
+        else fishTarget = fishY;
         dashPending = true;
       } else {
-        if (dashCount === 0) fishTarget = fishY > .5 ? .18 + Math.random() * .14 : .68 + Math.random() * .14;
+        if (fish.id === 'moon') fishTarget = fishY > .5 ? .05 + Math.random() * .16 : .79 + Math.random() * .16;
+        else if (dashCount === 0) fishTarget = fishY > .5 ? .18 + Math.random() * .14 : .68 + Math.random() * .14;
         else fishTarget = fishY > .5 ? .08 + Math.random() * .18 : .74 + Math.random() * .2;
-        fishMoveLeft = .48 + Math.random() * .28;
+        fishMoveLeft = fish.id === 'icefin' ? .55 + Math.random() * .18 : .44 + Math.random() * .26;
         dashPending = false;
         dashCount++;
       }
     }
     const speed = (fish.behavior === 'calm' ? .62 : fish.behavior === 'active' ? 1.1 : 1.3) * fish.difficulty;
     fishY += (fishTarget - fishY) * Math.min(1, dt * speed * 3.2);
-    fishY += Math.sin(performance.now() / 180) * dt * .018;
+    fishY += Math.sin(performance.now() / (fish.id === 'puffer' ? 95 : 180)) * dt * (fish.id === 'puffer' ? .055 : .018);
     fishY = Math.max(.04, Math.min(.96, fishY));
     fishMarker.classList.toggle('is-warning', fishWarning > 0);
   }
@@ -484,7 +509,7 @@
 
   function beginCatchFinish() {
     catchProgress = 1;
-    finishLeft = .38;
+    finishLeft = .68;
     mode = 'finishing';
     held = false;
     actionBtn.classList.remove('is-held');
@@ -495,10 +520,14 @@
     progressFill.style.width = '100%';
     void progressFill.offsetWidth;
     progressFill.style.removeProperty('transition');
+    play('reel');
+    vibrate(18);
   }
 
   function catchFish() {
     const weight = Math.round(fish.min + Math.random() * (fish.max - fish.min));
+    const grade = sizeGrade(fish, weight);
+    const caughtEnvironment = environment.label.replace(/^[^ ]+ /, '');
     const isRecord = weight > bestWeight;
     const species = recordCatch(fish, weight);
     totalCaught++;
@@ -508,32 +537,57 @@
     saveStats();
     updateHud();
     caughtFlash = 1;
-    play(RARITY_RANK[fish.rarity] >= 2 ? 'rare' : 'success');
-    vibrate([24, 40, 55]);
     const badges = [];
     if (species.first) badges.push('✨ 新物种发现！');
     if (species.speciesRecord) badges.push('🏆 单鱼新纪录！');
     if (isRecord) badges.push('本湖最大重量！');
+    const title = fish.rarity === '传说' ? '月光奇迹！' : '钓到了！';
+    const text = fish.name + ' · ' + fish.rarity + '\n' + formatWeight(weight) + ' · ' + grade + '\n' + caughtEnvironment + (badges.length ? '\n' + badges.join(' · ') : '');
+    clearState();
     advanceEnvironment();
-    showResult(true, '钓到了！', fish.name + ' · ' + fish.rarity + '\n' + formatWeight(weight) + (badges.length ? '\n' + badges.join(' · ') : ''), fish);
+    beginReveal({ fish: fish, title: title, text: text });
+  }
+
+  function beginReveal(result) {
+    pendingCatchResult = result;
+    const rank = RARITY_RANK[result.fish.rarity];
+    revealLeft = [.72, .86, 1.05, 1.32][rank];
+    setMode('reveal');
+    catchReveal.dataset.rarity = result.fish.rarity;
+    setFishSprite(revealFish, result.fish);
+    revealTitle.textContent = result.title;
+    revealRarity.textContent = result.fish.rarity;
+    catchReveal.hidden = false;
+    play('splash');
+    setTimeout(() => play(rank >= 2 ? 'rare' : 'success'), 170);
+    vibrate(rank === 3 ? [28, 35, 65, 35, 90] : rank === 2 ? [24, 35, 60] : [20, 30, 42]);
+  }
+
+  function finishReveal() {
+    if (!pendingCatchResult) return;
+    const result = pendingCatchResult;
+    pendingCatchResult = null;
+    showResult(true, result.title, result.text, result.fish);
   }
 
   function loseFish() {
     streak = 0;
     updateHud();
     play('lose');
-    vibrate(35);
     advanceEnvironment();
-    showResult(false, '鱼儿脱钩了', '这条' + fish.name + '很有力气。\n调整节奏，再试一次吧。');
+    showResult(false, '鱼儿脱钩了', '这条鱼很有力气。\n调整节奏，再试一次吧。');
   }
 
   function showResult(success, title, text, caughtFish) {
     clearState();
     setMode('result');
     overlay.hidden = false;
-    modalEyebrow.textContent = success ? '本次收获' : '差一点点';
+    modalEyebrow.textContent = caughtFish ? (caughtFish.rarity === '传说' ? '传说现身' : '本次收获 · ' + caughtFish.rarity) : (success ? '本次收获' : '差一点点');
     resultFish.hidden = !caughtFish;
-    if (caughtFish) setFishSprite(resultFish, caughtFish);
+    if (caughtFish) {
+      setFishSprite(resultFish, caughtFish);
+      resultFish.dataset.rarity = caughtFish.rarity;
+    }
     modalTitle.textContent = title;
     modalText.textContent = text;
     modalBtn.textContent = '再钓一竿';
@@ -605,6 +659,9 @@
     } else if (mode === 'finishing') {
       if (!motionTestHold) finishLeft -= dt;
       if (finishLeft <= 0) catchFish();
+    } else if (mode === 'reveal') {
+      revealLeft -= dt;
+      if (revealLeft <= 0) finishReveal();
     }
     saveAcc += dt;
     if (saveAcc >= .5) {
@@ -736,7 +793,7 @@
       ctx.strokeStyle = 'rgba(220,245,242,.6)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(targetBobX, targetBobY + 3, 14 + hookT * 15, 4 + hookT * 4, 0, 0, Math.PI * 2); ctx.stroke();
     } else if (mode === 'finishing') {
-      const finishT = Math.max(0, Math.min(1, 1 - finishLeft / .38));
+      const finishT = Math.max(0, Math.min(1, 1 - finishLeft / .68));
       const bobX = targetBobX + (rodTipX - targetBobX) * finishT * .72;
       const bobY = targetBobY - Math.sin(Math.PI * finishT) * h * .3 - finishT * 20;
       ctx.strokeStyle = 'rgba(245,241,223,.85)'; ctx.lineWidth = 1.4;
@@ -747,6 +804,14 @@
       ctx.fillStyle = '#17213b'; ctx.beginPath(); ctx.arc(bobX - 5, bobY + 5, 1.4, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(220,245,242,.65)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(targetBobX, targetBobY + 3, 15 + finishT * 20, 5 + finishT * 5, 0, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 7; i++) {
+        const angle = -.3 - i * .38;
+        const distance = 10 + finishT * (18 + i * 3);
+        ctx.fillStyle = 'rgba(210,242,246,' + (.72 - finishT * .38) + ')';
+        ctx.beginPath();
+        ctx.arc(targetBobX + Math.cos(angle) * distance, targetBobY - 2 + Math.sin(angle) * distance, 1.5 + (i % 2), 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else if (['waiting', 'bite', 'fishing', 'paused'].includes(mode)) {
       const bobX = targetBobX;
       const bobY = targetBobY + Math.sin(time / 260) * (mode === 'bite' ? 8 : 2);
@@ -793,7 +858,7 @@
     const settings = {
       start: [420, .16, 'triangle'], cast: [250, .18, 'sine'], bite: [760, .22, 'triangle'],
       hook: [520, .13, 'square'], success: [610, .32, 'triangle'], rare: [780, .5, 'sine'],
-      lose: [190, .35, 'sawtooth'],
+      reel: [185, .48, 'triangle'], splash: [330, .18, 'sine'], lose: [190, .35, 'sawtooth'],
     }[name] || [320, .08, 'sine'];
     const osc = ac.createOscillator();
     const gain = ac.createGain();
@@ -801,6 +866,8 @@
     osc.type = settings[2];
     osc.frequency.setValueAtTime(settings[0], now);
     if (name === 'success' || name === 'rare') osc.frequency.exponentialRampToValueAtTime(settings[0] * 1.7, now + settings[1]);
+    if (name === 'reel') osc.frequency.linearRampToValueAtTime(290, now + settings[1]);
+    if (name === 'splash') osc.frequency.exponentialRampToValueAtTime(120, now + settings[1]);
     if (name === 'lose') osc.frequency.exponentialRampToValueAtTime(90, now + settings[1]);
     gain.gain.setValueAtTime(.08, now);
     gain.gain.exponentialRampToValueAtTime(.001, now + settings[1]);
@@ -899,7 +966,7 @@
       if (!fish) fish = FISH[0];
       motionTestHold = true;
       catchProgress = 1;
-      finishLeft = .38 * (1 - Math.max(0, Math.min(.9, Number(progress) || 0)));
+      finishLeft = .68 * (1 - Math.max(0, Math.min(.9, Number(progress) || 0)));
       mode = 'finishing';
     },
     setFish: (id) => { fish = FISH.find((item) => item.id === id) || FISH[0]; },
@@ -909,5 +976,10 @@
       if (index >= 0) { environmentStep = index * 4; updateEnvironment(); }
     },
     sampleFish: (count) => Array.from({ length: Math.max(1, Number(count) || 1) }, () => chooseFish().id),
+    showReveal: (id) => {
+      const item = FISH.find((entry) => entry.id === id) || FISH[0];
+      beginReveal({ fish: item, title: item.rarity === '传说' ? '月光奇迹！' : '钓到了！', text: item.name });
+      revealLeft = 999;
+    },
   };
 })();

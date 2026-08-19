@@ -7,7 +7,7 @@
 <title>月光垂钓 · 湖畔钓鱼</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=8" />
+<link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body>
 <main class="app">
@@ -50,6 +50,13 @@
         </div>
       </section>
 
+      <div class="catch-reveal" id="catchReveal" aria-live="polite" hidden>
+        <div class="catch-reveal__burst"></div>
+        <div class="catch-reveal__fish fish-sprite" id="revealFish"></div>
+        <strong id="revealTitle">钓到了！</strong>
+        <span id="revealRarity">常见</span>
+      </div>
+
       <div class="overlay" id="overlay">
         <div class="modal">
           <span class="modal__eyebrow" id="modalEyebrow">今晚，湖面很安静</span>
@@ -86,6 +93,6 @@
   </section>
 </main>
 <script src="../input-guard.js?v=6"></script>
-<script src="game.js?v=16"></script>
+<script src="game.js?v=17"></script>
 </body>
 </html>

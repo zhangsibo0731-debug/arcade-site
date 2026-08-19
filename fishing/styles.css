@@ -52,10 +52,24 @@ button, a { font: inherit; }
 .progress-wrap > span { display: block; margin-bottom: 5px; color: var(--soft); font-size: 10px; }
 .progress { height: 10px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.1); }
 .progress i { display: block; width: 24%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--mint), #e8f69a); transition: width .06s linear; }
+.catch-reveal { position: absolute; z-index: 9; inset: 0; display: grid; place-content: center; justify-items: center; overflow: hidden; pointer-events: none; background: rgba(5,13,28,.35); animation: reveal-backdrop .28s ease both; }
+.catch-reveal__burst { position: absolute; left: 50%; top: 47%; width: 220px; height: 220px; border: 2px solid var(--reveal-color, #7de3c3); border-radius: 50%; box-shadow: 0 0 35px var(--reveal-glow, rgba(125,227,195,.32)), inset 0 0 35px var(--reveal-glow, rgba(125,227,195,.2)); transform: translate(-50%, -50%); animation: reveal-ring .8s ease-out infinite; }
+.catch-reveal__fish { position: relative; z-index: 2; width: 190px; height: 190px; filter: drop-shadow(0 12px 13px rgba(0,0,0,.45)) drop-shadow(0 0 13px var(--reveal-color, #7de3c3)); animation: reveal-fish .72s cubic-bezier(.16,.9,.26,1.18) both; }
+.catch-reveal strong, .catch-reveal span { position: relative; z-index: 2; text-shadow: 0 3px 10px rgba(0,0,0,.6); }
+.catch-reveal strong { margin-top: -22px; font-size: 27px; }
+.catch-reveal span { margin-top: 4px; color: var(--reveal-color, var(--gold)); font-size: 12px; font-weight: 700; letter-spacing: .12em; }
+.catch-reveal[data-rarity="少见"] { --reveal-color: #78e2cf; --reveal-glow: rgba(120,226,207,.34); }
+.catch-reveal[data-rarity="稀有"] { --reveal-color: #b7a8ff; --reveal-glow: rgba(183,168,255,.42); }
+.catch-reveal[data-rarity="传说"] { --reveal-color: #ffd47a; --reveal-glow: rgba(255,212,122,.56); background: rgba(28,21,12,.36); }
+@keyframes reveal-backdrop { from { opacity: 0; } to { opacity: 1; } }
+@keyframes reveal-ring { from { opacity: .9; transform: translate(-50%, -50%) scale(.35); } to { opacity: 0; transform: translate(-50%, -50%) scale(1.35); } }
+@keyframes reveal-fish { from { opacity: 0; transform: translateY(110px) rotate(-12deg) scale(.55); } 58% { opacity: 1; transform: translateY(-14px) rotate(4deg) scale(1.08); } to { transform: none; } }
 .overlay { position: absolute; z-index: 10; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(6,13,29,.56); backdrop-filter: blur(6px); }
 .modal { width: min(100%, 300px); padding: 27px 22px 21px; text-align: center; border: 1px solid var(--line); border-radius: 24px; background: rgba(20,31,57,.96); box-shadow: 0 28px 70px rgba(0,0,0,.5); }
 .modal__eyebrow { color: var(--gold); font-size: 10px; letter-spacing: .11em; }
 .result-fish { width: 126px; height: 126px; margin: -5px auto -12px; filter: drop-shadow(0 8px 12px rgba(0,0,0,.28)); animation: fish-arrive .48s cubic-bezier(.2,.9,.3,1.2) both; }
+.result-fish[data-rarity="稀有"] { filter: drop-shadow(0 8px 12px rgba(0,0,0,.28)) drop-shadow(0 0 9px rgba(183,168,255,.62)); }
+.result-fish[data-rarity="传说"] { filter: drop-shadow(0 8px 12px rgba(0,0,0,.28)) drop-shadow(0 0 13px rgba(255,212,122,.82)); }
 @keyframes fish-arrive { from { opacity: 0; transform: translateY(12px) scale(.72) rotate(-5deg); } to { opacity: 1; transform: none; } }
 .modal h2 { margin-top: 7px; font-size: 26px; }
 .modal p { margin: 10px 0 18px; color: var(--soft); font-size: 13px; line-height: 1.7; white-space: pre-line; }
