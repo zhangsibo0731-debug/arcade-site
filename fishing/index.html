@@ -7,7 +7,7 @@
 <title>月光垂钓 · 湖畔钓鱼</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=15" />
+<link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
 <main class="app">
@@ -132,11 +132,12 @@
       <div class="tackle__head"><div><span>CREEL &amp; LAKESIDE SHOP</span><h2>今日鱼篓</h2><p id="basketSummary">鱼篓还是空的</p></div><button class="icon-btn" id="basketClose" type="button" aria-label="关闭鱼篓">×</button></div>
       <div class="basket-list" id="basketList"></div>
       <button class="primary basket-sell" id="sellAllBtn" type="button">全部出售</button>
-      <div class="shop-card"><i>🦐</i><span><b>高级鱼饵 × 3</b><small>提高少见及稀有鱼权重</small></span><button id="buyBaitBtn" type="button">90 🪙</button></div>
+      <div class="shop-card"><i>🦐</i><span><b>高级鱼饵 × 3</b><small><span id="shopBaitStock">现有 × 5</span> · 提高少见及稀有鱼权重</small></span><button id="buyBaitBtn" type="button">90 🪙</button></div>
+      <p class="shop-feedback" id="shopFeedback" aria-live="polite" hidden></p>
     </div>
   </section>
 </main>
-<script src="../input-guard.js?v=6"></script>
+<script src="../input-guard.js?v=7"></script>
 <script src="fish-data.js?v=2"></script>
 <script src="river-fish-data.js?v=2"></script>
 <script src="catchables.js?v=1"></script>
@@ -145,7 +146,7 @@
 <script src="locations.js?v=1"></script>
 <script src="storage.js?v=1"></script>
 <script src="audio.js?v=1"></script>
-<script src="ui.js?v=4"></script>
-<script src="game.js?v=29"></script>
+<script src="ui.js?v=5"></script>
+<script src="game.js?v=30"></script>
 </body>
 </html>

@@ -52,6 +52,8 @@
   const basketSummary = $('basketSummary');
   const sellAllBtn = $('sellAllBtn');
   const buyBaitBtn = $('buyBaitBtn');
+  const shopBaitStock = $('shopBaitStock');
+  const shopFeedback = $('shopFeedback');
   const coinCount = $('coinCount');
   const bagCount = $('bagCount');
   const locationBtn = $('locationBtn');
@@ -98,6 +100,7 @@
       basketSummary,
       sellAllBtn,
       buyBaitBtn,
+      shopBaitStock,
     },
   });
   const setFishSprite = ui.setFishSprite;
@@ -153,6 +156,7 @@
   let motionTestHold = false;
   let saveAcc = 0;
   let pendingResume = null;
+  let shopFeedbackTimer = 0;
   let collection = loadCollection();
   let itemCollection = storage.readObject(ITEM_COLLECTION_KEY, {});
   let tackle = economy.normalizeTackle(storage.readObject(TACKLE_KEY, {}));
@@ -287,6 +291,9 @@
       total,
       capacity: economy.BAG_CAPACITY,
       packPrice: economy.premiumBaitPack.price,
+      packAmount: economy.premiumBaitPack.amount,
+      baitCount: tackle.premiumBait,
+      maxBait: economy.MAX_BAIT,
     });
   }
 
@@ -314,15 +321,41 @@
     play('success');
   }
 
+  function sellFishAt(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= fishBag.length) return;
+    const sold = fishBag.splice(index, 1)[0];
+    coins = Math.min(economy.MAX_COINS, coins + sold.value);
+    saveEconomy();
+    renderEconomyBar();
+    renderBasket();
+    play('success');
+  }
+
+  function showShopFeedback(message) {
+    clearTimeout(shopFeedbackTimer);
+    shopFeedback.textContent = message;
+    shopFeedback.hidden = false;
+    shopFeedback.classList.remove('is-visible');
+    void shopFeedback.offsetWidth;
+    shopFeedback.classList.add('is-visible');
+    shopFeedbackTimer = setTimeout(() => {
+      shopFeedback.hidden = true;
+      shopFeedback.classList.remove('is-visible');
+    }, 2200);
+  }
+
   function buyPremiumBait() {
     const pack = economy.premiumBaitPack;
-    if (coins < pack.price) return;
+    if (coins < pack.price || tackle.premiumBait > economy.MAX_BAIT - pack.amount) return;
     coins -= pack.price;
-    tackle.premiumBait = Math.min(economy.MAX_BAIT, tackle.premiumBait + pack.amount);
+    tackle.premiumBait += pack.amount;
+    tackle.selectedBait = 'premium';
     saveTackle();
     saveEconomy();
     renderEconomyBar();
     renderBasket();
+    renderTackle();
+    showShopFeedback('购买成功 · 高级鱼饵 +' + pack.amount + ' · 已自动装备，下一竿生效');
     play('success');
   }
 
@@ -1104,6 +1137,10 @@
   basketBtn.addEventListener('click', openBasket);
   basketClose.addEventListener('click', closeBasket);
   sellAllBtn.addEventListener('click', sellAllFish);
+  basketList.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-sell-index]');
+    if (button) sellFishAt(Number(button.dataset.sellIndex));
+  });
   buyBaitBtn.addEventListener('click', buyPremiumBait);
   tacklePanel.addEventListener('click', (event) => {
     const bait = event.target.closest('[data-bait]');

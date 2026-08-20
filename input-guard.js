@@ -20,6 +20,7 @@
     '-webkit-touch-callout:none!important;' +
     '-webkit-user-select:none!important;' +
     'user-select:none!important;' +
+    'touch-action:manipulation;' +
     '-webkit-tap-highlight-color:transparent;' +
     '}' +
     'button *,[role="button"] *,canvas,img,svg{' +

@@ -144,7 +144,7 @@ button, a { font: inherit; }
 .basket-row span, .basket-row b, .basket-row small { display: block; }
 .basket-row b { font-size: 12px; }
 .basket-row small { margin-top: 2px; color: var(--soft); font-size: 9px; }
-.basket-row em { color: var(--gold); font-size: 11px; font-style: normal; }
+.basket-row__sell { min-height: 34px; padding: 7px 9px; color: #17213b; font-size: 9px; font-weight: 700; white-space: nowrap; border: 0; border-radius: 9px; background: var(--gold); cursor: pointer; touch-action: manipulation; }
 .basket-sell { margin-top: 12px; }
 .basket-sell:disabled { opacity: .45; cursor: not-allowed; }
 .shop-card { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px; margin-top: 18px; padding: 12px; border: 1px solid rgba(125,227,195,.25); border-radius: 15px; background: rgba(125,227,195,.06); }
@@ -152,8 +152,12 @@ button, a { font: inherit; }
 .shop-card span, .shop-card b, .shop-card small { display: block; }
 .shop-card b { font-size: 12px; }
 .shop-card small { margin-top: 3px; color: var(--soft); font-size: 9px; }
-.shop-card button { padding: 9px 10px; color: #17213b; font-size: 10px; font-weight: 700; border: 0; border-radius: 10px; background: var(--mint); cursor: pointer; }
+.shop-card small span { display: inline; color: var(--mint); }
+.shop-card button { padding: 9px 10px; color: #17213b; font-size: 10px; font-weight: 700; border: 0; border-radius: 10px; background: var(--mint); cursor: pointer; touch-action: manipulation; }
 .shop-card button:disabled { opacity: .42; cursor: not-allowed; }
+.shop-feedback { margin-top: 9px; min-height: 18px; color: var(--mint); font-size: 10px; font-weight: 600; text-align: center; }
+.shop-feedback.is-visible { animation: shop-feedback-pop .32s ease both; }
+@keyframes shop-feedback-pop { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .locations__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .locations__head span { color: var(--gold); font-size: 9px; letter-spacing: .14em; }
 .locations__head h2 { margin-top: 3px; font-size: 27px; }

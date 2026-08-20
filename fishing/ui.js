@@ -178,7 +178,7 @@
         empty.textContent = '下一条收获会安静地躺在这里。';
         elements.basketList.appendChild(empty);
       } else {
-        bag.slice().reverse().forEach((entry) => {
+        bag.map((entry, index) => ({ entry, index })).reverse().forEach(({ entry, index }) => {
           const item = fishById.get(entry.id);
           if (!item) return;
           const row = document.createElement('article');
@@ -192,16 +192,22 @@
           const detail = document.createElement('small');
           detail.textContent = formatWeight(entry.weight) + ' · ' + item.rarity;
           copy.append(name, detail);
-          const value = document.createElement('em');
-          value.textContent = entry.value + ' 🪙';
-          row.append(art, copy, value);
+          const sell = document.createElement('button');
+          sell.className = 'basket-row__sell';
+          sell.type = 'button';
+          sell.dataset.sellIndex = String(index);
+          sell.setAttribute('aria-label', '出售' + item.name + '，获得 ' + entry.value + ' 金币');
+          sell.textContent = '出售 +' + entry.value + ' 🪙';
+          row.append(art, copy, sell);
           elements.basketList.appendChild(row);
         });
       }
       elements.sellAllBtn.disabled = !bag.length;
       elements.sellAllBtn.textContent = bag.length ? '全部出售 · +' + total + ' 🪙' : '全部出售';
-      elements.buyBaitBtn.disabled = coins < config.packPrice;
-      elements.buyBaitBtn.textContent = config.packPrice + ' 🪙';
+      const baitFull = config.baitCount > config.maxBait - config.packAmount;
+      elements.shopBaitStock.textContent = '现有 × ' + config.baitCount;
+      elements.buyBaitBtn.disabled = coins < config.packPrice || baitFull;
+      elements.buyBaitBtn.textContent = baitFull ? '已满' : config.packPrice + ' 🪙';
     }
 
     return Object.freeze({ setFishSprite, setCatchableArt, setMysteryArt, renderCatalog, renderItems, renderTackle, renderEconomyBar, renderBasket, renderHud, renderMuted, renderEnvironment, renderLocations });
