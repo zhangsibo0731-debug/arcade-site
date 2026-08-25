@@ -35,9 +35,14 @@
   
       if (!isAbyss && isNight) {
         ctx.fillStyle = 'rgba(255,239,183,.92)';
-        ctx.beginPath(); ctx.arc(w * .72, h * .17, Math.min(w, h) * .075, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#1a2d51';
-        ctx.beginPath(); ctx.arc(w * .748, h * .145, Math.min(w, h) * .072, 0, Math.PI * 2); ctx.fill();
+        const moonR = Math.min(w, h) * .075;
+        const moonX = w * .72;
+        const moonY = h * .17;
+        ctx.beginPath();
+        ctx.arc(moonX, moonY, moonR, -Math.PI * .34, Math.PI * .34, true);
+        ctx.quadraticCurveTo(moonX - moonR * 1.08, moonY, moonX + moonR * .48, moonY - moonR * .88);
+        ctx.closePath();
+        ctx.fill();
         for (let i = 0; i < 26; i++) {
           const x = ((i * 83) % 997) / 997 * w;
           const y = ((i * 47) % 211) / 211 * lakeY * .75;
@@ -64,17 +69,29 @@
         for (let x = 0; x <= w; x += 22) ctx.lineTo(x, lakeY - 18 - ((x * 7) % 41));
         ctx.lineTo(w, lakeY + 18); ctx.lineTo(0, lakeY + 18); ctx.fill();
       }
-      ctx.strokeStyle = 'rgba(174,214,222,.15)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 8; i++) {
-        const y = lakeY + 18 + i * (h - lakeY) / 9;
-        ctx.beginPath();
-        for (let x = 0; x <= w; x += 12) {
-          const yy = y + Math.sin(x * (isRiver ? .05 : isCoast ? .028 : .035) + time * (isRiver ? .0027 : isCoast ? .0021 : .0015) + i) * (isRiver ? 3 : isCoast ? 4 : 2);
-          if (!x) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {
+        const baseY = lakeY + 20 + i * (h - lakeY) / 8.2;
+        const speed = time * (isRiver ? .0022 : isCoast ? .00165 : .00115);
+        const amp = (isRiver ? 2.7 : isCoast ? 3.4 : 1.8) * (1 - i * .035);
+        ctx.strokeStyle = 'rgba(188,225,229,' + (.08 + (i % 3) * .035) + ')';
+        ctx.lineWidth = i % 3 === 0 ? 1.35 : .85;
+        for (let segment = 0; segment < 3; segment++) {
+          const drift = isRiver ? (time * .018) % (w + 120) : (time * .007) % (w + 160);
+          const seed = i * 97 + segment * 173;
+          const length = w * (.16 + ((seed * 13) % 19) / 100);
+          let start = ((seed + drift + segment * w * .31) % (w + length + 50)) - length;
+          ctx.beginPath();
+          for (let x = start; x <= Math.min(w + 8, start + length); x += 8) {
+            const yy = baseY
+              + Math.sin(x * (isRiver ? .041 : .027) + speed + i * 1.13) * amp
+              + Math.sin(x * .013 - speed * .58 + segment * 2.1) * amp * .48;
+            if (x === start) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
       }
+      ctx.lineCap = 'butt';
   
       if (isRiver) {
         ctx.fillStyle = 'rgba(194,205,178,.38)';
@@ -83,10 +100,15 @@
           const rockY = lakeY + 18 + (i % 3) * 19;
           ctx.beginPath(); ctx.ellipse(rockX, rockY, 11 + (i % 3) * 5, 5 + (i % 2) * 3, -.12, 0, Math.PI * 2); ctx.fill();
         }
-        ctx.fillStyle = 'rgba(198,242,226,.55)';
-        ctx.font = '700 12px sans-serif';
-        ctx.fillText('≋', w * .5 + Math.sin(time / 700) * 22, lakeY + 62);
-        ctx.fillText('≋', w * .72 + Math.sin(time / 820) * 18, lakeY + 118);
+        ctx.strokeStyle = 'rgba(207,239,226,.3)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 4; i++) {
+          const wakeX = ((i * 137) % 911) / 911 * w;
+          const wakeY = lakeY + 22 + (i % 3) * 19;
+          ctx.beginPath();
+          ctx.ellipse(wakeX + 5, wakeY, 18 + i * 2, 5 + (i % 2), 0, Math.PI * 1.08, Math.PI * 1.88);
+          ctx.stroke();
+        }
       }
   
       if (isCoast) {
@@ -108,12 +130,25 @@
           ctx.restore();
         }
         ctx.strokeStyle = 'rgba(224,249,246,.5)';
-        ctx.lineWidth = 1.4;
+        ctx.lineWidth = 1.15;
+        ctx.lineCap = 'round';
         for (let i = 0; i < 4; i++) {
           const x = ((time * .045 + i * w * .29) % (w + 70)) - 35;
           const y = lakeY + 34 + i * 27;
-          ctx.beginPath(); ctx.arc(x, y, 18 + i * 2, Math.PI * 1.05, Math.PI * 1.9); ctx.stroke();
+          const span = 24 + i * 3;
+          ctx.beginPath();
+          ctx.moveTo(x - span, y + 2);
+          ctx.bezierCurveTo(x - span * .62, y, x - span * .28, y - 3, x + 1, y - 2);
+          ctx.bezierCurveTo(x + span * .35, y - 1, x + span * .66, y + 1, x + span, y + 3);
+          ctx.stroke();
+          ctx.globalAlpha = .48;
+          ctx.beginPath();
+          ctx.moveTo(x - span * .42, y + 8);
+          ctx.quadraticCurveTo(x - 2, y + 5, x + span * .52, y + 9);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
         }
+        ctx.lineCap = 'butt';
       }
 
       if (isAbyss) {

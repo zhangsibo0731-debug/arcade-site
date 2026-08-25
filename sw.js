@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v66';
+const CACHE = 'arcade-v70';
 const ASSETS = [
   './',
   './index.html',
@@ -43,7 +43,7 @@ const ASSETS = [
   './fishing/storage.js?v=1',
   './fishing/audio.js?v=3',
   './fishing/ui.js?v=9',
-  './fishing/scene-renderer.js?v=2',
+  './fishing/scene-renderer.js?v=6',
   './fishing/session-state.js?v=1',
   './fishing/catch-mechanics.js?v=1',
   './fishing/economy-ui.js?v=2',
