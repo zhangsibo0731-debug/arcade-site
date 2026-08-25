@@ -7,7 +7,7 @@
 <title>月光垂钓 · 湖畔钓鱼</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=22" />
+<link rel="stylesheet" href="styles.css?v=24" />
 </head>
 <body>
 <main class="app">
@@ -30,6 +30,7 @@
         <button class="icon-btn" id="catalogBtn" type="button" aria-label="鱼类图鉴" title="鱼类图鉴">册</button>
         <button class="icon-btn" id="itemsBtn" type="button" aria-label="物品收藏" title="物品收藏">藏</button>
         <button class="icon-btn" id="tackleBtn" type="button" aria-label="鱼饵与道具" title="鱼饵与道具">具</button>
+        <button class="icon-btn achievement-button" id="achievementBtn" type="button" aria-label="成就纪念册" title="成就纪念册">杯<i id="achievementDot" hidden></i></button>
         <button class="icon-btn" id="soundBtn" type="button" aria-label="关闭声音">
           <svg id="soundOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a8.5 8.5 0 0 1 0 12"/></svg>
           <svg id="soundOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/></svg>
@@ -41,6 +42,10 @@
         <strong id="noticeTitle">鱼咬钩了！</strong>
         <span id="noticeSub">快提竿</span>
       </div>
+
+      <button class="achievement-toast" id="achievementToast" type="button" aria-live="polite" hidden>
+        <span class="achievement-toast-icon" aria-hidden="true"></span><b id="achievementToastTitle">成就解锁</b><small id="achievementToastText"></small>
+      </button>
 
       <section class="catch-game" id="catchGame" aria-label="遛鱼区域" hidden>
         <div class="current-indicator" id="currentIndicator" hidden>水流 ≋</div>
@@ -113,6 +118,15 @@
     <div class="catalog__grid" id="itemsGrid"></div>
   </section>
 
+  <section class="achievements" id="achievementPanel" aria-label="成就纪念册" hidden>
+    <div class="catalog__head achievement-head">
+      <div><span>ACHIEVEMENTS</span><h2>成就纪念册</h2><p id="achievementProgress">已解锁 0 / 26</p></div>
+      <button class="icon-btn" id="achievementClose" type="button" aria-label="关闭成就纪念册">×</button>
+    </div>
+    <div class="achievement-filters" id="achievementFilters" role="tablist" aria-label="成就分类"></div>
+    <div class="achievement-grid" id="achievementGrid"></div>
+  </section>
+
   <section class="tackle" id="tacklePanel" aria-label="鱼饵与道具" hidden>
     <div class="tackle__sheet">
       <div class="tackle__head"><div><span>LIGHT TACKLE</span><h2>出钓准备</h2><p>选择下一竿使用的鱼饵与辅助道具</p></div><button class="icon-btn" id="tackleClose" type="button" aria-label="关闭出钓准备">×</button></div>
@@ -146,15 +160,19 @@
 <script src="economy.js?v=1"></script>
 <script src="environments.js?v=1"></script>
 <script src="locations.js?v=9"></script>
-<script src="storage.js?v=1"></script>
+<script src="storage.js?v=2"></script>
+<script src="achievement-data.js?v=1"></script>
+<script src="achievement-storage.js?v=1"></script>
+<script src="achievement-engine.js?v=1"></script>
+<script src="achievement-ui.js?v=2"></script>
 <script src="audio.js?v=3"></script>
 <script src="ui.js?v=9"></script>
 <script src="scene-renderer.js?v=6"></script>
-<script src="session-state.js?v=1"></script>
+<script src="session-state.js?v=2"></script>
 <script src="catch-mechanics.js?v=1"></script>
-<script src="economy-ui.js?v=2"></script>
+<script src="economy-ui.js?v=3"></script>
 <script src="location-ui.js?v=3"></script>
 <script src="collection-ui.js?v=4"></script>
-<script src="game.js?v=47"></script>
+<script src="game.js?v=50"></script>
 </body>
 </html>

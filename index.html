@@ -302,7 +302,10 @@
     try {
       var ft = parseInt(localStorage.getItem('fishing_total_v1'), 10);
       var fw = parseInt(localStorage.getItem('fishing_best_weight_v1'), 10);
-      if (ft > 0 || fw > 0) set('fishingScore', '已钓 ' + (ft || 0) + ' 条 · 最大 ' + (fw >= 1000 ? (fw / 1000).toFixed(2) + ' kg' : (fw || 0) + ' g'));
+      var fa = JSON.parse(localStorage.getItem('fishing_achievements_v1') || '{}');
+      var unlocked = fa && fa.unlocked ? Object.keys(fa.unlocked).length : 0;
+      if (unlocked > 0) set('fishingScore', '成就 ' + unlocked + ' / 26 · 最大 ' + (fw >= 1000 ? (fw / 1000).toFixed(2) + ' kg' : (fw || 0) + ' g'));
+      else if (ft > 0 || fw > 0) set('fishingScore', '已钓 ' + (ft || 0) + ' 条 · 最大 ' + (fw >= 1000 ? (fw / 1000).toFixed(2) + ' kg' : (fw || 0) + ' g'));
     } catch (e) {}
   })();
 </script>

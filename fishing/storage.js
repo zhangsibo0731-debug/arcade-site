@@ -15,6 +15,7 @@
     TACKLE: 'fishing_tackle_v1',
     COINS: 'fishing_coins_v1',
     FISH_BAG: 'fishing_fish_bag_v1',
+    ACHIEVEMENTS: 'fishing_achievements_v1',
   });
 
   function readInt(key) {

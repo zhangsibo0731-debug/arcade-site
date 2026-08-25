@@ -50,7 +50,7 @@
       elements.coinCount.classList.add('is-gaining');
     }
 
-    function finishSale(next, income, message) {
+    function finishSale(next, income, message, soldCount) {
       const latest = state();
       options.updateState(Object.assign({}, next, {
         coins: Math.min(economy.MAX_COINS, latest.coins + income),
@@ -62,6 +62,7 @@
       showFeedback(message);
       saleBusy = false;
       options.play('success');
+      if (options.onSale) options.onSale({ count: soldCount || 1, income });
     }
 
     function sellAll() {
@@ -75,7 +76,7 @@
       });
       setTimeout(() => finishSale({
         fishBag: [],
-      }, income, '全部出售成功 · 收入 +' + income + ' 🪙'), 280);
+      }, income, '全部出售成功 · 收入 +' + income + ' 🪙', current.fishBag.length), 280);
     }
 
     function sellAt(index, row) {
@@ -86,7 +87,7 @@
       setTimeout(() => {
         const fishBag = current.fishBag.slice();
         const sold = fishBag.splice(index, 1)[0];
-        finishSale({ fishBag }, sold.value, '已出售 · 收入 +' + sold.value + ' 🪙');
+        finishSale({ fishBag }, sold.value, '已出售 · 收入 +' + sold.value + ' 🪙', 1);
       }, row ? 220 : 0);
     }
 
@@ -115,6 +116,7 @@
       options.renderTackle();
       showFeedback('购买成功 · 高级鱼饵 +' + pack.amount + ' · 已自动装备，下一竿生效');
       options.play('success');
+      if (options.onPurchase) options.onPurchase({ count: 1, amount: pack.amount, cost: pack.price });
     }
 
     return Object.freeze({ renderBar, renderBasket, sellAll, sellAt, buyPremiumBait });
