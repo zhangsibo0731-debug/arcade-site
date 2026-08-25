@@ -575,7 +575,7 @@
       actionHint.textContent = '越接近右端，抛得越远';
     } else if (next === 'waiting') {
       actionBtn.textContent = '等待鱼儿…';
-      actionHint.textContent = '看好浮标，咬钩时立即提竿';
+      actionHint.textContent = castUsedPremiumBait ? '🦐 高级鱼饵已投入 · 剩余 × ' + tackle.premiumBait + ' · 留意浮标' : '看好浮标，咬钩时立即提竿';
     } else if (next === 'bite') {
       actionBtn.disabled = false;
       actionBtn.textContent = '立即提竿！';
@@ -587,7 +587,7 @@
       actionHint.textContent = currentLocationId === 'river' ? '按住上升 · 松开下沉 · 水流会轻推捕获区' : '按住上升 · 松开下沉 · 让鱼留在捕获区';
     } else if (next === 'hooking') {
       actionBtn.textContent = '提竿中…';
-      actionHint.textContent = '鱼线绷紧了，准备遛鱼';
+      actionHint.textContent = castUsedPremiumBait ? '🦐 高级鱼饵已生效 · 剩余 × ' + tackle.premiumBait : '鱼线绷紧了，准备遛鱼';
     } else if (next === 'result') {
       actionBtn.disabled = true;
       actionBtn.textContent = '等待下一竿';
