@@ -8,14 +8,33 @@
     { id: 'message-bottle', type: 'treasure', name: '漂流瓶', icon: '🍾', rarity: '探索物品', locations: ['lake', 'river'], line: '瓶中纸条的字迹已经模糊了。' },
     { id: 'rusty-key', type: 'treasure', name: '生锈钥匙', icon: '🗝️', rarity: '探索物品', locations: ['lake'], line: '它似乎曾经打开过什么重要的东西。' },
     { id: 'old-compass', type: 'treasure', name: '旧指南针', icon: '🧭', rarity: '探索物品', locations: ['river'], line: '指针轻轻颤动，指向溪流下游。' },
+    { id: 'tangled-line', type: 'junk', name: '缠结鱼线', icon: '🧵', rarity: '普通杂物', locations: ['coast'], line: '打了很多结，看来前一位钓客也不太顺利。' },
+    { id: 'weathered-float', type: 'junk', name: '褪色浮漂', icon: '⚪', rarity: '普通杂物', locations: ['coast'], line: '颜色已经被海风和盐粒磨淡。' },
+    { id: 'seaweed-clump', type: 'junk', name: '海草团', icon: '🌿', rarity: '普通杂物', locations: ['coast'], line: '湿漉漉地缠在钩上，还带着一点海盐味。' },
+    { id: 'rainbow-sea-glass', type: 'treasure', name: '彩虹海玻璃', icon: '🔷', rarity: '探索物品', locations: ['coast'], weathers: ['clear'], weight: 1.7, line: '磨圆的玻璃折出一小片彩虹。' },
+    { id: 'spiral-shell', type: 'treasure', name: '潮音贝壳', icon: '🐚', rarity: '探索物品', locations: ['coast'], times: ['dusk', 'night'], weight: 1.55, line: '贴近耳边，仿佛还能听见潮水。' },
+    { id: 'chart-fragment', type: 'treasure', name: '海图碎片', icon: '🗺️', rarity: '探索物品', locations: ['coast'], weathers: ['rain'], weight: 1.35, line: '残缺航线指向地图之外的深色水域。' },
   ]);
 
   const ITEM_BY_ID = new Map(ITEMS.map((item) => [item.id, item]));
 
   function choose(locationId, options) {
-    const treasure = Math.random() < (options && options.magnet ? .34 : .24);
+    const random = options && options.random || Math.random;
+    const environment = options && options.environment;
+    const treasure = random() < (options && options.magnet ? .34 : .24);
     const pool = ITEMS.filter((item) => item.type === (treasure ? 'treasure' : 'junk') && item.locations.includes(locationId));
-    return pool[Math.floor(Math.random() * pool.length)] || null;
+    const weighted = pool.map((item) => {
+      let weight = Number(item.weight) || 1;
+      if (environment && item.times && item.times.includes(environment.time)) weight *= 1.8;
+      if (environment && item.weathers && item.weathers.includes(environment.weather)) weight *= 1.8;
+      return weight;
+    });
+    let roll = random() * weighted.reduce((sum, weight) => sum + weight, 0);
+    for (let index = 0; index < pool.length; index++) {
+      roll -= weighted[index];
+      if (roll <= 0) return pool[index];
+    }
+    return pool[0] || null;
   }
 
   global.FishingCatchables = Object.freeze({ ITEMS, ITEM_BY_ID, choose });

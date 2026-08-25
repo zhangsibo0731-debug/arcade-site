@@ -122,8 +122,9 @@
       element.textContent = '';
     }
 
-    function renderItems(items, records) {
+    function renderItems(items, records, kicker) {
       const foundItems = items.filter((item) => records[item.id]).length;
+      if (elements.itemsKicker) elements.itemsKicker.textContent = kicker || 'WATERSIDE FINDS';
       elements.itemsProgress.textContent = '已发现 ' + foundItems + ' / ' + items.length + ' 件水边收藏';
       elements.itemsGrid.innerHTML = '';
       items.forEach((item) => {

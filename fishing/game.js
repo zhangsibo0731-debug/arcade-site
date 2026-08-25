@@ -93,6 +93,7 @@
       locationsGrid,
       itemsGrid: $('itemsGrid'),
       itemsProgress: $('itemsProgress'),
+      itemsKicker: $('itemsKicker'),
       tacklePanel,
       premiumBaitCount,
       coinCount,
@@ -535,15 +536,14 @@
 
   function setMysteryMarker() {
     const marker = fishMarker.querySelector('span');
-    if (catchable && catchable.type !== 'fish') setCatchableArt(marker, catchable);
-    else setMysteryArt(marker);
+    setMysteryArt(marker);
   }
 
   function hookFish() {
     if (mode !== 'bite') return;
     const usingPremiumBait = castUsedPremiumBait;
     const itemChance = tackle.magnet ? .2 : .12;
-    const foundItem = Math.random() < itemChance ? chooseItem(currentLocationId, { magnet: tackle.magnet }) : null;
+    const foundItem = Math.random() < itemChance ? chooseItem(currentLocationId, { magnet: tackle.magnet, environment }) : null;
     if (foundItem) {
       catchable = foundItem;
       fish = { id: foundItem.id, behavior: 'calm', difficulty: .58 };

@@ -52,12 +52,14 @@
 
     function openItems() {
       const current = options.getState();
+      const location = options.locations[current.currentLocationId] || options.locations.lake;
+      const visibleItems = options.items.filter((item) => item.locations.includes(location.id));
       if (current.mode === 'ready' || PAUSABLE.includes(current.mode)) options.pause();
       elements.locations.hidden = true;
       elements.catalog.hidden = true;
       elements.tackle.hidden = true;
       elements.basket.hidden = true;
-      options.ui.renderItems(options.items, current.itemCollection);
+      options.ui.renderItems(visibleItems, current.itemCollection, location.itemsLabel);
       elements.itemPanel.hidden = false;
     }
 
