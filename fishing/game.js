@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAudio || !window.FishingUI) {
+  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
@@ -12,7 +12,7 @@
   const { ITEMS, ITEM_BY_ID, choose: chooseItem } = window.FishingCatchables;
   const economy = window.FishingEconomy;
   const { ENVIRONMENTS, environmentForStep, chooseFish: chooseFishForEnvironment } = window.FishingEnvironments;
-  const { LOCATIONS, resolveUnlocked, progressFor } = window.FishingLocations;
+  const { LOCATIONS, resolveUnlocked, progressFor, unlockProgressFor } = window.FishingLocations;
   const storage = window.FishingStorage;
   const audio = window.FishingAudio.create({ muted: storage.readInt(storage.KEYS.MUTED) === 1 });
   const play = audio.play;
@@ -122,6 +122,7 @@
     COINS: COINS_KEY,
     FISH_BAG: FISH_BAG_KEY,
   } = storage.KEYS;
+  const sessionState = window.FishingSessionState.create({ storage, key: SAVE_KEY });
   let mode = 'menu';
   let beforePause = 'ready';
   let lastTime = 0;
@@ -145,6 +146,9 @@
   let zoneY = .22;
   let zoneV = 0;
   let catchProgress = .24;
+  let surgeTimer = 4.4;
+  let surgeLeft = 0;
+  let surgeDirection = 1;
   let totalCaught = storage.readInt(TOTAL_KEY);
   let bestWeight = storage.readInt(WEIGHT_KEY);
   let streak = 0;
@@ -157,18 +161,83 @@
   let motionTestHold = false;
   let saveAcc = 0;
   let pendingResume = null;
-  let shopFeedbackTimer = 0;
-  let saleBusy = false;
-  let collection = loadCollection();
+  let collection = storage.readObject(COLLECTION_KEY, {});
   let itemCollection = storage.readObject(ITEM_COLLECTION_KEY, {});
   let tackle = economy.normalizeTackle(storage.readObject(TACKLE_KEY, {}));
   let coins = economy.normalizeCoins(storage.readInt(COINS_KEY));
   let fishBag = economy.normalizeBag(storage.readObject(FISH_BAG_KEY, []), FISH_BY_ID);
-  let unlockedLocations = resolveUnlocked(collection, storage.readObject(UNLOCKED_LOCATIONS_KEY, ['lake']));
+  const economyUI = window.FishingEconomyUI.create({
+    economy,
+    ui,
+    elements: { basketList, feedback: shopFeedback, coinCount },
+    play,
+    getState: () => ({ coins, fishBag, tackle }),
+    updateState: (next) => {
+      if (Object.prototype.hasOwnProperty.call(next, 'coins')) coins = next.coins;
+      if (Object.prototype.hasOwnProperty.call(next, 'fishBag')) fishBag = next.fishBag;
+      if (Object.prototype.hasOwnProperty.call(next, 'tackle')) tackle = next.tackle;
+    },
+    saveTackle,
+    saveEconomy,
+    renderTackle,
+  });
+  let unlockedLocations = resolveUnlocked(collection, itemCollection, storage.readObject(UNLOCKED_LOCATIONS_KEY, ['lake']));
   let currentLocationId = storage.readString(CURRENT_LOCATION_KEY, 'lake');
   if (!LOCATIONS[currentLocationId] || !unlockedLocations.includes(currentLocationId)) currentLocationId = 'lake';
   let environmentStep = storage.readInt(ENV_KEY);
   let environment = environmentForStep(environmentStep);
+  const locationUI = window.FishingLocationUI.create({
+    rules: {
+      locations: LOCATIONS,
+      resolveUnlocked,
+      progressFor,
+      unlockProgressFor,
+      discoveredFishCount: window.FishingLocations.discoveredFishCount,
+    },
+    storage,
+    keys: { unlocked: UNLOCKED_LOCATIONS_KEY, current: CURRENT_LOCATION_KEY },
+    ui,
+    elements: {
+      stage,
+      indicator: currentIndicator,
+      panel: locationsPanel,
+      catalog,
+      items: itemsPanel,
+      tackle: tacklePanel,
+      basket: basketPanel,
+    },
+    getState: () => ({ mode, collection, itemCollection, unlockedLocations, currentLocationId }),
+    updateState: (next) => {
+      if (next.unlockedLocations) unlockedLocations = next.unlockedLocations;
+      if (next.currentLocationId) currentLocationId = next.currentLocationId;
+    },
+    pause: showPause,
+    updateEnvironment,
+    startSession,
+  });
+  const collectionUI = window.FishingCollectionUI.create({
+    storage,
+    keys: { collection: COLLECTION_KEY, items: ITEM_COLLECTION_KEY },
+    ui,
+    items: ITEMS,
+    locations: LOCATIONS,
+    elements: {
+      catalog,
+      itemPanel: itemsPanel,
+      items: itemsPanel,
+      locations: locationsPanel,
+      tackle: tacklePanel,
+      basket: basketPanel,
+    },
+    getState: () => ({ mode, collection, itemCollection, currentLocationId }),
+    updateState: (next) => {
+      if (next.collection) collection = next.collection;
+      if (next.itemCollection) itemCollection = next.itemCollection;
+    },
+    currentFishPool,
+    refreshLocations: locationUI.refreshUnlocks,
+    pause: showPause,
+  });
 
   function fishPoolForLocation(id) {
     const location = LOCATIONS[id] || LOCATIONS.lake;
@@ -177,11 +246,6 @@
 
   function currentFishPool() {
     return fishPoolForLocation(currentLocationId);
-  }
-
-  function updateLocationPresentation() {
-    stage.dataset.location = currentLocationId;
-    currentIndicator.hidden = currentLocationId !== 'river';
   }
 
   function updateEnvironment() {
@@ -194,66 +258,6 @@
     environmentStep++;
     storage.writeInt(ENV_KEY, environmentStep);
     updateEnvironment();
-  }
-
-  function loadCollection() {
-    return storage.readObject(COLLECTION_KEY, {});
-  }
-
-  function saveCollection() {
-    storage.writeObject(COLLECTION_KEY, collection);
-  }
-
-  function refreshLocationUnlocks() {
-    const next = resolveUnlocked(collection, unlockedLocations);
-    const newlyUnlocked = next.filter((id) => !unlockedLocations.includes(id));
-    unlockedLocations = next;
-    storage.writeObject(UNLOCKED_LOCATIONS_KEY, unlockedLocations);
-    storage.writeString(CURRENT_LOCATION_KEY, currentLocationId);
-    return newlyUnlocked;
-  }
-
-  function recordCatch(item, weight) {
-    const previous = collection[item.id] || { count: 0, best: 0 };
-    const first = previous.count === 0;
-    const speciesRecord = weight > previous.best;
-    collection[item.id] = { count: previous.count + 1, best: Math.max(previous.best, weight) };
-    saveCollection();
-    const newlyUnlocked = refreshLocationUnlocks();
-    return { first, speciesRecord, newlyUnlocked };
-  }
-
-  function renderCatalog() {
-    const location = LOCATIONS[currentLocationId];
-    ui.renderCatalog(collection, currentFishPool(), currentLocationId === 'river' ? 'CLEARSTREAM COLLECTION' : 'MOONLAKE COLLECTION');
-  }
-
-  function openCatalog() {
-    if (['casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
-    locationsPanel.hidden = true;
-    itemsPanel.hidden = true;
-    tacklePanel.hidden = true;
-    basketPanel.hidden = true;
-    renderCatalog();
-    catalog.hidden = false;
-  }
-
-  function closeCatalog() {
-    catalog.hidden = true;
-  }
-
-  function openItems() {
-    if (['ready', 'casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
-    locationsPanel.hidden = true;
-    catalog.hidden = true;
-    tacklePanel.hidden = true;
-    basketPanel.hidden = true;
-    ui.renderItems(ITEMS, itemCollection);
-    itemsPanel.hidden = false;
-  }
-
-  function closeItems() {
-    itemsPanel.hidden = true;
   }
 
   function saveTackle() {
@@ -283,162 +287,18 @@
     storage.writeObject(FISH_BAG_KEY, fishBag);
   }
 
-  function renderEconomyBar() {
-    ui.renderEconomyBar({ coins, bagCount: fishBag.length, capacity: economy.BAG_CAPACITY });
-  }
-
-  function renderBasket() {
-    const total = economy.bagValue(fishBag);
-    ui.renderBasket(fishBag, coins, {
-      total,
-      capacity: economy.BAG_CAPACITY,
-      packPrice: economy.premiumBaitPack.price,
-      packAmount: economy.premiumBaitPack.amount,
-      baitCount: tackle.premiumBait,
-      maxBait: economy.MAX_BAIT,
-    });
-  }
-
   function openBasket() {
     if (['casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
     catalog.hidden = true;
     itemsPanel.hidden = true;
     locationsPanel.hidden = true;
     tacklePanel.hidden = true;
-    renderBasket();
+    economyUI.renderBasket();
     basketPanel.hidden = false;
   }
 
   function closeBasket() {
     basketPanel.hidden = true;
-  }
-
-  function animateCoinGain(amount) {
-    if (!amount) return;
-    coinCount.dataset.gain = '+' + amount;
-    coinCount.classList.remove('is-gaining');
-    void coinCount.offsetWidth;
-    coinCount.classList.add('is-gaining');
-  }
-
-  function sellAllFish() {
-    if (!fishBag.length || saleBusy) return;
-    saleBusy = true;
-    const income = economy.bagValue(fishBag);
-    Array.from(basketList.querySelectorAll('.basket-row')).forEach((row, index) => {
-      row.style.setProperty('--sell-delay', index * 24 + 'ms');
-      row.classList.add('is-selling');
-    });
-    setTimeout(() => {
-      coins = Math.min(economy.MAX_COINS, coins + income);
-      fishBag = [];
-      saveEconomy();
-      renderEconomyBar();
-      renderBasket();
-      animateCoinGain(income);
-      showShopFeedback('全部出售成功 · 收入 +' + income + ' 🪙');
-      saleBusy = false;
-      play('success');
-    }, 280);
-  }
-
-  function sellFishAt(index, row) {
-    if (saleBusy || !Number.isInteger(index) || index < 0 || index >= fishBag.length) return;
-    saleBusy = true;
-    if (row) row.classList.add('is-selling');
-    setTimeout(() => {
-      const sold = fishBag.splice(index, 1)[0];
-      coins = Math.min(economy.MAX_COINS, coins + sold.value);
-      saveEconomy();
-      renderEconomyBar();
-      renderBasket();
-      animateCoinGain(sold.value);
-      showShopFeedback('已出售 · 收入 +' + sold.value + ' 🪙');
-      saleBusy = false;
-      play('success');
-    }, row ? 220 : 0);
-  }
-
-  function showShopFeedback(message) {
-    clearTimeout(shopFeedbackTimer);
-    shopFeedback.textContent = message;
-    shopFeedback.hidden = false;
-    shopFeedback.classList.remove('is-visible');
-    void shopFeedback.offsetWidth;
-    shopFeedback.classList.add('is-visible');
-    shopFeedbackTimer = setTimeout(() => {
-      shopFeedback.hidden = true;
-      shopFeedback.classList.remove('is-visible');
-    }, 2200);
-  }
-
-  function buyPremiumBait() {
-    const pack = economy.premiumBaitPack;
-    if (coins < pack.price) {
-      showShopFeedback('金币不足 · 还差 ' + (pack.price - coins) + ' 🪙');
-      return;
-    }
-    if (tackle.premiumBait > economy.MAX_BAIT - pack.amount) {
-      showShopFeedback('高级鱼饵已接近上限');
-      return;
-    }
-    coins -= pack.price;
-    tackle.premiumBait += pack.amount;
-    tackle.selectedBait = 'premium';
-    saveTackle();
-    saveEconomy();
-    renderEconomyBar();
-    coinCount.classList.add('is-spending');
-    setTimeout(() => coinCount.classList.remove('is-spending'), 420);
-    renderBasket();
-    renderTackle();
-    showShopFeedback('购买成功 · 高级鱼饵 +' + pack.amount + ' · 已自动装备，下一竿生效');
-    play('success');
-  }
-
-  function locationViewModels() {
-    const discovered = window.FishingLocations.discoveredFishCount(collection);
-    return Object.values(LOCATIONS).map((location) => {
-      const progress = progressFor(location, collection);
-      const unlocked = unlockedLocations.includes(location.id);
-      const available = unlocked && location.fishIds.length > 0;
-      const needed = location.unlock === 'default' ? 0 : Math.max(0, location.unlock.discoveredFish - discovered);
-      return {
-        id: location.id,
-        name: location.name,
-        icon: location.icon,
-        subtitle: location.subtitle,
-        unlocked,
-        available,
-        current: currentLocationId === location.id,
-        progressText: progress.total ? '图鉴 ' + progress.found + ' / ' + progress.total : (unlocked ? '新鱼资料整理中' : '再发现 ' + needed + ' 种鱼即可解锁'),
-        actionText: available ? (currentLocationId === location.id ? '继续在这里钓鱼' : '前往' + location.name) : (unlocked ? '即将开放' : '🔒 未解锁'),
-      };
-    });
-  }
-
-  function openLocations() {
-    if (['ready', 'casting', 'waiting', 'bite', 'hooking', 'fishing'].includes(mode)) showPause();
-    catalog.hidden = true;
-    itemsPanel.hidden = true;
-    tacklePanel.hidden = true;
-    basketPanel.hidden = true;
-    ui.renderLocations(locationViewModels());
-    locationsPanel.hidden = false;
-  }
-
-  function closeLocations() {
-    locationsPanel.hidden = true;
-  }
-
-  function selectLocation(id) {
-    if (!LOCATIONS[id] || !LOCATIONS[id].fishIds.length || !unlockedLocations.includes(id)) return;
-    currentLocationId = id;
-    storage.writeString(CURRENT_LOCATION_KEY, currentLocationId);
-    updateLocationPresentation();
-    updateEnvironment();
-    closeLocations();
-    startSession();
   }
 
   function saveStats() {
@@ -453,8 +313,8 @@
       clearState();
       return;
     }
-    if (!['waiting', 'bite', 'hooking', 'fishing'].includes(phase)) return;
-    storage.writeObject(SAVE_KEY, {
+    if (!sessionState.activePhases.includes(phase)) return;
+    sessionState.save({
         phase: phase,
         castDistance: castDistance,
         castTime: castTime,
@@ -462,8 +322,8 @@
         waitLeft: waitLeft,
         biteLeft: biteLeft,
         hookTime: hookTime,
-        fish: fish && fish.id,
-        catchable: catchable && catchable.type !== 'fish' ? catchable.id : null,
+        fishId: fish && fish.id,
+        catchableId: catchable && catchable.type !== 'fish' ? catchable.id : null,
         fishY: fishY,
         fishTarget: fishTarget,
         fishMoveLeft: fishMoveLeft,
@@ -473,17 +333,20 @@
         zoneY: zoneY,
         zoneV: zoneV,
         catchProgress: catchProgress,
+        surgeTimer: surgeTimer,
+        surgeLeft: surgeLeft,
+        surgeDirection: surgeDirection,
         streak: streak,
         location: currentLocationId,
       });
   }
 
   function loadState() {
-    return storage.readObject(SAVE_KEY, null);
+    return sessionState.load();
   }
 
   function clearState() {
-    storage.remove(SAVE_KEY);
+    sessionState.clear();
   }
 
   function showResumePrompt(saved) {
@@ -501,41 +364,40 @@
   }
 
   function restoreState(saved) {
-    const restoredFish = saved.fish && FISH_BY_ID.get(saved.fish);
-    const restoredItem = saved.catchable && ITEM_BY_ID.get(saved.catchable);
-    let phase = saved.phase;
-    if (!['ready', 'waiting', 'bite', 'hooking', 'fishing'].includes(phase)) phase = 'ready';
-    if (['hooking', 'fishing'].includes(phase) && !restoredFish && !restoredItem) phase = 'ready';
-    castDistance = Number(saved.castDistance) || .55;
-    castTime = Math.max(0, Number(saved.castTime) || 0);
-    castUsedPremiumBait = !!saved.castUsedPremiumBait;
-    waitLeft = Math.max(.4, Number(saved.waitLeft) || .4);
-    biteLeft = Math.max(.8, Number(saved.biteLeft) || .8);
-    hookTime = Math.max(.15, Number(saved.hookTime) || .15);
-    fish = restoredFish || null;
-    catchable = restoredFish ? Object.assign({ type: 'fish' }, restoredFish) : (restoredItem || null);
-    if (restoredItem) fish = { id: restoredItem.id, behavior: 'calm', difficulty: .58 };
-    fishY = Math.max(.04, Math.min(.96, Number(saved.fishY) || .5));
-    fishTarget = Math.max(.04, Math.min(.96, Number(saved.fishTarget) || fishY));
-    fishMoveLeft = Math.max(.1, Number(saved.fishMoveLeft) || .4);
-    fishWarning = Math.max(0, Number(saved.fishWarning) || 0);
-    dashPending = !!saved.dashPending;
-    dashCount = Math.max(0, Number(saved.dashCount) || 0);
-    zoneY = Math.max(.16, Math.min(.84, Number(saved.zoneY) || .2));
-    zoneV = Math.max(-.88, Math.min(.84, Number(saved.zoneV) || 0));
-    catchProgress = Math.max(.08, Math.min(.96, Number(saved.catchProgress) || .25));
-    streak = Math.max(0, Number(saved.streak) || 0);
-    if (saved.location && LOCATIONS[saved.location] && unlockedLocations.includes(saved.location)) {
-      currentLocationId = saved.location;
+    const restored = sessionState.normalize(saved, { fishById: FISH_BY_ID, itemById: ITEM_BY_ID, locations: LOCATIONS, unlockedLocations });
+    castDistance = restored.castDistance;
+    castTime = restored.castTime;
+    castUsedPremiumBait = restored.castUsedPremiumBait;
+    waitLeft = restored.waitLeft;
+    biteLeft = restored.biteLeft;
+    hookTime = restored.hookTime;
+    fish = restored.fish;
+    catchable = restored.fish ? Object.assign({ type: 'fish' }, restored.fish) : restored.item;
+    if (restored.item) fish = { id: restored.item.id, behavior: 'calm', difficulty: .58 };
+    fishY = restored.fishY;
+    fishTarget = restored.fishTarget;
+    fishMoveLeft = restored.fishMoveLeft;
+    fishWarning = restored.fishWarning;
+    dashPending = restored.dashPending;
+    dashCount = restored.dashCount;
+    zoneY = restored.zoneY;
+    zoneV = restored.zoneV;
+    catchProgress = restored.catchProgress;
+    surgeTimer = restored.surgeTimer;
+    surgeLeft = restored.surgeLeft;
+    surgeDirection = restored.surgeDirection;
+    streak = restored.streak;
+    if (restored.location) {
+      currentLocationId = restored.location;
       storage.writeString(CURRENT_LOCATION_KEY, currentLocationId);
     }
-    updateLocationPresentation();
+    locationUI.present();
     updateEnvironment();
     if (catchable) setMysteryMarker();
     pendingResume = null;
     motionTestHold = false;
     modalNew.hidden = true;
-    setMode(phase);
+    setMode(restored.phase);
     updateHud();
     saveState();
   }
@@ -605,7 +467,7 @@
     overlay.hidden = true;
     modalNew.hidden = true;
     modalBack.hidden = true;
-    updateLocationPresentation();
+    locationUI.present();
     setMode('ready');
     play('start');
   }
@@ -697,6 +559,9 @@
     dashCount = 0;
     zoneY = .2;
     zoneV = 0;
+    surgeTimer = 3.8 + Math.random() * 1.4;
+    surgeLeft = 0;
+    surgeDirection = Math.random() < .5 ? -1 : 1;
     catchProgress = catchable.type !== 'fish' ? .48 : (fish.id === 'crucian' && totalCaught === 0 ? .38 : .25);
     hookTime = .62;
     setMode('hooking');
@@ -718,58 +583,25 @@
     showResult(false, '反应慢了一点', '鱼儿吃掉鱼饵，溜走了。');
   }
 
-  function updateFish(dt) {
-    fishMoveLeft -= dt;
-    fishWarning = Math.max(0, fishWarning - dt);
-    if (fishMoveLeft <= 0) {
-      if (fish.behavior === 'calm') {
-        fishTarget = .16 + Math.random() * .68;
-        fishMoveLeft = (fish.id === 'carp' ? 1.05 : .82) + Math.random() * .72;
-      } else if (fish.behavior === 'active') {
-        if (fish.id === 'eel') fishTarget = fishY > .5 ? .12 + Math.random() * .24 : .64 + Math.random() * .24;
-        else fishTarget = .08 + Math.random() * .84;
-        fishMoveLeft = fish.id === 'eel' ? .2 + Math.random() * .24 : .32 + Math.random() * .48;
-      } else if (!dashPending) {
-        fishWarning = fish.id === 'moon' ? .68 : fish.id === 'icefin' ? .58 : .48;
-        fishMoveLeft = fishWarning;
-        if (fish.id === 'starlight') fishTarget = Math.max(.1, Math.min(.9, fishY + (Math.random() < .5 ? -.12 : .12)));
-        else if (fish.id === 'moon') fishTarget = Math.max(.1, Math.min(.9, fishY + (Math.random() < .5 ? -.08 : .08)));
-        else fishTarget = fishY;
-        dashPending = true;
-      } else {
-        if (fish.id === 'moon') fishTarget = fishY > .5 ? .05 + Math.random() * .16 : .79 + Math.random() * .16;
-        else if (dashCount === 0) fishTarget = fishY > .5 ? .18 + Math.random() * .14 : .68 + Math.random() * .14;
-        else fishTarget = fishY > .5 ? .08 + Math.random() * .18 : .74 + Math.random() * .2;
-        fishMoveLeft = fish.id === 'icefin' ? .55 + Math.random() * .18 : .44 + Math.random() * .26;
-        dashPending = false;
-        dashCount++;
-      }
-    }
-    const speed = (fish.behavior === 'calm' ? .62 : fish.behavior === 'active' ? 1.1 : 1.3) * fish.difficulty;
-    fishY += (fishTarget - fishY) * Math.min(1, dt * speed * 3.2);
-    fishY += Math.sin(performance.now() / (fish.id === 'puffer' ? 95 : 180)) * dt * (fish.id === 'puffer' ? .055 : .018);
-    fishY = Math.max(.04, Math.min(.96, fishY));
-    fishMarker.classList.toggle('is-warning', fishWarning > 0);
-  }
-
   function updateFishing(dt) {
-    updateFish(dt);
-    const accel = held ? 2.12 : -1.48;
-    zoneV += accel * dt;
-    if (currentLocationId === 'river') zoneV += Math.sin(performance.now() / 720) * .34 * dt;
-    zoneV *= Math.pow(.2, dt);
-    zoneV = Math.max(-.88, Math.min(.84, zoneV));
-    zoneY += zoneV * dt;
-    const baseZoneHalf = catchable && catchable.type !== 'fish' ? .22 : (fish.id === 'crucian' && totalCaught === 0 ? .19 : .16);
-    const zoneHalf = baseZoneHalf * (tackle.stableHook ? 1.1 : 1);
-    if (zoneY < zoneHalf) { zoneY = zoneHalf; zoneV = Math.abs(zoneV) * .22; }
-    if (zoneY > 1 - zoneHalf) { zoneY = 1 - zoneHalf; zoneV = -Math.abs(zoneV) * .28; }
-    const inside = Math.abs(fishY - zoneY) <= zoneHalf;
-    catchZone.classList.toggle('is-catching', inside);
-    catchProgress += dt * (inside ? .27 / fish.difficulty : -.105 * fish.difficulty);
-    catchProgress = Math.max(0, Math.min(1, catchProgress));
-    if (catchProgress >= 1) beginCatchFinish();
-    else if (catchProgress <= 0) loseFish();
+    const result = window.FishingCatchMechanics.step({
+      fish, fishY, fishTarget, fishMoveLeft, fishWarning, dashPending, dashCount,
+      zoneY, zoneV, catchProgress, surgeTimer, surgeLeft, surgeDirection,
+      held, location: currentLocationId, isItem: catchable && catchable.type !== 'fish',
+      totalCaught, stableHook: tackle.stableHook,
+    }, dt, performance.now());
+    ({ fishY, fishTarget, fishMoveLeft, fishWarning, dashPending, dashCount,
+      zoneY, zoneV, catchProgress, surgeTimer, surgeLeft, surgeDirection } = result.state);
+    fishMarker.classList.toggle('is-warning', result.events.fishWarning);
+    catchZone.classList.toggle('is-catching', result.events.inside);
+    if (currentLocationId === 'coast') {
+      currentIndicator.textContent = result.events.surgeText;
+      currentIndicator.classList.toggle('is-warning', result.events.surgeWarning);
+      currentIndicator.classList.toggle('is-active', result.events.surgeActive);
+    }
+    if (result.events.wave) { play('wave'); vibrate(12); }
+    if (result.events.outcome === 'caught') beginCatchFinish();
+    else if (result.events.outcome === 'lost') loseFish();
   }
 
   function beginCatchFinish() {
@@ -798,7 +630,7 @@
     const grade = sizeGrade(fish, weight);
     const caughtEnvironment = environment.label.replace(/^[^ ]+ /, '');
     const isRecord = weight > bestWeight;
-    const species = recordCatch(fish, weight);
+    const species = collectionUI.recordFish(fish, weight);
     const value = economy.fishValue(fish, weight);
     fishBag.push({ id: fish.id, weight: weight, value: value });
     saveEconomy();
@@ -808,14 +640,16 @@
     bestWeight = Math.max(bestWeight, weight);
     saveStats();
     updateHud();
-    renderEconomyBar();
+    economyUI.renderBar();
     caughtFlash = 1;
     const badges = [];
+    const caughtLocation = LOCATIONS[currentLocationId] || LOCATIONS.lake;
     if (species.first) badges.push('✨ 新物种发现！');
     if (species.speciesRecord) badges.push('🏆 单鱼新纪录！');
-    if (isRecord) badges.push(currentLocationId === 'river' ? '本溪最大重量！' : '本湖最大重量！');
+    if (isRecord) badges.push(caughtLocation.weightRecordLabel);
     if (species.newlyUnlocked.includes('river')) badges.push('🏞️ 发现新钓场：清溪！');
-    const title = fish.rarity === '传说' ? (currentLocationId === 'river' ? '溪谷传说！' : '月光奇迹！') : '钓到了！';
+    if (species.newlyUnlocked.includes('coast')) badges.push('🌊 海风带来新的方向 · 潮汐湾已解锁！');
+    const title = fish.rarity === '传说' ? caughtLocation.legendaryTitle : '钓到了！';
     const baitFeedback = castUsedPremiumBait ? '\n🦐 本次使用了高级鱼饵' : '';
     const text = fish.name + ' · ' + fish.rarity + '\n' + formatWeight(weight) + ' · ' + grade + ' · 估价 ' + value + ' 🪙\n' + caughtEnvironment + baitFeedback + (badges.length ? '\n' + badges.join(' · ') : '');
     clearState();
@@ -824,10 +658,10 @@
   }
 
   function catchItem(item) {
-    const first = !itemCollection[item.id];
-    itemCollection[item.id] = (Number(itemCollection[item.id]) || 0) + 1;
-    const itemCount = itemCollection[item.id];
-    storage.writeObject(ITEM_COLLECTION_KEY, itemCollection);
+    const recorded = collectionUI.recordItem(item);
+    const first = recorded.first;
+    const itemCount = recorded.count;
+    const newlyUnlocked = recorded.newlyUnlocked;
     if (item.type === 'treasure') {
       tackle.premiumBait = Math.min(economy.MAX_BAIT, tackle.premiumBait + 1);
       saveTackle();
@@ -836,7 +670,8 @@
     const treasure = item.type === 'treasure';
     const title = treasure && first ? 'NEW! ' + item.name : (treasure ? '再次发现' + item.name : '捞到了……');
     const collectionFeedback = treasure ? (first ? '\n✨ 首次发现 · 已登记到水边收藏' : '\n水边收藏 · 已发现 × ' + itemCount) : '';
-    const text = item.name + ' · ' + item.rarity + '\n' + item.line + collectionFeedback + (treasure ? '\n🦐 获得高级鱼饵 × 1' : '');
+    const unlockFeedback = newlyUnlocked.includes('coast') ? '\n🌊 海风带来新的方向 · 潮汐湾已解锁！' : '';
+    const text = item.name + ' · ' + item.rarity + '\n' + item.line + collectionFeedback + (treasure ? '\n🦐 获得高级鱼饵 × 1' : '') + unlockFeedback;
     clearState();
     advanceEnvironment();
     beginReveal({ item: item, title: title, text: text, first: first });
@@ -982,169 +817,11 @@
     progressFill.style.width = Math.round(catchProgress * 100) + '%';
   }
 
-  function resize() {
-    const rect = stage.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
+  const sceneRenderer = window.FishingSceneRenderer.create({ canvas, stage, context: ctx });
+  const resize = sceneRenderer.resize;
 
   function drawScene(time) {
-    const w = stage.clientWidth;
-    const h = stage.clientHeight;
-    const isRiver = currentLocationId === 'river';
-    const lakeY = h * (isRiver ? .43 : .48);
-    const isNight = environment.time === 'night';
-    const isDusk = environment.time === 'dusk';
-    const isRain = environment.weather === 'rain';
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, isRiver ? (isNight ? '#173a4b' : isDusk ? '#5b6a63' : '#73a9a4') : (isNight ? '#142449' : isDusk ? '#70465b' : '#5793b5'));
-    grad.addColorStop(.48, isRiver ? (isNight ? '#285967' : isDusk ? '#8c8b70' : '#b7d7c5') : (isNight ? '#283f66' : isDusk ? '#c27c69' : '#9bc7d0'));
-    grad.addColorStop(.49, isRiver ? (isNight ? '#164f60' : '#3f7f7d') : (isNight ? '#1c5270' : isDusk ? '#35677a' : '#34768b'));
-    grad.addColorStop(1, isRiver ? (isNight ? '#092f3d' : '#1d5960') : (isNight ? '#0e2c4a' : '#16465d'));
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-
-    if (isNight) {
-      ctx.fillStyle = 'rgba(255,239,183,.92)';
-      ctx.beginPath(); ctx.arc(w * .72, h * .17, Math.min(w, h) * .075, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1a2d51';
-      ctx.beginPath(); ctx.arc(w * .748, h * .145, Math.min(w, h) * .072, 0, Math.PI * 2); ctx.fill();
-      for (let i = 0; i < 26; i++) {
-        const x = ((i * 83) % 997) / 997 * w;
-        const y = ((i * 47) % 211) / 211 * lakeY * .75;
-        const twinkle = .35 + .5 * Math.abs(Math.sin(time / 900 + i));
-        ctx.fillStyle = 'rgba(255,244,205,' + twinkle + ')';
-        ctx.fillRect(x, y, i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
-      }
-    } else {
-      ctx.fillStyle = isDusk ? 'rgba(255,190,112,.92)' : 'rgba(255,238,173,.94)';
-      ctx.beginPath(); ctx.arc(w * .74, h * (isDusk ? .28 : .16), Math.min(w, h) * .065, 0, Math.PI * 2); ctx.fill();
-    }
-
-    ctx.fillStyle = isRiver ? '#17352f' : '#0d1b32';
-    ctx.beginPath(); ctx.moveTo(0, lakeY);
-    for (let x = 0; x <= w; x += 22) ctx.lineTo(x, lakeY - 18 - ((x * 7) % 41));
-    ctx.lineTo(w, lakeY + 18); ctx.lineTo(0, lakeY + 18); ctx.fill();
-    ctx.strokeStyle = 'rgba(174,214,222,.15)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 8; i++) {
-      const y = lakeY + 18 + i * (h - lakeY) / 9;
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 12) {
-        const yy = y + Math.sin(x * (isRiver ? .05 : .035) + time * (isRiver ? .0027 : .0015) + i) * (isRiver ? 3 : 2);
-        if (!x) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
-      }
-      ctx.stroke();
-    }
-
-    if (isRiver) {
-      ctx.fillStyle = 'rgba(194,205,178,.38)';
-      for (let i = 0; i < 7; i++) {
-        const rockX = ((i * 137) % 911) / 911 * w;
-        const rockY = lakeY + 18 + (i % 3) * 19;
-        ctx.beginPath(); ctx.ellipse(rockX, rockY, 11 + (i % 3) * 5, 5 + (i % 2) * 3, -.12, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.fillStyle = 'rgba(198,242,226,.55)';
-      ctx.font = '700 12px sans-serif';
-      ctx.fillText('≋', w * .5 + Math.sin(time / 700) * 22, lakeY + 62);
-      ctx.fillText('≋', w * .72 + Math.sin(time / 820) * 18, lakeY + 118);
-    }
-
-    if (isRain) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(204,232,244,.36)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 42; i++) {
-        const x = (((i * 73) + time * .16) % (w + 60)) - 30;
-        const y = (((i * 47) + time * .28) % (h + 50)) - 50;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 14); ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    const personX = w * .16;
-    const groundY = lakeY + 30;
-    ctx.fillStyle = '#10172a';
-    ctx.beginPath(); ctx.arc(personX, groundY - 42, 10, 0, Math.PI * 2); ctx.fill();
-    ctx.fillRect(personX - 8, groundY - 33, 16, 30);
-    const pullBack = mode === 'casting' ? power : 0;
-    const rodTipX = personX + 40 - pullBack * 18;
-    const rodTipY = groundY - 72 - pullBack * 8;
-    ctx.strokeStyle = '#d8b77a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(personX + 5, groundY - 27); ctx.lineTo(rodTipX, rodTipY); ctx.stroke();
-
-    const targetBobX = personX + 45 + (w * .7 - personX) * castDistance;
-    const targetBobY = lakeY + 28;
-    if (mode === 'ready' || mode === 'casting') {
-      const hookX = personX + 24 - pullBack * 12;
-      const hookY = lakeY - 10;
-      ctx.strokeStyle = 'rgba(245,241,223,.58)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY); ctx.quadraticCurveTo(personX + 42, groundY - 18, hookX, hookY); ctx.stroke();
-      ctx.strokeStyle = '#f5f1df'; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.moveTo(hookX, hookY - 5); ctx.lineTo(hookX, hookY + 3); ctx.quadraticCurveTo(hookX, hookY + 8, hookX + 5, hookY + 5); ctx.stroke();
-    } else if (mode === 'waiting' && castTime > 0) {
-      const castT = Math.max(0, Math.min(1, 1 - castTime / .72));
-      const bobX = rodTipX + (targetBobX - rodTipX) * castT;
-      const bobY = rodTipY + (targetBobY - rodTipY) * castT - Math.sin(Math.PI * castT) * h * .24;
-      ctx.strokeStyle = 'rgba(245,241,223,.55)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(personX + 40, groundY - 72); ctx.quadraticCurveTo(w * .45, lakeY - 48, bobX, bobY); ctx.stroke();
-      ctx.fillStyle = '#ff806b'; ctx.fillRect(bobX - 2, bobY - 8, 4, 9);
-      ctx.fillStyle = '#f5f1df'; ctx.beginPath(); ctx.arc(bobX, bobY + 1, 4, 0, Math.PI * 2); ctx.fill();
-    } else if (mode === 'hooking') {
-      const hookT = Math.max(0, Math.min(1, 1 - hookTime / .62));
-      const bobX = targetBobX + Math.sin(hookT * Math.PI * 3) * 5;
-      const bobY = targetBobY - Math.sin(Math.PI * hookT) * 10;
-      ctx.strokeStyle = 'rgba(245,241,223,.8)'; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY - Math.sin(Math.PI * hookT) * 12); ctx.lineTo(bobX, bobY); ctx.stroke();
-      ctx.fillStyle = '#ff806b'; ctx.fillRect(bobX - 2, bobY - 8, 4, 9);
-      ctx.fillStyle = '#f5f1df'; ctx.beginPath(); ctx.arc(bobX, bobY + 1, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.save();
-      ctx.globalAlpha = .3;
-      ctx.fillStyle = 'rgba(8,16,29,.82)';
-      ctx.beginPath(); ctx.ellipse(bobX - 8, targetBobY + 35 + Math.sin(hookT * 12) * 5, 12, 5, .15, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      ctx.strokeStyle = 'rgba(220,245,242,.6)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(targetBobX, targetBobY + 3, 14 + hookT * 15, 4 + hookT * 4, 0, 0, Math.PI * 2); ctx.stroke();
-    } else if (mode === 'finishing') {
-      const finishT = Math.max(0, Math.min(1, 1 - finishLeft / .68));
-      const bobX = targetBobX + (rodTipX - targetBobX) * finishT * .72;
-      const bobY = targetBobY - Math.sin(Math.PI * finishT) * h * .3 - finishT * 20;
-      ctx.strokeStyle = 'rgba(245,241,223,.85)'; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY); ctx.quadraticCurveTo(w * .52, lakeY - 80, bobX, bobY); ctx.stroke();
-      ctx.fillStyle = '#0a1323';
-      ctx.beginPath(); ctx.ellipse(bobX - 10, bobY + 7, 11, 6, -.25, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(bobX - 20, bobY + 6); ctx.lineTo(bobX - 29, bobY); ctx.lineTo(bobX - 27, bobY + 13); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#17213b'; ctx.beginPath(); ctx.arc(bobX - 5, bobY + 5, 1.4, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(220,245,242,.65)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(targetBobX, targetBobY + 3, 15 + finishT * 20, 5 + finishT * 5, 0, 0, Math.PI * 2); ctx.stroke();
-      for (let i = 0; i < 7; i++) {
-        const angle = -.3 - i * .38;
-        const distance = 10 + finishT * (18 + i * 3);
-        ctx.fillStyle = 'rgba(210,242,246,' + (.72 - finishT * .38) + ')';
-        ctx.beginPath();
-        ctx.arc(targetBobX + Math.cos(angle) * distance, targetBobY - 2 + Math.sin(angle) * distance, 1.5 + (i % 2), 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else if (['waiting', 'bite', 'fishing', 'paused'].includes(mode)) {
-      const bobX = targetBobX;
-      const bobY = targetBobY + Math.sin(time / 260) * (mode === 'bite' ? 8 : 2);
-      ctx.strokeStyle = 'rgba(245,241,223,.55)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(rodTipX, rodTipY); ctx.quadraticCurveTo(w * .45, lakeY - 48, bobX, bobY); ctx.stroke();
-      ctx.fillStyle = '#ff806b'; ctx.fillRect(bobX - 2, bobY - 8, 4, 9);
-      ctx.fillStyle = '#f5f1df'; ctx.beginPath(); ctx.arc(bobX, bobY + 1, 4, 0, Math.PI * 2); ctx.fill();
-      if (mode === 'waiting' || mode === 'bite') {
-        const rr = 10 + ((ripple * 24) % 30);
-        ctx.strokeStyle = 'rgba(220,245,242,' + Math.max(.05, .45 - (rr - 10) / 70) + ')';
-        ctx.beginPath(); ctx.ellipse(bobX, bobY + 4, rr, rr * .28, 0, 0, Math.PI * 2); ctx.stroke();
-      }
-    }
-
-    if (caughtFlash > 0) {
-      ctx.fillStyle = 'rgba(255,231,153,' + caughtFlash * .22 + ')';
-      ctx.fillRect(0, 0, w, h);
-    }
+    sceneRenderer.draw(time, { currentLocationId, environment, mode, power, castDistance, castTime, hookTime, finishLeft, ripple, caughtFlash });
   }
 
   function frame(now) {
@@ -1164,34 +841,34 @@
   modalBtn.addEventListener('click', () => {
     if (mode === 'paused') resume();
     else if (mode === 'resume' && pendingResume) restoreState(pendingResume);
-    else if (mode === 'menu') openLocations();
+    else if (mode === 'menu') locationUI.open();
     else startSession();
   });
   modalNew.addEventListener('click', () => {
-    if (mode === 'menu') openCatalog();
-    else if (mode === 'result') openLocations();
+    if (mode === 'menu') collectionUI.openCatalog();
+    else if (mode === 'result') locationUI.open();
     else startSession();
   });
-  locationBtn.addEventListener('click', openLocations);
-  locationsClose.addEventListener('click', closeLocations);
+  locationBtn.addEventListener('click', locationUI.open);
+  locationsClose.addEventListener('click', locationUI.close);
   locationsGrid.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-location]');
-    if (button && !button.disabled) selectLocation(button.dataset.location);
+    if (button && !button.disabled) locationUI.select(button.dataset.location);
   });
-  catalogBtn.addEventListener('click', openCatalog);
-  catalogClose.addEventListener('click', closeCatalog);
-  itemsBtn.addEventListener('click', openItems);
-  itemsClose.addEventListener('click', closeItems);
+  catalogBtn.addEventListener('click', collectionUI.openCatalog);
+  catalogClose.addEventListener('click', collectionUI.closeCatalog);
+  itemsBtn.addEventListener('click', collectionUI.openItems);
+  itemsClose.addEventListener('click', collectionUI.closeItems);
   tackleBtn.addEventListener('click', openTackle);
   tackleClose.addEventListener('click', closeTackle);
   basketBtn.addEventListener('click', openBasket);
   basketClose.addEventListener('click', closeBasket);
-  sellAllBtn.addEventListener('click', sellAllFish);
+  sellAllBtn.addEventListener('click', economyUI.sellAll);
   basketList.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-sell-index]');
-    if (button) sellFishAt(Number(button.dataset.sellIndex), button.closest('.basket-row'));
+    if (button) economyUI.sellAt(Number(button.dataset.sellIndex), button.closest('.basket-row'));
   });
-  buyBaitBtn.addEventListener('click', buyPremiumBait);
+  buyBaitBtn.addEventListener('click', economyUI.buyPremiumBait);
   tacklePanel.addEventListener('click', (event) => {
     const bait = event.target.closest('[data-bait]');
     if (bait && !bait.disabled) {
@@ -1247,33 +924,33 @@
   applyMuted();
   saveTackle();
   saveEconomy();
-  refreshLocationUnlocks();
-  updateLocationPresentation();
+  locationUI.refreshUnlocks();
+  locationUI.present();
   updateEnvironment();
   setMysteryArt(fishMarker.querySelector('span'));
   updateHud();
-  renderEconomyBar();
+  economyUI.renderBar();
   resize();
   const savedState = loadState();
   if (savedState) showResumePrompt(savedState);
-  else openLocations();
+  else locationUI.open();
   requestAnimationFrame(frame);
 
   window.__fishingTest = {
-    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: catchable && catchable.type === 'fish' ? fish.id : null, catchable: catchable && catchable.id, catchableType: catchable && catchable.type, fishY, zoneY, zoneV, catchProgress, totalCaught, bestWeight, streak, bestStreak, muted: audio.isMuted(), tackle: Object.assign({}, tackle), coins, fishBag: fishBag.slice(), currentLocationId, unlockedLocations: unlockedLocations.slice(), environmentStep, environment: environment.time + '-' + environment.weather }),
+    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: catchable && catchable.type === 'fish' ? fish.id : null, catchable: catchable && catchable.id, catchableType: catchable && catchable.type, fishY, zoneY, zoneV, catchProgress, surgeTimer, surgeLeft, surgeDirection, totalCaught, bestWeight, streak, bestStreak, muted: audio.isMuted(), tackle: Object.assign({}, tackle), coins, fishBag: fishBag.slice(), currentLocationId, unlockedLocations: unlockedLocations.slice(), environmentStep, environment: environment.time + '-' + environment.weather }),
     getLocations: () => Object.values(LOCATIONS).map((location) => ({
       id: location.id,
       name: location.name,
       unlocked: unlockedLocations.includes(location.id),
       progress: progressFor(location, collection),
     })),
-    openLocations,
-    openItems,
+    openLocations: locationUI.open,
+    openItems: collectionUI.openItems,
     openTackle,
     openBasket,
-    sellAllFish,
-    buyPremiumBait,
-    selectLocation,
+    sellAllFish: economyUI.sellAll,
+    buyPremiumBait: economyUI.buyPremiumBait,
+    selectLocation: locationUI.select,
     start: startSession,
     showCast: (progress) => {
       motionTestHold = true;
@@ -1308,7 +985,8 @@
     sampleFish: (count) => Array.from({ length: Math.max(1, Number(count) || 1) }, () => chooseFish().id),
     showReveal: (id) => {
       const item = FISH_BY_ID.get(id) || currentFishPool()[0];
-      beginReveal({ fish: item, title: item.rarity === '传说' ? (currentLocationId === 'river' ? '溪谷传说！' : '月光奇迹！') : '钓到了！', text: item.name });
+      const location = LOCATIONS[currentLocationId] || LOCATIONS.lake;
+      beginReveal({ fish: item, title: item.rarity === '传说' ? location.legendaryTitle : '钓到了！', text: item.name });
       revealLeft = 999;
     },
   };

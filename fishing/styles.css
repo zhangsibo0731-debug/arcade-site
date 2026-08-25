@@ -40,11 +40,19 @@ button, a { font: inherit; }
 @keyframes notice-pop { from { opacity: 0; transform: translate(-50%, 12px) scale(.8); } 65% { transform: translate(-50%, 0) scale(1.08); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 .catch-game { position: absolute; z-index: 6; inset: 64px 18px 18px auto; width: min(170px, 43%); display: flex; flex-direction: column; padding: 13px; border: 1px solid rgba(255,255,255,.18); border-radius: 20px; background: rgba(8,19,39,.82); backdrop-filter: blur(9px); box-shadow: 0 18px 50px rgba(0,0,0,.35); }
 .current-indicator { margin: -3px 0 7px; color: #9af0d1; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-align: center; animation: current-pulse 1.4s ease-in-out infinite alternate; }
+.current-indicator.is-surge { color: #9edff5; }
+.current-indicator.is-surge.is-warning { color: var(--gold); animation: surge-warning .32s ease-in-out infinite alternate; }
+.current-indicator.is-surge.is-active { color: #fff3c5; text-shadow: 0 0 12px rgba(255,212,122,.7); animation: surge-active .22s ease-in-out infinite alternate; }
 @keyframes current-pulse { to { opacity: .55; transform: translateY(1px); } }
+@keyframes surge-warning { to { opacity: .58; transform: scale(1.05); } }
+@keyframes surge-active { to { transform: translateY(-2px) scale(1.08); } }
 .catch-track { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; border-radius: 14px; background: linear-gradient(180deg, rgba(57,129,160,.48), rgba(14,52,83,.75)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
 .stage[data-location="river"] .catch-track { background: linear-gradient(180deg, rgba(66,149,143,.55), rgba(11,66,77,.82)); }
 .stage[data-location="river"] .catch-track::after { content: "≋  ≋  ≋"; position: absolute; left: 12px; top: 45%; color: rgba(210,255,241,.22); font-size: 14px; letter-spacing: 8px; animation: stream-flow 2.2s linear infinite; }
+.stage[data-location="coast"] .catch-track { background: linear-gradient(180deg, rgba(45,145,170,.62), rgba(8,55,88,.88)); }
+.stage[data-location="coast"] .catch-track::after { content: "⌁   ⌁   ⌁"; position: absolute; left: 10px; top: 42%; color: rgba(224,249,246,.24); font-size: 17px; letter-spacing: 5px; animation: coast-swell 3.2s ease-in-out infinite; }
 @keyframes stream-flow { from { transform: translateY(-12px); } to { transform: translateY(58px); } }
+@keyframes coast-swell { 50% { opacity: .55; transform: translateY(-12px) scaleX(1.08); } }
 .catch-track::before { content: ""; position: absolute; inset: 0; opacity: .22; background: repeating-linear-gradient(0deg, transparent 0 28px, rgba(255,255,255,.15) 29px 30px); }
 .fish-marker { position: absolute; z-index: 3; left: 50%; width: 76px; height: 76px; display: grid; place-items: center; transform: translate(-50%, 50%); transition: filter .15s; }
 .fish-marker span { width: 74px; height: 74px; display: block; opacity: .86; filter: grayscale(1) brightness(0) drop-shadow(0 2px 2px rgba(0,0,0,.78)) drop-shadow(0 0 4px rgba(214,238,244,.42)); }
@@ -195,6 +203,9 @@ button, a { font: inherit; }
 .location-card__art--river { background: linear-gradient(180deg, #375b67, #29556c); }
 .location-card__art--river::before { background: rgba(93,176,173,.7); transform: rotate(-3deg); }
 .location-card__art--river::after { background: rgba(29,94,109,.92); transform: scaleX(1.3) rotate(4deg); }
+.location-card__art--coast { background: linear-gradient(180deg, #df8d78, #397b91); }
+.location-card__art--coast::before { background: rgba(74,177,190,.78); transform: rotate(2deg); }
+.location-card__art--coast::after { background: rgba(14,78,109,.9); transform: scaleX(1.28) rotate(-3deg); }
 .location-card__copy { padding: 16px; }
 .location-card__status { color: var(--gold); font-size: 9px; font-weight: 700; letter-spacing: .1em; }
 .location-card h3 { margin-top: 4px; font-size: 22px; }
