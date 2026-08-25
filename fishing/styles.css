@@ -32,7 +32,7 @@ button, a { font: inherit; }
 .top-actions { position: absolute; z-index: 8; top: 12px; right: 12px; display: flex; gap: 7px; }
 .top-actions .icon-btn { background: rgba(8,17,35,.62); backdrop-filter: blur(8px); }
 .environment { position: absolute; z-index: 7; top: 13px; left: 13px; padding: 7px 10px; color: var(--ink); font-size: 10px; font-weight: 600; border: 1px solid var(--line); border-radius: 11px; background: rgba(8,17,35,.62); backdrop-filter: blur(8px); }
-.fish-sprite { background-size: var(--fish-size, 400%) auto; background-position: var(--fish-x, 0%) 50%; background-repeat: no-repeat; image-rendering: pixelated; }
+.fish-sprite { background-size: var(--fish-size, 400%); background-position: var(--fish-x, 0%) var(--fish-y, 50%); background-repeat: no-repeat; image-rendering: pixelated; }
 .notice { position: absolute; z-index: 7; left: 50%; top: 22%; min-width: 170px; padding: 12px 18px; text-align: center; border: 1px solid rgba(255,212,122,.45); border-radius: 17px; background: rgba(17,26,49,.88); box-shadow: 0 12px 36px rgba(0,0,0,.28); transform: translateX(-50%); animation: notice-pop .48s ease both; }
 .notice strong, .notice span { display: block; }
 .notice strong { color: var(--gold); font-size: 20px; }

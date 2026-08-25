@@ -24,6 +24,7 @@
         element.style.backgroundImage = 'url("assets/moonlake-fish-' + sheets[row] + '-v1.png")';
       }
       element.style.setProperty('--fish-x', (typeof item.spriteX === 'number' ? item.spriteX : column * 100 / 3) + '%');
+      element.style.setProperty('--fish-y', (typeof item.spriteY === 'number' ? item.spriteY : 50) + '%');
       element.style.setProperty('--fish-size', item.spriteSize || '400%');
       element.style.backgroundSize = item.standalone ? 'contain' : '';
     }

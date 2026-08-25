@@ -35,13 +35,12 @@
       weightRecordLabel: '本湾最大重量！',
       legendaryTitle: '潮汐奇遇！',
       mechanic: 'surge',
-      prototype: true,
       unlock: Object.freeze({
         discoveredFish: 14,
         rareFishIds: Object.freeze(['icefin', 'starlight', 'koi', 'moon', 'cherry-salmon', 'torrent-catfish', 'taimen']),
         clueItemIds: Object.freeze(['message-bottle', 'old-compass']),
       }),
-      fishIds: Object.freeze(['puffer', 'eel']),
+      fishIds: Object.freeze(['silver-sardine', 'blue-mackerel', 'sand-flounder', 'sea-bream', 'sea-bass', 'puffer', 'eel', 'reef-octopus', 'bluefin-tuna', 'starlit-sailfish']),
     }),
   });
 

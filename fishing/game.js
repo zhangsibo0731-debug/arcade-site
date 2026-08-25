@@ -1,13 +1,14 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
+  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCoastFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
   const { FISH, RARITY_RANK } = window.FishingFishData;
   const { RIVER_FISH } = window.FishingRiverFishData;
-  const ALL_FISH = FISH.concat(RIVER_FISH);
+  const { COAST_FISH } = window.FishingCoastFishData;
+  const ALL_FISH = FISH.concat(RIVER_FISH, COAST_FISH);
   const FISH_BY_ID = new Map(ALL_FISH.map((item) => [item.id, item]));
   const { ITEMS, ITEM_BY_ID, choose: chooseItem } = window.FishingCatchables;
   const economy = window.FishingEconomy;
