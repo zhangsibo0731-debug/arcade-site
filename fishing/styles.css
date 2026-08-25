@@ -73,9 +73,18 @@ button, a { font: inherit; }
 .catch-reveal[data-rarity="少见"] { --reveal-color: #78e2cf; --reveal-glow: rgba(120,226,207,.34); }
 .catch-reveal[data-rarity="稀有"] { --reveal-color: #b7a8ff; --reveal-glow: rgba(183,168,255,.42); }
 .catch-reveal[data-rarity="传说"] { --reveal-color: #ffd47a; --reveal-glow: rgba(255,212,122,.56); background: rgba(28,21,12,.36); }
+.catch-reveal[data-kind="junk"] { --reveal-color: #9aa7b8; --reveal-glow: rgba(154,167,184,.22); background: rgba(10,16,27,.46); }
+.catch-reveal[data-kind="junk"] .catch-reveal__fish { filter: drop-shadow(0 12px 13px rgba(0,0,0,.48)); animation-name: reveal-junk; }
+.catch-reveal[data-kind="treasure"] { --reveal-color: #ffd47a; --reveal-glow: rgba(255,212,122,.62); background: radial-gradient(circle, rgba(79,58,19,.42), rgba(5,13,28,.5) 66%); }
+.catch-reveal[data-kind="treasure"] .catch-reveal__burst { border-style: double; box-shadow: 0 0 48px var(--reveal-glow), inset 0 0 44px rgba(255,212,122,.24); }
+.catch-reveal[data-kind="treasure"] .catch-reveal__fish { animation-name: reveal-treasure; }
+.catch-reveal[data-first="true"]::before { position: absolute; z-index: 3; top: 18%; padding: 5px 12px; color: #37270b; font-size: 12px; font-weight: 800; letter-spacing: .16em; content: 'NEW!'; border-radius: 99px; background: var(--gold); box-shadow: 0 0 22px rgba(255,212,122,.62); animation: new-badge-pop .52s .12s cubic-bezier(.2,.9,.3,1.25) both; }
 @keyframes reveal-backdrop { from { opacity: 0; } to { opacity: 1; } }
 @keyframes reveal-ring { from { opacity: .9; transform: translate(-50%, -50%) scale(.35); } to { opacity: 0; transform: translate(-50%, -50%) scale(1.35); } }
 @keyframes reveal-fish { from { opacity: 0; transform: translateY(110px) rotate(-12deg) scale(.55); } 58% { opacity: 1; transform: translateY(-14px) rotate(4deg) scale(1.08); } to { transform: none; } }
+@keyframes reveal-junk { from { opacity: 0; transform: translateY(105px) rotate(16deg) scale(.68); } 70% { opacity: 1; transform: translateY(4px) rotate(-5deg); } to { transform: none; } }
+@keyframes reveal-treasure { from { opacity: 0; transform: translateY(90px) rotate(-10deg) scale(.45); } 55% { opacity: 1; transform: translateY(-20px) rotate(5deg) scale(1.16); } to { transform: none; } }
+@keyframes new-badge-pop { from { opacity: 0; transform: translateY(8px) scale(.55); } to { opacity: 1; transform: none; } }
 .overlay { position: absolute; z-index: 10; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(6,13,29,.56); backdrop-filter: blur(6px); }
 .modal { width: min(100%, 300px); padding: 27px 22px 21px; text-align: center; border: 1px solid var(--line); border-radius: 24px; background: rgba(20,31,57,.96); box-shadow: 0 28px 70px rgba(0,0,0,.5); }
 .modal__eyebrow { color: var(--gold); font-size: 10px; letter-spacing: .11em; }
@@ -96,6 +105,14 @@ button, a { font: inherit; }
 .hud strong { margin-top: 3px; color: var(--gold); font-size: 14px; }
 .action-area { display: grid; gap: 7px; }
 .economy-bar { display: flex; align-items: center; justify-content: space-between; min-height: 32px; padding: 4px 5px 4px 12px; color: var(--gold); font-size: 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(15,25,48,.68); }
+.economy-bar > span { position: relative; }
+#coinCount { display: inline-block; position: relative; }
+#coinCount.is-gaining { animation: coin-gain .48s ease both; }
+#coinCount.is-gaining::after { position: absolute; left: 50%; bottom: 115%; color: var(--mint); font-size: 10px; content: attr(data-gain); animation: coin-float .72s ease both; pointer-events: none; }
+#coinCount.is-spending { animation: coin-spend .42s ease both; }
+@keyframes coin-gain { 45% { color: #fff4b8; transform: scale(1.28); } }
+@keyframes coin-float { from { opacity: 0; transform: translate(-50%, 5px); } 35% { opacity: 1; } to { opacity: 0; transform: translate(-50%, -13px); } }
+@keyframes coin-spend { 45% { color: #ff9d91; transform: scale(.9); } }
 .economy-bar button { padding: 6px 10px; color: var(--ink); font-size: 11px; border: 0; border-radius: 9px; background: rgba(255,255,255,.08); cursor: pointer; }
 .power { height: 8px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.1); }
 .power i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--mint), var(--gold), #ff927a); }
@@ -140,6 +157,8 @@ button, a { font: inherit; }
 .basket-list { display: grid; gap: 7px; max-height: 270px; overflow: auto; }
 .basket-empty { padding: 25px 12px; color: var(--soft); font-size: 12px; text-align: center; border: 1px dashed var(--line); border-radius: 14px; }
 .basket-row { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.04); }
+.basket-row.is-selling { animation: basket-row-sell .24s var(--sell-delay, 0ms) ease both; pointer-events: none; }
+@keyframes basket-row-sell { to { opacity: 0; transform: translateX(34px) scale(.96); } }
 .basket-row__art { width: 42px; height: 42px; }
 .basket-row span, .basket-row b, .basket-row small { display: block; }
 .basket-row b { font-size: 12px; }

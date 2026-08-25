@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v47';
+const CACHE = 'arcade-v50';
 const ASSETS = [
   './',
   './index.html',
@@ -31,7 +31,7 @@ const ASSETS = [
   './puyo/styles.css?v=6',
   './puyo/game.js?v=12',
   './fishing/index.html',
-  './fishing/styles.css?v=16',
+  './fishing/styles.css?v=18',
   './fishing/fish-data.js?v=2',
   './fishing/river-fish-data.js?v=2',
   './fishing/catchables.js?v=1',
@@ -39,9 +39,9 @@ const ASSETS = [
   './fishing/environments.js?v=1',
   './fishing/locations.js?v=1',
   './fishing/storage.js?v=1',
-  './fishing/audio.js?v=1',
-  './fishing/ui.js?v=5',
-  './fishing/game.js?v=30',
+  './fishing/audio.js?v=2',
+  './fishing/ui.js?v=6',
+  './fishing/game.js?v=33',
   './fishing/assets/moonlake-fish-common-v1.png',
   './fishing/assets/moonlake-fish-uncommon-v1.png',
   './fishing/assets/moonlake-fish-rare-v1.png',

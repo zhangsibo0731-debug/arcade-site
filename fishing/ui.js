@@ -205,7 +205,8 @@
       elements.sellAllBtn.disabled = !bag.length;
       elements.sellAllBtn.textContent = bag.length ? '全部出售 · +' + total + ' 🪙' : '全部出售';
       const baitFull = config.baitCount > config.maxBait - config.packAmount;
-      elements.shopBaitStock.textContent = '现有 × ' + config.baitCount;
+      const shortfall = Math.max(0, config.packPrice - coins);
+      elements.shopBaitStock.textContent = '现有 × ' + config.baitCount + (baitFull ? ' · 已接近上限' : shortfall ? ' · 还差 ' + shortfall + ' 🪙' : ' · 可以购买');
       elements.buyBaitBtn.disabled = coins < config.packPrice || baitFull;
       elements.buyBaitBtn.textContent = baitFull ? '已满' : config.packPrice + ' 🪙';
     }

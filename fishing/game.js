@@ -130,6 +130,7 @@
   let powerDir = 1;
   let castDistance = .55;
   let castTime = 0;
+  let castUsedPremiumBait = false;
   let hookTime = 0;
   let waitLeft = 0;
   let biteLeft = 0;
@@ -157,6 +158,7 @@
   let saveAcc = 0;
   let pendingResume = null;
   let shopFeedbackTimer = 0;
+  let saleBusy = false;
   let collection = loadCollection();
   let itemCollection = storage.readObject(ITEM_COLLECTION_KEY, {});
   let tackle = economy.normalizeTackle(storage.readObject(TACKLE_KEY, {}));
@@ -311,24 +313,50 @@
     basketPanel.hidden = true;
   }
 
-  function sellAllFish() {
-    if (!fishBag.length) return;
-    coins = Math.min(economy.MAX_COINS, coins + economy.bagValue(fishBag));
-    fishBag = [];
-    saveEconomy();
-    renderEconomyBar();
-    renderBasket();
-    play('success');
+  function animateCoinGain(amount) {
+    if (!amount) return;
+    coinCount.dataset.gain = '+' + amount;
+    coinCount.classList.remove('is-gaining');
+    void coinCount.offsetWidth;
+    coinCount.classList.add('is-gaining');
   }
 
-  function sellFishAt(index) {
-    if (!Number.isInteger(index) || index < 0 || index >= fishBag.length) return;
-    const sold = fishBag.splice(index, 1)[0];
-    coins = Math.min(economy.MAX_COINS, coins + sold.value);
-    saveEconomy();
-    renderEconomyBar();
-    renderBasket();
-    play('success');
+  function sellAllFish() {
+    if (!fishBag.length || saleBusy) return;
+    saleBusy = true;
+    const income = economy.bagValue(fishBag);
+    Array.from(basketList.querySelectorAll('.basket-row')).forEach((row, index) => {
+      row.style.setProperty('--sell-delay', index * 24 + 'ms');
+      row.classList.add('is-selling');
+    });
+    setTimeout(() => {
+      coins = Math.min(economy.MAX_COINS, coins + income);
+      fishBag = [];
+      saveEconomy();
+      renderEconomyBar();
+      renderBasket();
+      animateCoinGain(income);
+      showShopFeedback('全部出售成功 · 收入 +' + income + ' 🪙');
+      saleBusy = false;
+      play('success');
+    }, 280);
+  }
+
+  function sellFishAt(index, row) {
+    if (saleBusy || !Number.isInteger(index) || index < 0 || index >= fishBag.length) return;
+    saleBusy = true;
+    if (row) row.classList.add('is-selling');
+    setTimeout(() => {
+      const sold = fishBag.splice(index, 1)[0];
+      coins = Math.min(economy.MAX_COINS, coins + sold.value);
+      saveEconomy();
+      renderEconomyBar();
+      renderBasket();
+      animateCoinGain(sold.value);
+      showShopFeedback('已出售 · 收入 +' + sold.value + ' 🪙');
+      saleBusy = false;
+      play('success');
+    }, row ? 220 : 0);
   }
 
   function showShopFeedback(message) {
@@ -346,13 +374,22 @@
 
   function buyPremiumBait() {
     const pack = economy.premiumBaitPack;
-    if (coins < pack.price || tackle.premiumBait > economy.MAX_BAIT - pack.amount) return;
+    if (coins < pack.price) {
+      showShopFeedback('金币不足 · 还差 ' + (pack.price - coins) + ' 🪙');
+      return;
+    }
+    if (tackle.premiumBait > economy.MAX_BAIT - pack.amount) {
+      showShopFeedback('高级鱼饵已接近上限');
+      return;
+    }
     coins -= pack.price;
     tackle.premiumBait += pack.amount;
     tackle.selectedBait = 'premium';
     saveTackle();
     saveEconomy();
     renderEconomyBar();
+    coinCount.classList.add('is-spending');
+    setTimeout(() => coinCount.classList.remove('is-spending'), 420);
     renderBasket();
     renderTackle();
     showShopFeedback('购买成功 · 高级鱼饵 +' + pack.amount + ' · 已自动装备，下一竿生效');
@@ -421,6 +458,7 @@
         phase: phase,
         castDistance: castDistance,
         castTime: castTime,
+        castUsedPremiumBait: castUsedPremiumBait,
         waitLeft: waitLeft,
         biteLeft: biteLeft,
         hookTime: hookTime,
@@ -470,6 +508,7 @@
     if (['hooking', 'fishing'].includes(phase) && !restoredFish && !restoredItem) phase = 'ready';
     castDistance = Number(saved.castDistance) || .55;
     castTime = Math.max(0, Number(saved.castTime) || 0);
+    castUsedPremiumBait = !!saved.castUsedPremiumBait;
     waitLeft = Math.max(.4, Number(saved.waitLeft) || .4);
     biteLeft = Math.max(.8, Number(saved.biteLeft) || .8);
     hookTime = Math.max(.15, Number(saved.hookTime) || .15);
@@ -562,6 +601,7 @@
     clearState();
     fish = null;
     catchable = null;
+    castUsedPremiumBait = false;
     overlay.hidden = true;
     modalNew.hidden = true;
     modalBack.hidden = true;
@@ -590,10 +630,18 @@
     held = false;
     actionBtn.classList.remove('is-held');
     castDistance = .3 + power * .62;
+    castUsedPremiumBait = tackle.selectedBait === 'premium' && tackle.premiumBait > 0;
+    if (castUsedPremiumBait) {
+      tackle.premiumBait--;
+      if (tackle.premiumBait <= 0) tackle.selectedBait = 'normal';
+      saveTackle();
+      renderTackle();
+    }
     castTime = .72;
     waitLeft = (1.15 + Math.random() * 1.75) * (1 - Math.min(.15, streak * .03));
     ripple = 0;
     setMode('waiting');
+    if (castUsedPremiumBait) actionHint.textContent = '🦐 高级鱼饵已投入 · 剩余 × ' + tackle.premiumBait + ' · 留意浮标';
     saveState();
     play('cast');
     vibrate(10);
@@ -630,18 +678,13 @@
 
   function hookFish() {
     if (mode !== 'bite') return;
-    const usingPremiumBait = tackle.selectedBait === 'premium' && tackle.premiumBait > 0;
+    const usingPremiumBait = castUsedPremiumBait;
     const itemChance = tackle.magnet ? .2 : .12;
     const foundItem = Math.random() < itemChance ? chooseItem(currentLocationId, { magnet: tackle.magnet }) : null;
     if (foundItem) {
       catchable = foundItem;
       fish = { id: foundItem.id, behavior: 'calm', difficulty: .58 };
     } else {
-      if (usingPremiumBait) {
-        tackle.premiumBait--;
-        if (tackle.premiumBait <= 0) tackle.selectedBait = 'normal';
-        saveTackle();
-      }
       fish = chooseFish(usingPremiumBait);
       catchable = Object.assign({ type: 'fish' }, fish);
     }
@@ -657,6 +700,7 @@
     catchProgress = catchable.type !== 'fish' ? .48 : (fish.id === 'crucian' && totalCaught === 0 ? .38 : .25);
     hookTime = .62;
     setMode('hooking');
+    if (usingPremiumBait) actionHint.textContent = '🦐 高级鱼饵已生效 · 剩余 × ' + tackle.premiumBait;
     saveState();
     play('hook');
     vibrate(22);
@@ -772,7 +816,8 @@
     if (isRecord) badges.push(currentLocationId === 'river' ? '本溪最大重量！' : '本湖最大重量！');
     if (species.newlyUnlocked.includes('river')) badges.push('🏞️ 发现新钓场：清溪！');
     const title = fish.rarity === '传说' ? (currentLocationId === 'river' ? '溪谷传说！' : '月光奇迹！') : '钓到了！';
-    const text = fish.name + ' · ' + fish.rarity + '\n' + formatWeight(weight) + ' · ' + grade + ' · 估价 ' + value + ' 🪙\n' + caughtEnvironment + (badges.length ? '\n' + badges.join(' · ') : '');
+    const baitFeedback = castUsedPremiumBait ? '\n🦐 本次使用了高级鱼饵' : '';
+    const text = fish.name + ' · ' + fish.rarity + '\n' + formatWeight(weight) + ' · ' + grade + ' · 估价 ' + value + ' 🪙\n' + caughtEnvironment + baitFeedback + (badges.length ? '\n' + badges.join(' · ') : '');
     clearState();
     advanceEnvironment();
     beginReveal({ fish: fish, title: title, text: text });
@@ -781,17 +826,20 @@
   function catchItem(item) {
     const first = !itemCollection[item.id];
     itemCollection[item.id] = (Number(itemCollection[item.id]) || 0) + 1;
+    const itemCount = itemCollection[item.id];
     storage.writeObject(ITEM_COLLECTION_KEY, itemCollection);
     if (item.type === 'treasure') {
       tackle.premiumBait = Math.min(economy.MAX_BAIT, tackle.premiumBait + 1);
       saveTackle();
     }
     caughtFlash = 1;
-    const title = item.type === 'treasure' ? '发现了宝物！' : '捞到了……';
-    const text = item.name + ' · ' + item.rarity + '\n' + item.line + (first && item.type === 'treasure' ? '\n✨ 已登记到水边收藏' : '') + (item.type === 'treasure' ? '\n🦐 获得高级鱼饵 × 1' : '');
+    const treasure = item.type === 'treasure';
+    const title = treasure && first ? 'NEW! ' + item.name : (treasure ? '再次发现' + item.name : '捞到了……');
+    const collectionFeedback = treasure ? (first ? '\n✨ 首次发现 · 已登记到水边收藏' : '\n水边收藏 · 已发现 × ' + itemCount) : '';
+    const text = item.name + ' · ' + item.rarity + '\n' + item.line + collectionFeedback + (treasure ? '\n🦐 获得高级鱼饵 × 1' : '');
     clearState();
     advanceEnvironment();
-    beginReveal({ item: item, title: title, text: text });
+    beginReveal({ item: item, title: title, text: text, first: first });
   }
 
   function beginReveal(result) {
@@ -801,12 +849,14 @@
     revealLeft = [.72, .86, 1.05, 1.32][rank];
     setMode('reveal');
     catchReveal.dataset.rarity = isFish ? result.fish.rarity : (result.item.type === 'treasure' ? '稀有' : '常见');
+    catchReveal.dataset.kind = isFish ? 'fish' : result.item.type;
+    catchReveal.dataset.first = !isFish && result.item.type === 'treasure' && result.first ? 'true' : 'false';
     if (isFish) setFishSprite(revealFish, result.fish); else setCatchableArt(revealFish, result.item);
     revealTitle.textContent = result.title;
     revealRarity.textContent = isFish ? result.fish.rarity : result.item.rarity;
     catchReveal.hidden = false;
     play('splash');
-    setTimeout(() => play(rank >= 2 ? 'rare' : 'success'), 170);
+    setTimeout(() => play(isFish ? (rank >= 2 ? 'rare' : 'success') : (result.item.type === 'treasure' ? 'treasure' : 'junk')), 170);
     vibrate(rank === 3 ? [28, 35, 65, 35, 90] : rank === 2 ? [24, 35, 60] : [20, 30, 42]);
   }
 
@@ -1139,7 +1189,7 @@
   sellAllBtn.addEventListener('click', sellAllFish);
   basketList.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-sell-index]');
-    if (button) sellFishAt(Number(button.dataset.sellIndex));
+    if (button) sellFishAt(Number(button.dataset.sellIndex), button.closest('.basket-row'));
   });
   buyBaitBtn.addEventListener('click', buyPremiumBait);
   tacklePanel.addEventListener('click', (event) => {

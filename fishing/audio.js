@@ -10,6 +10,8 @@
     rare: [780, .5, 'sine'],
     reel: [185, .48, 'triangle'],
     splash: [330, .18, 'sine'],
+    junk: [150, .3, 'triangle'],
+    treasure: [660, .56, 'sine'],
     lose: [190, .35, 'sawtooth'],
   });
 
@@ -39,6 +41,8 @@
       oscillator.type = settings[2];
       oscillator.frequency.setValueAtTime(settings[0], now);
       if (name === 'success' || name === 'rare') oscillator.frequency.exponentialRampToValueAtTime(settings[0] * 1.7, now + settings[1]);
+      if (name === 'treasure') oscillator.frequency.exponentialRampToValueAtTime(settings[0] * 2.05, now + settings[1]);
+      if (name === 'junk') oscillator.frequency.exponentialRampToValueAtTime(105, now + settings[1]);
       if (name === 'reel') oscillator.frequency.linearRampToValueAtTime(290, now + settings[1]);
       if (name === 'splash') oscillator.frequency.exponentialRampToValueAtTime(120, now + settings[1]);
       if (name === 'lose') oscillator.frequency.exponentialRampToValueAtTime(90, now + settings[1]);
