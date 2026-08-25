@@ -45,6 +45,27 @@
       }),
       fishIds: Object.freeze(['silver-sardine', 'blue-mackerel', 'sand-flounder', 'sea-bream', 'sea-bass', 'puffer', 'eel', 'reef-octopus', 'bluefin-tuna', 'starlit-sailfish']),
     }),
+    abyss: Object.freeze({
+      id: 'abyss',
+      name: '星渊',
+      lockedName: '？？？',
+      icon: '🌌',
+      lockedIcon: '？',
+      subtitle: '海图之外的深色水域',
+      lockedSubtitle: '潮声之下似乎还有另一片水域',
+      collectionLabel: 'STARFALL ABYSS COLLECTION',
+      itemsLabel: 'ABYSSAL FINDS',
+      weightRecordLabel: '星渊最大重量！',
+      legendaryTitle: '深渊回响！',
+      mechanic: 'sonar',
+      hiddenUntilItemId: 'chart-fragment',
+      unlock: Object.freeze({
+        rareFishIds: Object.freeze(['moon', 'taimen', 'starlit-sailfish']),
+        requiredItemIds: Object.freeze(['chart-fragment']),
+        clueItemIds: Object.freeze(['rusty-key', 'old-compass']),
+      }),
+      fishIds: Object.freeze(['lanternfish', 'hatchetfish', 'fangtooth', 'barreleye', 'giant-isopod', 'reef-octopus', 'bluefin-tuna', 'viperfish', 'oarfish', 'luminous-coelacanth']),
+    }),
   });
 
   function discoveredFishCount(collection) {
@@ -52,20 +73,21 @@
   }
 
   function unlockProgressFor(location, collection, itemCollection) {
-    if (!location || location.unlock === 'default') return { fish: 0, fishNeeded: 0, rare: true, clue: true };
+    if (!location || location.unlock === 'default') return { fish: 0, fishNeeded: 0, rare: true, clue: true, required: true };
     const unlock = location.unlock;
     return {
       fish: discoveredFishCount(collection),
       fishNeeded: unlock.discoveredFish || 0,
       rare: !unlock.rareFishIds || unlock.rareFishIds.some((id) => collection && collection[id] && collection[id].count > 0),
       clue: !unlock.clueItemIds || unlock.clueItemIds.some((id) => itemCollection && Number(itemCollection[id]) > 0),
+      required: !unlock.requiredItemIds || unlock.requiredItemIds.every((id) => itemCollection && Number(itemCollection[id]) > 0),
     };
   }
 
   function meetsUnlock(location, collection, itemCollection) {
     if (!location || location.unlock === 'default') return true;
     const progress = unlockProgressFor(location, collection, itemCollection);
-    return progress.fish >= progress.fishNeeded && progress.rare && progress.clue;
+    return progress.fish >= progress.fishNeeded && progress.rare && progress.clue && progress.required;
   }
 
   function resolveUnlocked(collection, itemCollection, saved) {

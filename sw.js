@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v62';
+const CACHE = 'arcade-v66';
 const ASSETS = [
   './',
   './index.html',
@@ -31,24 +31,25 @@ const ASSETS = [
   './puyo/styles.css?v=6',
   './puyo/game.js?v=12',
   './fishing/index.html',
-  './fishing/styles.css?v=20',
+  './fishing/styles.css?v=22',
   './fishing/fish-data.js?v=2',
   './fishing/river-fish-data.js?v=2',
-  './fishing/coast-fish-data.js?v=1',
-  './fishing/catchables.js?v=2',
+  './fishing/coast-fish-data.js?v=2',
+  './fishing/abyss-fish-data.js?v=1',
+  './fishing/catchables.js?v=3',
   './fishing/economy.js?v=1',
   './fishing/environments.js?v=1',
-  './fishing/locations.js?v=5',
+  './fishing/locations.js?v=9',
   './fishing/storage.js?v=1',
   './fishing/audio.js?v=3',
-  './fishing/ui.js?v=8',
-  './fishing/scene-renderer.js?v=1',
+  './fishing/ui.js?v=9',
+  './fishing/scene-renderer.js?v=2',
   './fishing/session-state.js?v=1',
   './fishing/catch-mechanics.js?v=1',
   './fishing/economy-ui.js?v=2',
-  './fishing/location-ui.js?v=1',
-  './fishing/collection-ui.js?v=3',
-  './fishing/game.js?v=45',
+  './fishing/location-ui.js?v=3',
+  './fishing/collection-ui.js?v=4',
+  './fishing/game.js?v=47',
   './fishing/assets/moonlake-fish-common-v1.png',
   './fishing/assets/moonlake-fish-uncommon-v1.png',
   './fishing/assets/moonlake-fish-rare-v1.png',
@@ -56,6 +57,7 @@ const ASSETS = [
   './fishing/assets/clearstream-fish-rare-v1.png',
   './fishing/assets/clearstream-taimen-v1.png',
   './fishing/assets/coast-fish-sheet-v1.png',
+  './fishing/assets/abyss-fish-sheet-v1.png',
 ];
 
 self.addEventListener('install', (e) => {

@@ -14,6 +14,12 @@
     { id: 'rainbow-sea-glass', type: 'treasure', name: '彩虹海玻璃', icon: '🔷', rarity: '探索物品', locations: ['coast'], weathers: ['clear'], weight: 1.7, line: '磨圆的玻璃折出一小片彩虹。' },
     { id: 'spiral-shell', type: 'treasure', name: '潮音贝壳', icon: '🐚', rarity: '探索物品', locations: ['coast'], times: ['dusk', 'night'], weight: 1.55, line: '贴近耳边，仿佛还能听见潮水。' },
     { id: 'chart-fragment', type: 'treasure', name: '海图碎片', icon: '🗺️', rarity: '探索物品', locations: ['coast'], weathers: ['rain'], weight: 1.35, line: '残缺航线指向地图之外的深色水域。' },
+    { id: 'broken-dive-lamp', type: 'junk', name: '潜水灯残片', icon: '🔦', rarity: '沉船杂物', locations: ['abyss'], line: '灯罩已经碎裂，开关却还停在亮起的位置。' },
+    { id: 'corroded-rivet', type: 'junk', name: '锈蚀铆钉', icon: '🔩', rarity: '沉船杂物', locations: ['abyss'], line: '沉重的金属零件，曾固定着某艘远航船只。' },
+    { id: 'torn-deep-net', type: 'junk', name: '深海破网', icon: '🕸️', rarity: '沉船杂物', locations: ['abyss'], line: '网绳被什么巨大的力量从中间扯断了。' },
+    { id: 'abyssal-coin', type: 'treasure', name: '星渊古币', icon: '🪙', rarity: '古代遗物', locations: ['abyss'], times: ['dusk', 'night'], weight: 1.55, line: '陌生纹章被海水磨平，只剩边缘微微发亮。' },
+    { id: 'crystal-compass', type: 'treasure', name: '晶化罗盘', icon: '💠', rarity: '古代遗物', locations: ['abyss'], weathers: ['clear'], weight: 1.35, line: '指针被晶体封住，却仍朝向更深的黑暗。' },
+    { id: 'sealed-logbook', type: 'treasure', name: '密封航海日志', icon: '📕', rarity: '最终线索', locations: ['abyss'], times: ['night'], weathers: ['rain'], weight: .65, line: '最后一页写着：星光沉没之处，古老生命仍在呼吸。' },
   ]);
 
   const ITEM_BY_ID = new Map(ITEMS.map((item) => [item.id, item]));

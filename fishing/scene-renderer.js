@@ -20,19 +20,20 @@
       const h = stage.clientHeight;
       const isRiver = currentLocationId === 'river';
       const isCoast = currentLocationId === 'coast';
-      const lakeY = h * (isRiver ? .43 : isCoast ? .46 : .48);
+      const isAbyss = currentLocationId === 'abyss';
+      const lakeY = h * (isAbyss ? .28 : isRiver ? .43 : isCoast ? .46 : .48);
       const isNight = environment.time === 'night';
       const isDusk = environment.time === 'dusk';
       const isRain = environment.weather === 'rain';
       const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, isCoast ? (isNight ? '#101d3d' : isDusk ? '#a85f6e' : '#69b8c6') : isRiver ? (isNight ? '#173a4b' : isDusk ? '#5b6a63' : '#73a9a4') : (isNight ? '#142449' : isDusk ? '#70465b' : '#5793b5'));
-      grad.addColorStop(.48, isCoast ? (isNight ? '#263b68' : isDusk ? '#ef9b76' : '#bfe3d5') : isRiver ? (isNight ? '#285967' : isDusk ? '#8c8b70' : '#b7d7c5') : (isNight ? '#283f66' : isDusk ? '#c27c69' : '#9bc7d0'));
-      grad.addColorStop(.49, isCoast ? (isNight ? '#124668' : isDusk ? '#3c7590' : '#278ba0') : isRiver ? (isNight ? '#164f60' : '#3f7f7d') : (isNight ? '#1c5270' : isDusk ? '#35677a' : '#34768b'));
-      grad.addColorStop(1, isCoast ? (isNight ? '#082c4c' : '#126079') : isRiver ? (isNight ? '#092f3d' : '#1d5960') : (isNight ? '#0e2c4a' : '#16465d'));
+      grad.addColorStop(0, isAbyss ? '#0b1931' : isCoast ? (isNight ? '#101d3d' : isDusk ? '#a85f6e' : '#69b8c6') : isRiver ? (isNight ? '#173a4b' : isDusk ? '#5b6a63' : '#73a9a4') : (isNight ? '#142449' : isDusk ? '#70465b' : '#5793b5'));
+      grad.addColorStop(.48, isAbyss ? '#07162d' : isCoast ? (isNight ? '#263b68' : isDusk ? '#ef9b76' : '#bfe3d5') : isRiver ? (isNight ? '#285967' : isDusk ? '#8c8b70' : '#b7d7c5') : (isNight ? '#283f66' : isDusk ? '#c27c69' : '#9bc7d0'));
+      grad.addColorStop(.49, isAbyss ? '#061227' : isCoast ? (isNight ? '#124668' : isDusk ? '#3c7590' : '#278ba0') : isRiver ? (isNight ? '#164f60' : '#3f7f7d') : (isNight ? '#1c5270' : isDusk ? '#35677a' : '#34768b'));
+      grad.addColorStop(1, isAbyss ? '#020510' : isCoast ? (isNight ? '#082c4c' : '#126079') : isRiver ? (isNight ? '#092f3d' : '#1d5960') : (isNight ? '#0e2c4a' : '#16465d'));
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
   
-      if (isNight) {
+      if (!isAbyss && isNight) {
         ctx.fillStyle = 'rgba(255,239,183,.92)';
         ctx.beginPath(); ctx.arc(w * .72, h * .17, Math.min(w, h) * .075, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#1a2d51';
@@ -44,12 +45,15 @@
           ctx.fillStyle = 'rgba(255,244,205,' + twinkle + ')';
           ctx.fillRect(x, y, i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
         }
-      } else {
+      } else if (!isAbyss) {
         ctx.fillStyle = isDusk ? 'rgba(255,190,112,.92)' : 'rgba(255,238,173,.94)';
         ctx.beginPath(); ctx.arc(w * .74, h * (isDusk ? .28 : .16), Math.min(w, h) * .065, 0, Math.PI * 2); ctx.fill();
       }
   
-      if (isCoast) {
+      if (isAbyss) {
+        ctx.fillStyle = '#050a16';
+        ctx.beginPath(); ctx.moveTo(0, lakeY - 4); ctx.lineTo(w, lakeY + 5); ctx.lineTo(w, lakeY + 18); ctx.lineTo(0, lakeY + 12); ctx.closePath(); ctx.fill();
+      } else if (isCoast) {
         ctx.fillStyle = isNight ? '#baa982' : '#d8bd8e';
         ctx.beginPath(); ctx.moveTo(0, lakeY - 7); ctx.lineTo(w * .22, lakeY + 5); ctx.lineTo(w * .37, lakeY + 32); ctx.lineTo(0, lakeY + 47); ctx.closePath(); ctx.fill();
         ctx.fillStyle = isNight ? '#17243c' : '#566b66';
@@ -111,8 +115,29 @@
           ctx.beginPath(); ctx.arc(x, y, 18 + i * 2, Math.PI * 1.05, Math.PI * 1.9); ctx.stroke();
         }
       }
+
+      if (isAbyss) {
+        ctx.save();
+        const beamX = w * (.48 + Math.sin(time / 2600) * .08);
+        const beam = ctx.createLinearGradient(beamX, lakeY, beamX + w * .18, h);
+        beam.addColorStop(0, 'rgba(111,205,239,.16)');
+        beam.addColorStop(1, 'rgba(59,121,175,0)');
+        ctx.fillStyle = beam;
+        ctx.beginPath(); ctx.moveTo(beamX - 14, lakeY); ctx.lineTo(beamX + 20, lakeY); ctx.lineTo(beamX + w * .2, h); ctx.lineTo(beamX - w * .13, h); ctx.closePath(); ctx.fill();
+        for (let i = 0; i < 28; i++) {
+          const x = ((i * 137 + time * (.004 + (i % 3) * .002)) % 997) / 997 * w;
+          const y = lakeY + 22 + ((i * 83 + time * .012) % 613) / 613 * (h - lakeY - 35);
+          const glow = .18 + .42 * Math.abs(Math.sin(time / 900 + i * 1.7));
+          ctx.fillStyle = i % 5 === 0 ? 'rgba(105,235,214,' + glow + ')' : 'rgba(99,177,221,' + glow + ')';
+          ctx.beginPath(); ctx.arc(x, y, i % 5 === 0 ? 1.8 : 1, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(1,4,12,.88)';
+        ctx.beginPath(); ctx.moveTo(w * .58, h); ctx.lineTo(w * .66, h * .74); ctx.lineTo(w * .72, h * .77); ctx.lineTo(w * .79, h); ctx.closePath(); ctx.fill();
+        ctx.fillRect(w * .62, h * .73, w * .18, 5);
+        ctx.restore();
+      }
   
-      if (isRain) {
+      if (isRain && !isAbyss) {
         ctx.save();
         ctx.strokeStyle = 'rgba(204,232,244,.36)';
         ctx.lineWidth = 1;

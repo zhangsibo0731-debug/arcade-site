@@ -11,12 +11,16 @@
     function present() {
       const current = options.getState().currentLocationId;
       elements.stage.dataset.location = current;
+      elements.stage.classList.remove('is-sonar-active');
       elements.indicator.hidden = current === 'lake';
-      elements.indicator.classList.remove('is-surge', 'is-warning', 'is-active');
+      elements.indicator.classList.remove('is-surge', 'is-sonar', 'is-warning', 'is-active');
       if (current === 'river') elements.indicator.textContent = '水流 ≋';
       else if (current === 'coast') {
         elements.indicator.textContent = '浪涌平静';
         elements.indicator.classList.add('is-surge');
+      } else if (current === 'abyss') {
+        elements.indicator.textContent = '声呐待机';
+        elements.indicator.classList.add('is-sonar');
       }
     }
 
@@ -33,7 +37,9 @@
     function viewModels() {
       const current = options.getState();
       const discovered = rules.discoveredFishCount(current.collection);
-      return Object.values(locations).map((location) => {
+      return Object.values(locations).filter((location) => {
+        return !location.hiddenUntilItemId || current.unlockedLocations.includes(location.id) || Number(current.itemCollection[location.hiddenUntilItemId]) > 0;
+      }).map((location) => {
         const progress = rules.progressFor(location, current.collection);
         const unlockProgress = rules.unlockProgressFor(location, current.collection, current.itemCollection);
         const unlocked = current.unlockedLocations.includes(location.id);
@@ -41,12 +47,15 @@
         const needed = location.unlock === 'default' ? 0 : Math.max(0, location.unlock.discoveredFish - discovered);
         const lockedProgress = location.id === 'coast'
           ? '鱼类 ' + Math.min(unlockProgress.fish, unlockProgress.fishNeeded) + '/' + unlockProgress.fishNeeded + ' · 稀有鱼 ' + (unlockProgress.rare ? '✓' : '0/1') + ' · 线索 ' + (unlockProgress.clue ? '✓' : '0/1')
-          : '再发现 ' + needed + ' 种鱼即可解锁';
+          : location.id === 'abyss'
+            ? '海图 ' + (unlockProgress.required ? '✓' : '0/1') + ' · 指引 ' + (unlockProgress.clue ? '✓' : '0/1') + ' · 传说鱼 ' + (unlockProgress.rare ? '✓' : '0/1')
+            : '再发现 ' + needed + ' 种鱼即可解锁';
+        const concealed = !!location.lockedName && !unlocked;
         return {
           id: location.id,
-          name: location.name,
-          icon: location.icon,
-          subtitle: location.subtitle,
+          name: concealed ? location.lockedName : location.name,
+          icon: concealed ? location.lockedIcon : location.icon,
+          subtitle: concealed ? location.lockedSubtitle : location.subtitle,
           unlocked,
           available,
           current: current.currentLocationId === location.id,

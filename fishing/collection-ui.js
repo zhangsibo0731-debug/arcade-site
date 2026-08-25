@@ -33,7 +33,7 @@
       const current = options.getState();
       const location = options.locations[current.currentLocationId] || options.locations.lake;
       const kicker = location.collectionLabel;
-      options.ui.renderCatalog(current.collection, options.currentFishPool(), kicker);
+      options.ui.renderCatalog(current.collection, options.currentFishPool(), kicker, location.id);
     }
 
     function openCatalog() {

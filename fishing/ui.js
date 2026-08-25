@@ -29,7 +29,7 @@
       element.style.backgroundSize = item.standalone ? 'contain' : '';
     }
 
-    function renderCatalog(collection, visibleFish, kicker) {
+    function renderCatalog(collection, visibleFish, kicker, locationId) {
       const catalogFish = visibleFish || fish;
       const found = catalogFish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
       elements.catalogKicker.textContent = kicker;
@@ -50,7 +50,8 @@
         rarity.className = 'fish-card__rarity';
         rarity.textContent = discovered ? item.rarity : '尚未发现';
         const detail = document.createElement('p');
-        detail.textContent = discovered ? item.habitat + '\n捕获 ' + record.count + ' 次 · 最大 ' + formatWeight(record.best) : item.hint;
+        const habitat = item.habitats && item.habitats[locationId] || item.habitat;
+        detail.textContent = discovered ? habitat + '\n捕获 ' + record.count + ' 次 · 最大 ' + formatWeight(record.best) : item.hint;
         card.append(art, name, rarity, detail);
         elements.catalogGrid.appendChild(card);
       });

@@ -1,14 +1,15 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCoastFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
+  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCoastFishData || !window.FishingAbyssFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
   const { FISH, RARITY_RANK } = window.FishingFishData;
   const { RIVER_FISH } = window.FishingRiverFishData;
   const { COAST_FISH } = window.FishingCoastFishData;
-  const ALL_FISH = FISH.concat(RIVER_FISH, COAST_FISH);
+  const { ABYSS_FISH } = window.FishingAbyssFishData;
+  const ALL_FISH = FISH.concat(RIVER_FISH, COAST_FISH, ABYSS_FISH);
   const FISH_BY_ID = new Map(ALL_FISH.map((item) => [item.id, item]));
   const { ITEMS, ITEM_BY_ID, choose: chooseItem } = window.FishingCatchables;
   const economy = window.FishingEconomy;
@@ -253,7 +254,7 @@
   function updateEnvironment() {
     environment = environmentForStep(environmentStep);
     const location = LOCATIONS[currentLocationId];
-    ui.renderEnvironment({ label: location.icon + ' ' + location.name + ' · ' + environment.label });
+    ui.renderEnvironment({ label: currentLocationId === 'abyss' ? '🌌 星渊 · 深层水域' : location.icon + ' ' + location.name + ' · ' + environment.label });
   }
 
   function advanceEnvironment() {
@@ -448,7 +449,7 @@
     } else if (next === 'fishing') {
       actionBtn.disabled = false;
       actionBtn.textContent = '按住向上';
-      actionHint.textContent = currentLocationId === 'river' ? '按住上升 · 松开下沉 · 水流会轻推捕获区' : '按住上升 · 松开下沉 · 让鱼留在捕获区';
+      actionHint.textContent = currentLocationId === 'river' ? '按住上升 · 松开下沉 · 水流会轻推捕获区' : currentLocationId === 'abyss' ? '按住上升 · 松开下沉 · 声呐扫过时看清鱼影' : '按住上升 · 松开下沉 · 让鱼留在捕获区';
     } else if (next === 'hooking') {
       actionBtn.textContent = '提竿中…';
       actionHint.textContent = castUsedPremiumBait ? '🦐 高级鱼饵已生效 · 剩余 × ' + tackle.premiumBait : '鱼线绷紧了，准备遛鱼';
@@ -599,6 +600,13 @@
       currentIndicator.textContent = result.events.surgeText;
       currentIndicator.classList.toggle('is-warning', result.events.surgeWarning);
       currentIndicator.classList.toggle('is-active', result.events.surgeActive);
+    } else if (currentLocationId === 'abyss') {
+      const sonarPhase = performance.now() % 1400;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const sonarActive = !reducedMotion && sonarPhase < 550;
+      stage.classList.toggle('is-sonar-active', sonarActive);
+      currentIndicator.textContent = reducedMotion ? '声呐持续显示' : sonarActive ? '声呐扫描中' : '下一次声呐 · ' + Math.max(1, Math.ceil((1400 - sonarPhase) / 1000)) + 's';
+      currentIndicator.classList.toggle('is-active', sonarActive);
     }
     if (result.events.wave) { play('wave'); vibrate(12); }
     if (result.events.outcome === 'caught') beginCatchFinish();
