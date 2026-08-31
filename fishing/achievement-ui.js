@@ -15,7 +15,9 @@
     const definitions = options.definitions;
     const categories = options.categories;
     let activeCategory = 'all';
+    let activeStatus = 'all';
     let toastTimer = 0;
+    let notificationsDeferred = false;
     const toastQueue = [];
 
     function unlockedState() { return options.engine.getState().unlocked; }
@@ -42,13 +44,27 @@
       }).join('');
     }
 
+    function renderStatusFilters() {
+      const unlocked = unlockedState();
+      const categoryItems = activeCategory === 'all' ? definitions : definitions.filter((item) => item.category === activeCategory);
+      const unlockedCount = categoryItems.filter((item) => unlocked[item.id]).length;
+      const entries = [
+        ['all', '全部', categoryItems.length],
+        ['locked', '未完成', categoryItems.length - unlockedCount],
+        ['unlocked', '已解锁', unlockedCount],
+      ];
+      elements.statusFilters.innerHTML = entries.map(([id, label, count]) => '<button type="button" data-achievement-status="' + id + '" aria-pressed="' + (id === activeStatus) + '">' + label + '<small>' + count + '</small></button>').join('');
+    }
+
     function render() {
       const unlocked = unlockedState();
-      const visible = activeCategory === 'all' ? definitions : definitions.filter((item) => item.category === activeCategory);
+      const categoryItems = activeCategory === 'all' ? definitions.slice() : definitions.filter((item) => item.category === activeCategory);
+      const visible = categoryItems.filter((item) => activeStatus === 'all' || (activeStatus === 'unlocked' ? unlocked[item.id] : !unlocked[item.id]));
+      if (activeStatus === 'unlocked') visible.sort((a, b) => Number(unlocked[b.id] && unlocked[b.id].unlockedAt) - Number(unlocked[a.id] && unlocked[a.id].unlockedAt));
       const unlockedCount = Object.keys(unlocked).length;
       elements.progress.textContent = '已解锁 ' + unlockedCount + ' / ' + definitions.length;
       if (elements.progressFill) elements.progressFill.style.width = Math.round(unlockedCount / Math.max(1, definitions.length) * 100) + '%';
-      elements.grid.innerHTML = visible.map((item) => {
+      elements.grid.innerHTML = visible.length ? visible.map((item) => {
         const record = unlocked[item.id];
         const progress = options.engine.progress(item, context());
         const category = categories[item.category];
@@ -61,7 +77,7 @@
         return '<article class="achievement-card is-' + (record ? 'unlocked' : 'locked') + '" data-category="' + item.category + '">' +
           '<div class="achievement-badge frame-' + item.frame + ' accent-' + category.accent + '">' + iconMarkup(item.icon, item.hidden && !record) + '</div>' +
           '<div><em>' + category.label + '</em><h3>' + lockedTitle + '</h3><p>' + lockedText + '</p>' + date + '</div></article>';
-      }).join('');
+      }).join('') : '<p class="achievement-empty">这里暂时没有符合条件的成就</p>';
       elements.dot.hidden = options.engine.getState().unseen.length === 0;
     }
 
@@ -70,6 +86,7 @@
       if (PAUSABLE.includes(mode)) options.pause();
       options.hidePanels();
       renderFilters();
+      renderStatusFilters();
       render();
       elements.panel.hidden = false;
       options.store.markSeen();
@@ -79,7 +96,7 @@
     function close() { elements.panel.hidden = true; }
 
     function showNextToast() {
-      if (!toastQueue.length) return;
+      if (notificationsDeferred || !toastQueue.length) return;
       const next = toastQueue.shift();
       elements.toastTitle.textContent = next.title;
       elements.toastText.textContent = next.text;
@@ -87,6 +104,7 @@
       elements.toastIcon.style.setProperty('--icon-x', position.x);
       elements.toastIcon.style.setProperty('--icon-y', position.y);
       elements.toast.classList.toggle('is-legendary', next.frame === 'legendary');
+      if (next.feedback !== false && typeof options.onToast === 'function') options.onToast(next);
       elements.toast.hidden = false;
       elements.toast.classList.remove('is-visible');
       void elements.toast.offsetWidth;
@@ -108,9 +126,14 @@
     function notifyRetroactive(count) {
       if (!count) return;
       const wasEmpty = toastQueue.length === 0 && elements.toast.hidden;
-      toastQueue.push({ title: '既有记录已整理', text: '为你补发了 ' + count + ' 项成就', icon: 'book', frame: 'common' });
+      toastQueue.push({ title: '既有记录已整理', text: '为你补发了 ' + count + ' 项成就', icon: 'book', frame: 'common', feedback: false });
       elements.dot.hidden = false;
       if (wasEmpty) showNextToast();
+    }
+
+    function setDeferred(value) {
+      notificationsDeferred = value === true;
+      if (!notificationsDeferred && elements.toast.hidden) showNextToast();
     }
 
     elements.filters.addEventListener('click', (event) => {
@@ -118,11 +141,19 @@
       if (!button) return;
       activeCategory = button.dataset.achievementFilter;
       renderFilters();
+      renderStatusFilters();
+      render();
+    });
+    elements.statusFilters.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-achievement-status]');
+      if (!button) return;
+      activeStatus = button.dataset.achievementStatus;
+      renderStatusFilters();
       render();
     });
     elements.toast.addEventListener('click', open);
 
-    return Object.freeze({ open, close, render, notify, notifyRetroactive });
+    return Object.freeze({ open, close, render, notify, notifyRetroactive, setDeferred });
   }
 
   global.FishingAchievementUI = Object.freeze({ create });

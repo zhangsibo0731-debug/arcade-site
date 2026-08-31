@@ -288,6 +288,13 @@
     getContext: achievementContext,
     getMode: () => mode,
     pause: showPause,
+    onToast: (entry) => {
+      const frame = entry.frame || 'common';
+      play(frame === 'legendary' ? 'achievementLegendary' : (frame === 'rare' ? 'achievementRare' : 'achievement'));
+      if (!window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        vibrate(frame === 'legendary' ? [24, 45, 38, 45, 60] : (frame === 'rare' ? [22, 38, 34] : 24));
+      }
+    },
     hidePanels: () => {
       catalog.hidden = true;
       itemsPanel.hidden = true;
@@ -298,6 +305,7 @@
     elements: {
       panel: achievementPanel,
       filters: $('achievementFilters'),
+      statusFilters: $('achievementStatusFilters'),
       grid: $('achievementGrid'),
       progress: $('achievementProgress'),
       progressFill: $('achievementProgressFill'),
@@ -653,6 +661,7 @@
   function missBite() {
     streak = 0;
     updateHud();
+    achievementUI.setDeferred(true);
     emitAchievement({ type: 'biteMissed', locationId: currentLocationId, bait: castUsedPremiumBait ? 'premium' : 'normal' });
     advanceEnvironment();
     showResult(false, '反应慢了一点', '鱼儿吃掉鱼饵，溜走了。');
@@ -688,6 +697,7 @@
   }
 
   function beginCatchFinish() {
+    achievementUI.setDeferred(true);
     catchProgress = 1;
     finishLeft = .68;
     mode = 'finishing';
@@ -797,6 +807,7 @@
     const lostProgress = peakCatchProgress;
     streak = 0;
     updateHud();
+    achievementUI.setDeferred(true);
     emitAchievement({
       type: 'fishEscaped', fishId: fish && fish.id, rarity: fish && fish.rarity,
       locationId: currentLocationId, progress: lostProgress,
@@ -827,6 +838,7 @@
     modalNew.textContent = '选择钓场';
     modalNew.hidden = false;
     modalBack.hidden = false;
+    achievementUI.setDeferred(false);
   }
 
   function showPause() {

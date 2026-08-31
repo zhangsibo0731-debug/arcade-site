@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v77';
+const CACHE = 'arcade-v81';
 const ASSETS = [
   './',
   './index.html',
@@ -41,11 +41,11 @@ const ASSETS = [
   './fishing/environments.js?v=1',
   './fishing/locations.js?v=9',
   './fishing/storage.js?v=2',
-  './fishing/achievement-data.js?v=1',
+  './fishing/achievement-data.js?v=2',
   './fishing/achievement-storage.js?v=2',
   './fishing/achievement-engine.js?v=2',
-  './fishing/achievement-ui.js?v=3',
-  './fishing/audio.js?v=3',
+  './fishing/achievement-ui.js?v=6',
+  './fishing/audio.js?v=4',
   './fishing/ui.js?v=9',
   './fishing/scene-renderer.js?v=6',
   './fishing/session-state.js?v=2',
@@ -53,7 +53,7 @@ const ASSETS = [
   './fishing/economy-ui.js?v=3',
   './fishing/location-ui.js?v=3',
   './fishing/collection-ui.js?v=4',
-  './fishing/game.js?v=51',
+  './fishing/game.js?v=54',
   './fishing/assets/moonlake-fish-common-v1.png',
   './fishing/assets/moonlake-fish-uncommon-v1.png',
   './fishing/assets/moonlake-fish-rare-v1.png',

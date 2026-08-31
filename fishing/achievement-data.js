@@ -35,6 +35,7 @@
     achievement('catch-record-size', 'challenge', '湖中巨物', '捕获一条纪录级鱼', 'crown-fish', 'rare', false, { type: 'eventMatch', event: 'fishCaught', fields: { sizeRank: '纪录级' } }),
     achievement('rare-without-hook', 'challenge', '不借外力', '关闭稳定鱼钩捕获稀有鱼', 'bare-hook', 'rare', false, { type: 'eventMatch', event: 'fishCaught', fields: { rarity: ['稀有', '传说'], stableHook: false } }),
     achievement('barehanded-legend', 'challenge', '赤手传奇', '普通鱼饵且关闭稳定鱼钩捕获传说鱼', 'legend-hook', 'legendary', false, { type: 'eventMatch', event: 'fishCaught', fields: { rarity: '传说', bait: 'normal', stableHook: false } }, { special: true }),
+    achievement('rainy-night-legend', 'challenge', '雨夜来客', '在雨夜捕获一条传说鱼', 'moon-fish', 'legendary', false, { type: 'eventMatch', event: 'fishCaught', fields: { rarity: '传说', time: 'night', weather: 'rain' } }, { hidden: true, special: true }),
 
     achievement('first-treasure', 'exploration', '水底有东西', '发现第一件宝物', 'treasure', 'common', true, { type: 'uniqueCount', source: 'treasureCollection', gte: 1 }),
     achievement('unlock-river', 'exploration', '顺流而下', '解锁清溪', 'river', 'common', true, { type: 'includes', source: 'unlockedLocations', value: 'river' }),
@@ -52,6 +53,7 @@
     achievement('missed-bite', 'encounter', '它看了我一眼', '咬钩后没有及时提竿', 'bobber', 'common', false, { type: 'eventMatch', event: 'biteMissed', fields: {} }),
     achievement('premium-common', 'encounter', '高级鱼饵体验卡', '使用高级鱼饵钓到常见鱼', 'shrug-bait', 'common', false, { type: 'eventMatch', event: 'fishCaught', fields: { rarity: '常见', bait: 'premium' } }),
     achievement('first-junk', 'encounter', '至少不是空军', '获得第一件普通杂物', 'boot', 'common', true, { type: 'uniqueCount', source: 'junkCollection', gte: 1 }),
+    achievement('bait-donor', 'encounter', '鱼饵慈善家', '累计三次错过咬钩时机', 'shrug-bait', 'rare', false, { type: 'counter', key: 'bitesMissed', gte: 3 }, { hidden: true }),
   ]);
 
   global.FishingAchievementData = Object.freeze({ COLLECTION_SETS, CATEGORIES, ACHIEVEMENTS });

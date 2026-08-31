@@ -14,6 +14,9 @@
     treasure: [660, .56, 'sine'],
     wave: [235, .42, 'sine'],
     lose: [190, .35, 'sawtooth'],
+    achievement: [620, .26, 'triangle'],
+    achievementRare: [690, .38, 'sine'],
+    achievementLegendary: [540, .58, 'triangle'],
   });
 
   function create(options) {
@@ -48,6 +51,9 @@
       if (name === 'reel') oscillator.frequency.linearRampToValueAtTime(290, now + settings[1]);
       if (name === 'splash') oscillator.frequency.exponentialRampToValueAtTime(120, now + settings[1]);
       if (name === 'lose') oscillator.frequency.exponentialRampToValueAtTime(90, now + settings[1]);
+      if (name === 'achievement') oscillator.frequency.exponentialRampToValueAtTime(930, now + settings[1]);
+      if (name === 'achievementRare') oscillator.frequency.exponentialRampToValueAtTime(1240, now + settings[1]);
+      if (name === 'achievementLegendary') oscillator.frequency.exponentialRampToValueAtTime(1620, now + settings[1]);
       gain.gain.setValueAtTime(.08, now);
       gain.gain.exponentialRampToValueAtTime(.001, now + settings[1]);
       oscillator.connect(gain);
