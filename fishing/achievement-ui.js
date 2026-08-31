@@ -130,19 +130,40 @@
       }, 2600);
     }
 
-    function notify(definition) {
+    function enqueueToast(entry) {
       const wasEmpty = toastQueue.length === 0 && elements.toast.hidden;
-      toastQueue.push({ title: '成就解锁 · ' + definition.title, text: definition.description, icon: definition.icon, frame: definition.frame });
+      toastQueue.push(entry);
       elements.dot.hidden = false;
       if (wasEmpty) showNextToast();
     }
 
+    function notify(definition) {
+      enqueueToast({ title: '成就解锁 · ' + definition.title, text: definition.description, icon: definition.icon, frame: definition.frame });
+    }
+
+    function notifyMany(items) {
+      const definitions = Array.isArray(items) ? items.filter(Boolean) : [];
+      if (!definitions.length) return;
+      if (definitions.length === 1) {
+        notify(definitions[0]);
+        return;
+      }
+      const frameRank = { common: 0, rare: 1, legendary: 2 };
+      const representative = definitions.reduce((best, item) =>
+        (frameRank[item.frame] || 0) > (frameRank[best.frame] || 0) ? item : best
+      );
+      const names = definitions.slice(0, 3).map((item) => item.title).join('、') + (definitions.length > 3 ? ' 等' : '');
+      enqueueToast({
+        title: '一次解锁 · ' + definitions.length + ' 项成就',
+        text: names,
+        icon: representative.icon,
+        frame: representative.frame,
+      });
+    }
+
     function notifyRetroactive(count) {
       if (!count) return;
-      const wasEmpty = toastQueue.length === 0 && elements.toast.hidden;
-      toastQueue.push({ title: '既有记录已整理', text: '为你补发了 ' + count + ' 项成就', icon: 'book', frame: 'common', feedback: false });
-      elements.dot.hidden = false;
-      if (wasEmpty) showNextToast();
+      enqueueToast({ title: '既有记录已整理', text: '为你补发了 ' + count + ' 项成就', icon: 'book', frame: 'common', feedback: false });
     }
 
     function setDeferred(value) {
@@ -182,7 +203,7 @@
     });
     elements.toast.addEventListener('click', open);
 
-    return Object.freeze({ open, close, render, notify, notifyRetroactive, setDeferred });
+    return Object.freeze({ open, close, render, notify, notifyMany, notifyRetroactive, setDeferred });
   }
 
   global.FishingAchievementUI = Object.freeze({ create });

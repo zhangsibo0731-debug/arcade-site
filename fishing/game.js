@@ -258,7 +258,6 @@
     store: achievementStore,
     onUnlock: (definition, retroactive) => {
       achievementUnlockQueue.push({ definition, retroactive });
-      if (achievementUI && !retroactive) achievementUI.notify(definition);
     },
   });
 
@@ -276,7 +275,10 @@
   }
 
   function emitAchievement(event) {
-    return achievementEngine ? achievementEngine.emit(event, achievementContext()) : [];
+    if (!achievementEngine) return [];
+    const unlocked = achievementEngine.emit(event, achievementContext());
+    if (achievementUI && unlocked.length) achievementUI.notifyMany(unlocked);
+    return unlocked;
   }
 
   const achievementInitialization = achievementEngine.initialize(achievementContext());
