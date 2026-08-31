@@ -1,13 +1,27 @@
 (function (global) {
   'use strict';
 
-  const COLLECTION_SETS = Object.freeze({
+  const LEGACY_FISH_SETS = Object.freeze({
     'lake-base': Object.freeze(['crucian', 'carp', 'loach', 'catfish', 'perch', 'trout', 'eel', 'puffer', 'icefin', 'starlight', 'koi', 'moon']),
     'river-base': Object.freeze(['loach', 'trout', 'ayu', 'pale-chub', 'yamame', 'silver-minnow', 'stone-loach', 'cherry-salmon', 'torrent-catfish', 'taimen']),
     'coast-base': Object.freeze(['silver-sardine', 'blue-mackerel', 'sand-flounder', 'sea-bream', 'sea-bass', 'puffer', 'eel', 'reef-octopus', 'bluefin-tuna', 'starlit-sailfish']),
     'abyss-base': Object.freeze(['lanternfish', 'hatchetfish', 'fangtooth', 'barreleye', 'giant-isopod', 'reef-octopus', 'bluefin-tuna', 'viperfish', 'oarfish', 'luminous-coelacanth']),
-    'abyss-items-base': Object.freeze(['broken-dive-lamp', 'corroded-rivet', 'torn-deep-net', 'abyssal-coin', 'crystal-compass', 'sealed-logbook']),
   });
+  const ALL_FISH = global.FishingFishData.FISH
+    .concat(global.FishingRiverFishData.RIVER_FISH, global.FishingCoastFishData.COAST_FISH, global.FishingAbyssFishData.ABYSS_FISH);
+  const FISH_METADATA_VALIDATION = global.FishingFishMetadata.validate(ALL_FISH);
+  if (!FISH_METADATA_VALIDATION.valid) {
+    throw new Error('Fishing fish metadata is invalid: ' + FISH_METADATA_VALIDATION.errors.join('; '));
+  }
+  const GENERATED_FISH_SETS = global.FishingFishMetadata.buildCollectionSets(ALL_FISH);
+  const GENERATED_SETS_MATCH_LEGACY = global.FishingFishMetadata.sameSets(GENERATED_FISH_SETS, LEGACY_FISH_SETS);
+  const ACTIVE_FISH_SETS = GENERATED_SETS_MATCH_LEGACY ? GENERATED_FISH_SETS : LEGACY_FISH_SETS;
+  if (!GENERATED_SETS_MATCH_LEGACY && global.console && typeof global.console.error === 'function') {
+    global.console.error('Generated fishing collection sets differ from the compatibility map; using the compatibility map.');
+  }
+  const COLLECTION_SETS = Object.freeze(Object.assign({}, ACTIVE_FISH_SETS, {
+    'abyss-items-base': Object.freeze(['broken-dive-lamp', 'corroded-rivet', 'torn-deep-net', 'abyssal-coin', 'crystal-compass', 'sealed-logbook']),
+  }));
 
   const CATEGORIES = Object.freeze({
     catalog: Object.freeze({ label: '图鉴', accent: 'aqua', icon: 'book' }),
@@ -56,5 +70,12 @@
     achievement('bait-donor', 'encounter', '鱼饵慈善家', '累计三次错过咬钩时机', 'shrug-bait', 'rare', false, { type: 'counter', key: 'bitesMissed', gte: 3 }, { hidden: true }),
   ]);
 
-  global.FishingAchievementData = Object.freeze({ COLLECTION_SETS, CATEGORIES, ACHIEVEMENTS });
+  const FISH_METADATA_STATUS = Object.freeze({
+    valid: FISH_METADATA_VALIDATION.valid,
+    fishCount: FISH_METADATA_VALIDATION.count,
+    generatedSetsMatchLegacy: GENERATED_SETS_MATCH_LEGACY,
+    source: GENERATED_SETS_MATCH_LEGACY ? 'fish-metadata' : 'compatibility-fallback',
+  });
+
+  global.FishingAchievementData = Object.freeze({ COLLECTION_SETS, CATEGORIES, ACHIEVEMENTS, FISH_METADATA_STATUS });
 })(window);

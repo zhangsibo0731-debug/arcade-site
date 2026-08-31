@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const FISH = [
+  const RAW_FISH = [
     { id: 'crucian', name: '小鲫鱼', rarity: '常见', color: '#b9c5ca', min: 220, max: 760, behavior: 'calm', difficulty: .7, weight: 24, sprite: 0, times: ['day','dusk','night'], weathers: ['clear','rain'], habitat: '全天 · 晴雨皆有', hint: '湖中随处可见，性情温和。' },
     { id: 'carp', name: '红鲤鱼', rarity: '常见', color: '#e58a42', min: 520, max: 2400, behavior: 'calm', difficulty: .78, weight: 17, sprite: 1, times: ['day','dusk'], weathers: ['clear','rain'], habitat: '白天/黄昏 · 晴雨皆有', hint: '喜欢水草丰盛的浅水区域。' },
     { id: 'loach', name: '湖鳅', rarity: '常见', color: '#a58b54', min: 180, max: 620, behavior: 'active', difficulty: .76, weight: 13, sprite: 2, times: ['day','dusk','night'], weathers: ['clear','rain'], habitat: '全天 · 晴雨皆有', hint: '细长灵活，常贴着湖底游动。' },
@@ -15,6 +15,16 @@
     { id: 'koi', name: '红白锦鲤', rarity: '稀有', color: '#efaa73', min: 1100, max: 5600, behavior: 'dash', difficulty: 1.09, weight: .8, sprite: 10, spriteX: 63.8, spriteSize: '426%', times: ['dusk'], weathers: ['clear','rain'], habitat: '黄昏 · 晴雨皆有', hint: '红白纹样独一无二，十分珍贵。' },
     { id: 'moon', name: '月光锦鲤', rarity: '传说', color: '#d7f3e8', min: 1800, max: 8260, behavior: 'dash', difficulty: 1.12, weight: .2, sprite: 11, spriteX: 98.8, spriteSize: '390%', times: ['night'], weathers: ['clear','rain'], habitat: '夜晚 · 远投更易遇见', hint: '只回应最有耐心的湖畔来客。' },
   ];
+
+  const FISH = global.FishingFishMetadata.decorate(RAW_FISH, {
+    water: 'freshwater',
+    sets: {
+      crucian: ['lake-base'], carp: ['lake-base'], loach: ['lake-base', 'river-base'],
+      catfish: ['lake-base'], perch: ['lake-base'], trout: ['lake-base', 'river-base'],
+      eel: ['lake-base', 'coast-base'], puffer: ['lake-base', 'coast-base'],
+      icefin: ['lake-base'], starlight: ['lake-base'], koi: ['lake-base'], moon: ['lake-base'],
+    },
+  });
 
   const RARITY_RANK = { '常见': 0, '少见': 1, '稀有': 2, '传说': 3 };
 

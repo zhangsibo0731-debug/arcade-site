@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishData || !window.FishingRiverFishData || !window.FishingCoastFishData || !window.FishingAbyssFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAchievementData || !window.FishingAchievementStorage || !window.FishingAchievementEngine || !window.FishingAchievementUI || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
+  if (!window.FishingFishMetadata || !window.FishingFishData || !window.FishingRiverFishData || !window.FishingCoastFishData || !window.FishingAbyssFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAchievementData || !window.FishingAchievementStorage || !window.FishingAchievementEngine || !window.FishingAchievementUI || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
