@@ -18,6 +18,8 @@
     let activeStatus = 'all';
     let toastTimer = 0;
     let notificationsDeferred = false;
+    let previousFocus = null;
+    let highlightedIds = new Set();
     const toastQueue = [];
 
     function unlockedState() { return options.engine.getState().unlocked; }
@@ -58,6 +60,7 @@
 
     function render() {
       const unlocked = unlockedState();
+      const unseen = new Set(options.engine.getState().unseen);
       const categoryItems = activeCategory === 'all' ? definitions.slice() : definitions.filter((item) => item.category === activeCategory);
       const visible = categoryItems.filter((item) => activeStatus === 'all' || (activeStatus === 'unlocked' ? unlocked[item.id] : !unlocked[item.id]));
       if (activeStatus === 'unlocked') visible.sort((a, b) => Number(unlocked[b.id] && unlocked[b.id].unlockedAt) - Number(unlocked[a.id] && unlocked[a.id].unlockedAt));
@@ -66,34 +69,45 @@
       if (elements.progressFill) elements.progressFill.style.width = Math.round(unlockedCount / Math.max(1, definitions.length) * 100) + '%';
       elements.grid.innerHTML = visible.length ? visible.map((item) => {
         const record = unlocked[item.id];
+        const isNew = !!record && highlightedIds.has(item.id);
         const progress = options.engine.progress(item, context());
         const category = categories[item.category];
         const lockedTitle = item.hidden && !record ? '？？？' : item.title;
         const lockedText = item.hidden && !record ? '继续探索，也许会发生奇怪的事情。' : item.description;
         const canShowProgress = !record && !item.hidden && progress && progress.target;
         const progressValue = canShowProgress ? Math.min(progress.value, progress.target) : 0;
-        const progressText = canShowProgress ? '<div class="achievement-meter" aria-label="进度 ' + progressValue + ' / ' + progress.target + '"><i style="width:' + Math.round(progressValue / progress.target * 100) + '%"></i></div><small>' + progressValue + ' / ' + progress.target + '</small>' : '';
+        const progressText = canShowProgress ? '<div class="achievement-meter" role="progressbar" aria-label="成就进度" aria-valuemin="0" aria-valuemax="' + progress.target + '" aria-valuenow="' + progressValue + '"><i style="width:' + Math.round(progressValue / progress.target * 100) + '%"></i></div><small>' + progressValue + ' / ' + progress.target + '</small>' : '';
         const date = record && record.unlockedAt ? '<time>' + new Date(record.unlockedAt).toLocaleDateString('zh-CN') + ' 解锁</time>' : progressText;
-        return '<article class="achievement-card is-' + (record ? 'unlocked' : 'locked') + '" data-category="' + item.category + '">' +
+        return '<article class="achievement-card is-' + (record ? 'unlocked' : 'locked') + (isNew ? ' is-new' : '') + '" data-category="' + item.category + '">' +
           '<div class="achievement-badge frame-' + item.frame + ' accent-' + category.accent + '">' + iconMarkup(item.icon, item.hidden && !record) + '</div>' +
-          '<div><em>' + category.label + '</em><h3>' + lockedTitle + '</h3><p>' + lockedText + '</p>' + date + '</div></article>';
+          '<div class="achievement-copy"><div class="achievement-meta"><em>' + category.label + '</em>' + (isNew ? '<b class="achievement-new">NEW</b>' : '') + '</div><h3>' + lockedTitle + '</h3><p>' + lockedText + '</p>' + date + '</div></article>';
       }).join('') : '<p class="achievement-empty">这里暂时没有符合条件的成就</p>';
-      elements.dot.hidden = options.engine.getState().unseen.length === 0;
+      elements.dot.hidden = !elements.panel.hidden || unseen.size === 0;
     }
 
     function open() {
       const mode = options.getMode();
       if (PAUSABLE.includes(mode)) options.pause();
+      previousFocus = document.activeElement;
+      highlightedIds = new Set(options.engine.getState().unseen);
       options.hidePanels();
       renderFilters();
       renderStatusFilters();
       render();
       elements.panel.hidden = false;
-      options.store.markSeen();
       elements.dot.hidden = true;
+      requestAnimationFrame(() => elements.closeButton.focus());
     }
 
-    function close() { elements.panel.hidden = true; }
+    function close() {
+      if (elements.panel.hidden) return;
+      elements.panel.hidden = true;
+      options.store.markSeen(Array.from(highlightedIds));
+      highlightedIds = new Set();
+      elements.dot.hidden = options.engine.getState().unseen.length === 0;
+      const target = previousFocus && previousFocus.isConnected && !previousFocus.hidden ? previousFocus : elements.opener;
+      if (target && typeof target.focus === 'function') target.focus();
+    }
 
     function showNextToast() {
       if (notificationsDeferred || !toastQueue.length) return;
@@ -150,6 +164,21 @@
       activeStatus = button.dataset.achievementStatus;
       renderStatusFilters();
       render();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (elements.panel.hidden) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(elements.panel.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),[tabindex]:not([tabindex="-1"])')).filter((item) => !item.hidden);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
     elements.toast.addEventListener('click', open);
 

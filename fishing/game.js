@@ -304,6 +304,8 @@
     },
     elements: {
       panel: achievementPanel,
+      opener: achievementBtn,
+      closeButton: achievementClose,
       filters: $('achievementFilters'),
       statusFilters: $('achievementStatusFilters'),
       grid: $('achievementGrid'),
