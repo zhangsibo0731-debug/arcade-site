@@ -7,7 +7,7 @@
 <title>月光垂钓 · 湖畔钓鱼</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=24" />
+<link rel="stylesheet" href="styles.css?v=25" />
 </head>
 <body>
 <main class="app">
@@ -44,7 +44,7 @@
       </div>
 
       <button class="achievement-toast" id="achievementToast" type="button" aria-live="polite" hidden>
-        <span class="achievement-toast-icon" aria-hidden="true"></span><b id="achievementToastTitle">成就解锁</b><small id="achievementToastText"></small>
+        <span class="achievement-toast-icon" id="achievementToastIcon" aria-hidden="true"></span><b id="achievementToastTitle">成就解锁</b><small id="achievementToastText"></small>
       </button>
 
       <section class="catch-game" id="catchGame" aria-label="遛鱼区域" hidden>
@@ -120,7 +120,7 @@
 
   <section class="achievements" id="achievementPanel" aria-label="成就纪念册" hidden>
     <div class="catalog__head achievement-head">
-      <div><span>ACHIEVEMENTS</span><h2>成就纪念册</h2><p id="achievementProgress">已解锁 0 / 26</p></div>
+      <div><span>ACHIEVEMENTS</span><h2>成就纪念册</h2><p id="achievementProgress">正在整理成就…</p><div class="achievement-total-meter" aria-hidden="true"><i id="achievementProgressFill"></i></div></div>
       <button class="icon-btn" id="achievementClose" type="button" aria-label="关闭成就纪念册">×</button>
     </div>
     <div class="achievement-filters" id="achievementFilters" role="tablist" aria-label="成就分类"></div>
@@ -155,16 +155,16 @@
 <script src="fish-data.js?v=2"></script>
 <script src="river-fish-data.js?v=2"></script>
 <script src="coast-fish-data.js?v=2"></script>
-<script src="abyss-fish-data.js?v=1"></script>
+<script src="abyss-fish-data.js?v=2"></script>
 <script src="catchables.js?v=3"></script>
 <script src="economy.js?v=1"></script>
 <script src="environments.js?v=1"></script>
 <script src="locations.js?v=9"></script>
 <script src="storage.js?v=2"></script>
 <script src="achievement-data.js?v=1"></script>
-<script src="achievement-storage.js?v=1"></script>
-<script src="achievement-engine.js?v=1"></script>
-<script src="achievement-ui.js?v=2"></script>
+<script src="achievement-storage.js?v=2"></script>
+<script src="achievement-engine.js?v=2"></script>
+<script src="achievement-ui.js?v=3"></script>
 <script src="audio.js?v=3"></script>
 <script src="ui.js?v=9"></script>
 <script src="scene-renderer.js?v=6"></script>
@@ -173,6 +173,6 @@
 <script src="economy-ui.js?v=3"></script>
 <script src="location-ui.js?v=3"></script>
 <script src="collection-ui.js?v=4"></script>
-<script src="game.js?v=50"></script>
+<script src="game.js?v=51"></script>
 </body>
 </html>

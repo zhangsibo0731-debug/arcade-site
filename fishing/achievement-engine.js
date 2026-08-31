@@ -113,6 +113,9 @@
 
     function initialize(context) {
       const firstRun = !state.initialized;
+      state.definitionCount = definitions.length;
+      store.replace(state);
+      state = store.get();
       const unlocked = check(context || {}, null, true);
       state.initialized = true;
       store.replace(state);

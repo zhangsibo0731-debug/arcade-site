@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const SHEET = 'abyss-fish-sheet-v1.png';
+  const SHEET = 'abyss-fish-sheet-v2.png';
   const SPRITE_SIZE = '400% 200%';
   const ABYSS_FISH = [
     { id: 'lanternfish', name: '幽灯鱼', rarity: '常见', color: '#45cbea', min: 120, max: 520, behavior: 'calm', difficulty: .86, weight: 24, sprite: 0, spriteX: 0, spriteY: 0, spriteSize: SPRITE_SIZE, sheet: SHEET, times: ['day','dusk','night'], weathers: ['clear','rain'], habitat: '星渊 · 全天', hint: '额前的小灯在黑暗中划出温柔光点。' },

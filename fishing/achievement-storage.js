@@ -17,6 +17,7 @@
     });
     return {
       version: VERSION,
+      definitionCount: Math.max(0, Number(source.definitionCount) || 0),
       initialized: source.initialized === true,
       unlocked,
       counters: cleanNumbers(source.counters),

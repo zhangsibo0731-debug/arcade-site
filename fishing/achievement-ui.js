@@ -28,22 +28,35 @@
       return '<span class="achievement-icon" style="--icon-x:' + (column * 25) + '%;--icon-y:' + (row * 25) + '%" aria-hidden="true"></span>';
     }
 
+    function iconPosition(icon) {
+      const index = Object.prototype.hasOwnProperty.call(ICON_INDEX, icon) ? ICON_INDEX[icon] : ICON_INDEX.mystery;
+      return { x: (index % 5) * 25 + '%', y: Math.floor(index / 5) * 25 + '%' };
+    }
+
     function renderFilters() {
-      const entries = [['all', '全部']].concat(Object.entries(categories).map(([id, item]) => [id, item.label]));
-      elements.filters.innerHTML = entries.map(([id, label]) => '<button type="button" role="tab" data-achievement-filter="' + id + '" aria-selected="' + (id === activeCategory) + '">' + label + '</button>').join('');
+      const unlocked = unlockedState();
+      const entries = [['all', '全部', definitions]].concat(Object.entries(categories).map(([id, item]) => [id, item.label, definitions.filter((definition) => definition.category === id)]));
+      elements.filters.innerHTML = entries.map(([id, label, items]) => {
+        const count = items.filter((item) => unlocked[item.id]).length;
+        return '<button type="button" role="tab" data-achievement-filter="' + id + '" aria-selected="' + (id === activeCategory) + '">' + label + '<small>' + count + '/' + items.length + '</small></button>';
+      }).join('');
     }
 
     function render() {
       const unlocked = unlockedState();
       const visible = activeCategory === 'all' ? definitions : definitions.filter((item) => item.category === activeCategory);
-      elements.progress.textContent = '已解锁 ' + Object.keys(unlocked).length + ' / ' + definitions.length;
+      const unlockedCount = Object.keys(unlocked).length;
+      elements.progress.textContent = '已解锁 ' + unlockedCount + ' / ' + definitions.length;
+      if (elements.progressFill) elements.progressFill.style.width = Math.round(unlockedCount / Math.max(1, definitions.length) * 100) + '%';
       elements.grid.innerHTML = visible.map((item) => {
         const record = unlocked[item.id];
         const progress = options.engine.progress(item, context());
         const category = categories[item.category];
         const lockedTitle = item.hidden && !record ? '？？？' : item.title;
         const lockedText = item.hidden && !record ? '继续探索，也许会发生奇怪的事情。' : item.description;
-        const progressText = !record && progress && progress.target ? '<small>' + Math.min(progress.value, progress.target) + ' / ' + progress.target + '</small>' : '';
+        const canShowProgress = !record && !item.hidden && progress && progress.target;
+        const progressValue = canShowProgress ? Math.min(progress.value, progress.target) : 0;
+        const progressText = canShowProgress ? '<div class="achievement-meter" aria-label="进度 ' + progressValue + ' / ' + progress.target + '"><i style="width:' + Math.round(progressValue / progress.target * 100) + '%"></i></div><small>' + progressValue + ' / ' + progress.target + '</small>' : '';
         const date = record && record.unlockedAt ? '<time>' + new Date(record.unlockedAt).toLocaleDateString('zh-CN') + ' 解锁</time>' : progressText;
         return '<article class="achievement-card is-' + (record ? 'unlocked' : 'locked') + '" data-category="' + item.category + '">' +
           '<div class="achievement-badge frame-' + item.frame + ' accent-' + category.accent + '">' + iconMarkup(item.icon, item.hidden && !record) + '</div>' +
@@ -70,6 +83,10 @@
       const next = toastQueue.shift();
       elements.toastTitle.textContent = next.title;
       elements.toastText.textContent = next.text;
+      const position = iconPosition(next.icon || 'treasure');
+      elements.toastIcon.style.setProperty('--icon-x', position.x);
+      elements.toastIcon.style.setProperty('--icon-y', position.y);
+      elements.toast.classList.toggle('is-legendary', next.frame === 'legendary');
       elements.toast.hidden = false;
       elements.toast.classList.remove('is-visible');
       void elements.toast.offsetWidth;
@@ -83,7 +100,7 @@
 
     function notify(definition) {
       const wasEmpty = toastQueue.length === 0 && elements.toast.hidden;
-      toastQueue.push({ title: '成就解锁 · ' + definition.title, text: definition.description });
+      toastQueue.push({ title: '成就解锁 · ' + definition.title, text: definition.description, icon: definition.icon, frame: definition.frame });
       elements.dot.hidden = false;
       if (wasEmpty) showNextToast();
     }
@@ -91,7 +108,7 @@
     function notifyRetroactive(count) {
       if (!count) return;
       const wasEmpty = toastQueue.length === 0 && elements.toast.hidden;
-      toastQueue.push({ title: '既有记录已整理', text: '为你补发了 ' + count + ' 项成就' });
+      toastQueue.push({ title: '既有记录已整理', text: '为你补发了 ' + count + ' 项成就', icon: 'book', frame: 'common' });
       elements.dot.hidden = false;
       if (wasEmpty) showNextToast();
     }

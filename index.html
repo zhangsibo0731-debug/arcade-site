@@ -304,7 +304,9 @@
       var fw = parseInt(localStorage.getItem('fishing_best_weight_v1'), 10);
       var fa = JSON.parse(localStorage.getItem('fishing_achievements_v1') || '{}');
       var unlocked = fa && fa.unlocked ? Object.keys(fa.unlocked).length : 0;
-      if (unlocked > 0) set('fishingScore', '成就 ' + unlocked + ' / 26 · 最大 ' + (fw >= 1000 ? (fw / 1000).toFixed(2) + ' kg' : (fw || 0) + ' g'));
+      var achievementTotal = Math.max(unlocked, parseInt(fa.definitionCount, 10) || 26);
+      var achievementNew = fa && Array.isArray(fa.unseen) && fa.unseen.length ? 'NEW · ' : '';
+      if (unlocked > 0) set('fishingScore', achievementNew + '成就 ' + unlocked + ' / ' + achievementTotal + ' · 最大 ' + (fw >= 1000 ? (fw / 1000).toFixed(2) + ' kg' : (fw || 0) + ' g'));
       else if (ft > 0 || fw > 0) set('fishingScore', '已钓 ' + (ft || 0) + ' 条 · 最大 ' + (fw >= 1000 ? (fw / 1000).toFixed(2) + ' kg' : (fw || 0) + ' g'));
     } catch (e) {}
   })();
