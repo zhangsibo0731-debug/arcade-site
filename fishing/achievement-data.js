@@ -8,16 +8,22 @@
     'abyss-base': Object.freeze(['lanternfish', 'hatchetfish', 'fangtooth', 'barreleye', 'giant-isopod', 'reef-octopus', 'bluefin-tuna', 'viperfish', 'oarfish', 'luminous-coelacanth']),
   });
   const ALL_FISH = global.FishingFishData.FISH
-    .concat(global.FishingRiverFishData.RIVER_FISH, global.FishingCoastFishData.COAST_FISH, global.FishingAbyssFishData.ABYSS_FISH);
+    .concat(global.FishingLakeExpansionFishData.LAKE_EXPANSION_FISH, global.FishingRiverFishData.RIVER_FISH, global.FishingCoastFishData.COAST_FISH, global.FishingAbyssFishData.ABYSS_FISH);
   const FISH_METADATA_VALIDATION = global.FishingFishMetadata.validate(ALL_FISH);
   if (!FISH_METADATA_VALIDATION.valid) {
     throw new Error('Fishing fish metadata is invalid: ' + FISH_METADATA_VALIDATION.errors.join('; '));
   }
   const GENERATED_FISH_SETS = global.FishingFishMetadata.buildCollectionSets(ALL_FISH);
-  const GENERATED_SETS_MATCH_LEGACY = global.FishingFishMetadata.sameSets(GENERATED_FISH_SETS, LEGACY_FISH_SETS);
-  const ACTIVE_FISH_SETS = GENERATED_SETS_MATCH_LEGACY ? GENERATED_FISH_SETS : LEGACY_FISH_SETS;
+  const GENERATED_BASE_SETS = Object.freeze(Object.keys(LEGACY_FISH_SETS).reduce((sets, id) => {
+    sets[id] = GENERATED_FISH_SETS[id] || Object.freeze([]);
+    return sets;
+  }, {}));
+  const GENERATED_SETS_MATCH_LEGACY = global.FishingFishMetadata.sameSets(GENERATED_BASE_SETS, LEGACY_FISH_SETS);
+  const ACTIVE_FISH_SETS = GENERATED_SETS_MATCH_LEGACY
+    ? GENERATED_FISH_SETS
+    : Object.freeze(Object.assign({}, GENERATED_FISH_SETS, LEGACY_FISH_SETS));
   if (!GENERATED_SETS_MATCH_LEGACY && global.console && typeof global.console.error === 'function') {
-    global.console.error('Generated fishing collection sets differ from the compatibility map; using the compatibility map.');
+    global.console.error('Generated fishing base sets differ from the compatibility map; preserving expansion sets and using compatibility base sets.');
   }
   const COLLECTION_SETS = Object.freeze(Object.assign({}, ACTIVE_FISH_SETS, {
     'abyss-items-base': Object.freeze(['broken-dive-lamp', 'corroded-rivet', 'torn-deep-net', 'abyssal-coin', 'crystal-compass', 'sealed-logbook']),
@@ -70,6 +76,14 @@
     achievement('bait-donor', 'encounter', '鱼饵慈善家', '累计三次错过咬钩时机', 'shrug-bait', 'rare', false, { type: 'counter', key: 'bitesMissed', gte: 3 }, { hidden: true }),
   ]);
 
+  // Development-only conditions used by the isolated test hook. They are not
+  // included in ACHIEVEMENTS and never appear in the player's memorial book.
+  const TEST_ACHIEVEMENTS = Object.freeze([
+    achievement('__test-tag-legend', 'challenge', '标签测试', '标签组合匹配', 'fish', 'common', false, { type: 'eventMatch', event: 'fishCaught', tagsAll: ['legendary'], tagsAny: ['freshwater', 'abyssal'], excludeTags: ['common'] }),
+    achievement('__test-sequence-tolerant', 'encounter', '宽容序列测试', '杂物后在窗口内发现宝物', 'treasure', 'common', false, { type: 'sequence', steps: [{ event: 'itemCaught', fields: { itemType: 'junk' } }, { event: 'itemCaught', fields: { itemType: 'treasure' } }], maxEvents: 3 }),
+    achievement('__test-sequence-strict', 'challenge', '严格序列测试', '连续捕获常见鱼与稀有鱼', 'hook', 'common', false, { type: 'sequence', steps: [{ event: 'fishCaught', tagsAll: ['common'] }, { event: 'fishCaught', tagsAll: ['rare'] }], maxEvents: 1, resetOnMismatch: true }),
+  ]);
+
   const FISH_METADATA_STATUS = Object.freeze({
     valid: FISH_METADATA_VALIDATION.valid,
     fishCount: FISH_METADATA_VALIDATION.count,
@@ -77,5 +91,5 @@
     source: GENERATED_SETS_MATCH_LEGACY ? 'fish-metadata' : 'compatibility-fallback',
   });
 
-  global.FishingAchievementData = Object.freeze({ COLLECTION_SETS, CATEGORIES, ACHIEVEMENTS, FISH_METADATA_STATUS });
+  global.FishingAchievementData = Object.freeze({ COLLECTION_SETS, CATEGORIES, ACHIEVEMENTS, TEST_ACHIEVEMENTS, FISH_METADATA_STATUS });
 })(window);

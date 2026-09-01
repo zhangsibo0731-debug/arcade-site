@@ -23,6 +23,21 @@
     return actual === expected;
   }
 
+  function list(value) {
+    return Array.isArray(value) ? value : (value ? [value] : []);
+  }
+
+  function eventMatches(condition, event) {
+    if (!condition || !event) return false;
+    if (condition.event && event.type !== condition.event) return false;
+    if (!Object.entries(condition.fields || {}).every(([field, expected]) => matches(valueAt(event, field), expected))) return false;
+    const tags = new Set(Array.isArray(event.tags) ? event.tags : []);
+    if (!list(condition.tagsAll).every((tag) => tags.has(tag))) return false;
+    if (list(condition.tagsAny).length && !list(condition.tagsAny).some((tag) => tags.has(tag))) return false;
+    if (list(condition.excludeTags).some((tag) => tags.has(tag))) return false;
+    return true;
+  }
+
   function create(options) {
     const definitions = options.definitions || [];
     const sets = options.sets || {};
@@ -30,10 +45,10 @@
     const onUnlock = typeof options.onUnlock === 'function' ? options.onUnlock : function () {};
     let state = store.get();
 
-    function evaluate(condition, context, event) {
+    function evaluate(condition, context, event, definitionId) {
       if (!condition) return false;
-      if (condition.type === 'allOf') return condition.conditions.every((item) => evaluate(item, context, event));
-      if (condition.type === 'anyOf') return condition.conditions.some((item) => evaluate(item, context, event));
+      if (condition.type === 'allOf') return condition.conditions.every((item) => evaluate(item, context, event, definitionId));
+      if (condition.type === 'anyOf') return condition.conditions.some((item) => evaluate(item, context, event, definitionId));
       if (condition.type === 'stat') return Number(valueAt(context, condition.path)) >= Number(condition.gte || 0);
       if (condition.type === 'counter') return Number(state.counters[condition.key] || 0) >= Number(condition.gte || 0);
       if (condition.type === 'streak') return Number(state.streaks[condition.key] || 0) >= Number(condition.gte || 0);
@@ -51,9 +66,9 @@
         return count >= Number(condition.gte || 0);
       }
       if (condition.type === 'eventMatch') {
-        if (!event || event.type !== condition.event) return false;
-        return Object.entries(condition.fields || {}).every(([field, expected]) => matches(valueAt(event, field), expected));
+        return eventMatches(condition, event);
       }
+      if (condition.type === 'sequence') return Number(state.sequences[definitionId] && state.sequences[definitionId].step) >= (condition.steps || []).length && (condition.steps || []).length > 0;
       return false;
     }
 
@@ -73,7 +88,7 @@
         if (state.unlocked[definition.id]) return;
         if (retroactiveOnly && !definition.retroactive) return;
         if (!retroactiveOnly && definition.condition.type === 'eventMatch' && !event) return;
-        if (evaluate(definition.condition, context, event)) {
+        if (evaluate(definition.condition, context, event, definition.id)) {
           const result = unlock(definition, retroactiveOnly);
           if (result) unlocked.push(result);
         }
@@ -83,6 +98,54 @@
 
     function increment(key, amount) { state.counters[key] = Math.max(0, Number(state.counters[key] || 0) + (Number(amount) || 1)); }
     function setStreak(key, value) { state.streaks[key] = Math.max(0, Number(value) || 0); }
+
+    function sequenceValue(event) {
+      return String(event.fishId || event.itemId || event.locationId || event.type || '').slice(0, 80);
+    }
+
+    function beginSequence(definition, event) {
+      const condition = definition.condition;
+      const steps = condition.steps || [];
+      if (!steps.length || !eventMatches(steps[0], event)) return false;
+      state.sequences[definition.id] = {
+        step: 1,
+        remaining: Math.max(1, Math.min(9999, Math.floor(Number(condition.maxEvents) || steps.length))),
+        values: [sequenceValue(event)],
+      };
+      return true;
+    }
+
+    function advanceSequence(definition, event) {
+      const condition = definition.condition;
+      const steps = condition.steps || [];
+      if (!steps.length || state.unlocked[definition.id]) return;
+      const current = state.sequences[definition.id];
+      if (!current || current.step <= 0 || current.step >= steps.length) {
+        beginSequence(definition, event);
+        return;
+      }
+      const remaining = Math.max(0, Number(current.remaining || 0) - 1);
+      if (eventMatches(steps[current.step], event)) {
+        state.sequences[definition.id] = {
+          step: current.step + 1,
+          remaining,
+          values: (current.values || []).concat(sequenceValue(event)).slice(-16),
+        };
+        return;
+      }
+      if (condition.resetOnMismatch === true || remaining <= 0) {
+        delete state.sequences[definition.id];
+        beginSequence(definition, event);
+      } else {
+        current.remaining = remaining;
+      }
+    }
+
+    function advanceSequences(event) {
+      definitions.forEach((definition) => {
+        if (definition.condition && definition.condition.type === 'sequence') advanceSequence(definition, event);
+      });
+    }
 
     function reduce(event) {
       if (!event || !event.type) return;
@@ -102,9 +165,12 @@
       } else if (event.type === 'fishSold') increment('fishSold', event.count || 1);
       else if (event.type === 'baitPurchased') increment('baitPurchases', event.count || 1);
       else if (event.type === 'weightRecord') increment('weightRecords');
+      advanceSequences(event);
     }
 
     function emit(event, context) {
+      if (event && event.eventId && state.processedEvents.includes(event.eventId)) return [];
+      if (event && event.eventId) state.processedEvents = state.processedEvents.concat(event.eventId).slice(-64);
       reduce(event);
       store.replace(state);
       state = store.get();
@@ -134,11 +200,15 @@
         const found = new Set(activeKeys(context[condition.source]));
         return { value: ids.filter((id) => found.has(id)).length, target: ids.length };
       }
+      if (condition.type === 'sequence') {
+        const sequence = state.sequences[definition.id] || {};
+        return { value: Math.min(Number(sequence.step) || 0, (condition.steps || []).length), target: (condition.steps || []).length };
+      }
       return null;
     }
 
     return Object.freeze({ initialize, emit, check, progress, evaluate, getState: () => state });
   }
 
-  global.FishingAchievementEngine = Object.freeze({ create, activeKeys, matches });
+  global.FishingAchievementEngine = Object.freeze({ create, activeKeys, matches, eventMatches });
 })(window);

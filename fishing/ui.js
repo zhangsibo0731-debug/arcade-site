@@ -33,7 +33,15 @@
       const catalogFish = visibleFish || fish;
       const found = catalogFish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
       elements.catalogKicker.textContent = kicker;
-      elements.catalogProgress.textContent = '已发现 ' + found + ' / ' + catalogFish.length;
+      const baseFish = catalogFish.filter((item) => (item.collectionSets || []).includes('lake-base'));
+      const expansionFish = catalogFish.filter((item) => (item.collectionSets || []).includes('lake-expansion-1'));
+      if (locationId === 'lake' && expansionFish.length) {
+        const baseFound = baseFish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
+        const expansionFound = expansionFish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
+        elements.catalogProgress.textContent = '已发现 ' + found + ' / ' + catalogFish.length + ' · 基础 ' + baseFound + ' / ' + baseFish.length + ' · 新发现 ' + expansionFound + ' / ' + expansionFish.length;
+      } else {
+        elements.catalogProgress.textContent = '已发现 ' + found + ' / ' + catalogFish.length;
+      }
       elements.catalogGrid.innerHTML = '';
       catalogFish.forEach((item) => {
         const record = collection[item.id];

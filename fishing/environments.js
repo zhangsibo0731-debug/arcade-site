@@ -23,6 +23,7 @@
     const baitBoost = options.premiumBait ? .34 : 0;
     const weighted = fish.map((item) => {
       if (!item.times.includes(environment.time) || !item.weathers.includes(environment.weather)) return 0;
+      if (Number.isFinite(item.minCastDistance) && options.castDistance < item.minCastDistance) return 0;
       let environmentBoost = 1;
       if (item.id === 'catfish' && environment.time === 'night') environmentBoost = 1.7;
       if (item.id === 'trout' && environment.weather === 'rain') environmentBoost = 1.8;

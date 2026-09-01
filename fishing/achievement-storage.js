@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 2;
 
   function cleanRecord(value) {
     const source = value && typeof value === 'object' ? value : {};
@@ -15,6 +15,15 @@
     Object.entries(source.unique || {}).forEach(([key, list]) => {
       unique[key] = Array.from(new Set(Array.isArray(list) ? list.filter((item) => typeof item === 'string' && item) : []));
     });
+    const sequences = {};
+    Object.entries(source.sequences || {}).forEach(([id, record]) => {
+      if (!id || !record || typeof record !== 'object') return;
+      sequences[id] = {
+        step: Math.max(0, Math.floor(Number(record.step) || 0)),
+        remaining: Math.max(0, Math.floor(Number(record.remaining) || 0)),
+        values: Array.isArray(record.values) ? record.values.filter((item) => typeof item === 'string' && item).slice(-16) : [],
+      };
+    });
     return {
       version: VERSION,
       definitionCount: Math.max(0, Number(source.definitionCount) || 0),
@@ -23,6 +32,8 @@
       counters: cleanNumbers(source.counters),
       streaks: cleanNumbers(source.streaks),
       unique,
+      sequences,
+      processedEvents: Array.from(new Set(Array.isArray(source.processedEvents) ? source.processedEvents.filter((id) => typeof id === 'string' && id).slice(-64) : [])),
       unseen: Array.from(new Set(Array.isArray(source.unseen) ? source.unseen.filter((id) => typeof id === 'string' && id) : [])).filter((id) => unlocked[id]),
     };
   }

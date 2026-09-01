@@ -13,7 +13,7 @@
       legendaryTitle: '月光奇迹！',
       mechanic: 'none',
       unlock: 'default',
-      fishIds: Object.freeze(['crucian', 'carp', 'loach', 'catfish', 'perch', 'trout', 'eel', 'puffer', 'icefin', 'starlight', 'koi', 'moon']),
+      fishIds: Object.freeze(['crucian', 'carp', 'loach', 'catfish', 'perch', 'trout', 'eel', 'puffer', 'icefin', 'starlight', 'koi', 'moon', 'white-strip', 'bitterling', 'black-carp', 'mandarin-fish', 'rain-crucian', 'glass-koi']),
     }),
     river: Object.freeze({
       id: 'river',

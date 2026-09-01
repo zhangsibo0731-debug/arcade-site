@@ -1,15 +1,16 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishMetadata || !window.FishingFishData || !window.FishingRiverFishData || !window.FishingCoastFishData || !window.FishingAbyssFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAchievementData || !window.FishingAchievementStorage || !window.FishingAchievementEngine || !window.FishingAchievementUI || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
+  if (!window.FishingFishMetadata || !window.FishingFishData || !window.FishingLakeExpansionFishData || !window.FishingRiverFishData || !window.FishingCoastFishData || !window.FishingAbyssFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAchievementData || !window.FishingAchievementStorage || !window.FishingAchievementEngine || !window.FishingAchievementUI || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
   const { FISH, RARITY_RANK } = window.FishingFishData;
+  const { LAKE_EXPANSION_FISH } = window.FishingLakeExpansionFishData;
   const { RIVER_FISH } = window.FishingRiverFishData;
   const { COAST_FISH } = window.FishingCoastFishData;
   const { ABYSS_FISH } = window.FishingAbyssFishData;
-  const ALL_FISH = FISH.concat(RIVER_FISH, COAST_FISH, ABYSS_FISH);
+  const ALL_FISH = FISH.concat(LAKE_EXPANSION_FISH, RIVER_FISH, COAST_FISH, ABYSS_FISH);
   const FISH_BY_ID = new Map(ALL_FISH.map((item) => [item.id, item]));
   const { ITEMS, ITEM_BY_ID, choose: chooseItem } = window.FishingCatchables;
   const economy = window.FishingEconomy;
@@ -176,6 +177,7 @@
   let fishBag = economy.normalizeBag(storage.readObject(FISH_BAG_KEY, []), FISH_BY_ID);
   let achievementEngine = null;
   let achievementUI = null;
+  let achievementEventSerial = 0;
   const achievementUnlockQueue = [];
   const economyUI = window.FishingEconomyUI.create({
     economy,
@@ -274,9 +276,23 @@
     };
   }
 
+  function prepareAchievementEvent(event, assignId) {
+    const enriched = Object.assign({}, event);
+    if (assignId) enriched.eventId = enriched.eventId || (Date.now().toString(36) + '-' + (++achievementEventSerial).toString(36));
+    const taggedFish = enriched.fishId && FISH_BY_ID.get(enriched.fishId);
+    if (taggedFish) {
+      const environmentTags = new Set(['day', 'dusk', 'night', 'clear', 'rain']);
+      enriched.tags = Array.from(new Set((taggedFish.tags || [])
+        .filter((tag) => !environmentTags.has(tag))
+        .concat(enriched.tags || [], enriched.time || [], enriched.weather || [])));
+    }
+    return enriched;
+  }
+
   function emitAchievement(event) {
     if (!achievementEngine) return [];
-    const unlocked = achievementEngine.emit(event, achievementContext());
+    const enriched = prepareAchievementEvent(event, true);
+    const unlocked = achievementEngine.emit(enriched, achievementContext());
     if (achievementUI && unlocked.length) achievementUI.notifyMany(unlocked);
     return unlocked;
   }
@@ -1111,5 +1127,24 @@
       queued: achievementUnlockQueue.map((entry) => ({ id: entry.definition.id, retroactive: entry.retroactive })),
     }),
     emitAchievement: (event) => emitAchievement(event),
+    previewAchievementEvent: (event) => prepareAchievementEvent(event, false),
+    testAchievementEvents: (events) => {
+      let testState = window.FishingAchievementStorage.clean({});
+      const testStore = {
+        get: () => testState,
+        replace: (next) => { testState = window.FishingAchievementStorage.clean(next); return testState; },
+      };
+      const testEngine = window.FishingAchievementEngine.create({
+        definitions: window.FishingAchievementData.TEST_ACHIEVEMENTS,
+        sets: {},
+        store: testStore,
+      });
+      testEngine.initialize({});
+      const unlocked = [];
+      (Array.isArray(events) ? events : []).forEach((event) => {
+        testEngine.emit(event, {}).forEach((definition) => unlocked.push(definition.id));
+      });
+      return { unlocked, state: testEngine.getState() };
+    },
   };
 })();
