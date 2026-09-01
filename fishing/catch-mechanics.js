@@ -11,14 +11,15 @@
     state.fishWarning = Math.max(0, state.fishWarning - dt);
     if (state.fishMoveLeft <= 0) {
       if (fish.behavior === 'calm') {
-        state.fishTarget = .16 + random() * .68;
-        state.fishMoveLeft = (fish.id === 'black-carp' ? 1.18 : fish.id === 'carp' ? 1.05 : .82) + random() * .72;
+        state.fishTarget = fish.id === 'coastal-grouper' ? .06 + random() * .28 : .16 + random() * .68;
+        state.fishMoveLeft = (fish.id === 'coastal-grouper' ? 1.28 : fish.id === 'black-carp' ? 1.18 : fish.id === 'carp' ? 1.05 : .82) + random() * .72;
       } else if (fish.behavior === 'active') {
-        if (fish.id === 'eel') state.fishTarget = state.fishY > .5 ? .12 + random() * .24 : .64 + random() * .24;
+        if (fish.id === 'sunset-ray') state.fishTarget = state.fishY > .5 ? .12 + random() * .2 : .68 + random() * .2;
+        else if (fish.id === 'eel') state.fishTarget = state.fishY > .5 ? .12 + random() * .24 : .64 + random() * .24;
         else state.fishTarget = .08 + random() * .84;
-        state.fishMoveLeft = fish.id === 'eel' ? .2 + random() * .24 : .32 + random() * .48;
+        state.fishMoveLeft = fish.id === 'sunset-ray' ? .7 + random() * .35 : fish.id === 'eel' ? .2 + random() * .24 : .32 + random() * .48;
       } else if (!state.dashPending) {
-        state.fishWarning = fish.id === 'jade-sturgeon' ? .7 : fish.id === 'glass-koi' ? .64 : fish.id === 'moon' ? .68 : fish.id === 'icefin' ? .58 : fish.id === 'mandarin-fish' ? .42 : .48;
+        state.fishWarning = fish.id === 'sunwheel-sunfish' ? .75 : fish.id === 'flying-fish' ? .36 : fish.id === 'jade-sturgeon' ? .7 : fish.id === 'glass-koi' ? .64 : fish.id === 'moon' ? .68 : fish.id === 'icefin' ? .58 : fish.id === 'mandarin-fish' ? .42 : .48;
         state.fishMoveLeft = state.fishWarning;
         if (fish.id === 'jade-sturgeon') state.fishTarget = clamp(state.fishY + (random() < .5 ? -.07 : .07), .1, .9);
         else if (fish.id === 'glass-koi') state.fishTarget = clamp(state.fishY + (random() < .5 ? -.1 : .1), .1, .9);
@@ -27,12 +28,14 @@
         else state.fishTarget = state.fishY;
         state.dashPending = true;
       } else {
-        if (fish.id === 'jade-sturgeon') state.fishTarget = state.fishY > .5 ? .03 + random() * .1 : .87 + random() * .1;
+        if (fish.id === 'flying-fish') state.fishTarget = .9 + random() * .07;
+        else if (fish.id === 'sunwheel-sunfish') state.fishTarget = state.fishY > .5 ? .14 + random() * .12 : .72 + random() * .12;
+        else if (fish.id === 'jade-sturgeon') state.fishTarget = state.fishY > .5 ? .03 + random() * .1 : .87 + random() * .1;
         else if (fish.id === 'glass-koi') state.fishTarget = state.fishY > .5 ? .04 + random() * .12 : .84 + random() * .12;
         else if (fish.id === 'moon') state.fishTarget = state.fishY > .5 ? .05 + random() * .16 : .79 + random() * .16;
         else if (state.dashCount === 0) state.fishTarget = state.fishY > .5 ? .18 + random() * .14 : .68 + random() * .14;
         else state.fishTarget = state.fishY > .5 ? .08 + random() * .18 : .74 + random() * .2;
-        state.fishMoveLeft = fish.id === 'icefin' ? .55 + random() * .18 : .44 + random() * .26;
+        state.fishMoveLeft = fish.id === 'sunwheel-sunfish' ? .7 + random() * .18 : fish.id === 'flying-fish' ? .34 + random() * .16 : fish.id === 'icefin' ? .55 + random() * .18 : .44 + random() * .26;
         state.dashPending = false;
         state.dashCount++;
       }

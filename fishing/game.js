@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishMetadata || !window.FishingFishData || !window.FishingLakeExpansionFishData || !window.FishingRiverFishData || !window.FishingRiverExpansionFishData || !window.FishingCoastFishData || !window.FishingAbyssFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAchievementData || !window.FishingAchievementStorage || !window.FishingAchievementEngine || !window.FishingAchievementUI || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
+  if (!window.FishingFishMetadata || !window.FishingFishData || !window.FishingLakeExpansionFishData || !window.FishingRiverFishData || !window.FishingRiverExpansionFishData || !window.FishingCoastFishData || !window.FishingCoastExpansionFishData || !window.FishingAbyssFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAchievementData || !window.FishingAchievementStorage || !window.FishingAchievementEngine || !window.FishingAchievementUI || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
@@ -10,8 +10,9 @@
   const { RIVER_FISH } = window.FishingRiverFishData;
   const { RIVER_EXPANSION_FISH } = window.FishingRiverExpansionFishData;
   const { COAST_FISH } = window.FishingCoastFishData;
+  const { COAST_EXPANSION_FISH } = window.FishingCoastExpansionFishData;
   const { ABYSS_FISH } = window.FishingAbyssFishData;
-  const ALL_FISH = FISH.concat(LAKE_EXPANSION_FISH, RIVER_FISH, RIVER_EXPANSION_FISH, COAST_FISH, ABYSS_FISH);
+  const ALL_FISH = FISH.concat(LAKE_EXPANSION_FISH, RIVER_FISH, RIVER_EXPANSION_FISH, COAST_FISH, COAST_EXPANSION_FISH, ABYSS_FISH);
   const FISH_BY_ID = new Map(ALL_FISH.map((item) => [item.id, item]));
   const { ITEMS, ITEM_BY_ID, choose: chooseItem } = window.FishingCatchables;
   const economy = window.FishingEconomy;

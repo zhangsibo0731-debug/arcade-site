@@ -8,7 +8,7 @@
     'abyss-base': Object.freeze(['lanternfish', 'hatchetfish', 'fangtooth', 'barreleye', 'giant-isopod', 'reef-octopus', 'bluefin-tuna', 'viperfish', 'oarfish', 'luminous-coelacanth']),
   });
   const ALL_FISH = global.FishingFishData.FISH
-    .concat(global.FishingLakeExpansionFishData.LAKE_EXPANSION_FISH, global.FishingRiverFishData.RIVER_FISH, global.FishingRiverExpansionFishData.RIVER_EXPANSION_FISH, global.FishingCoastFishData.COAST_FISH, global.FishingAbyssFishData.ABYSS_FISH);
+    .concat(global.FishingLakeExpansionFishData.LAKE_EXPANSION_FISH, global.FishingRiverFishData.RIVER_FISH, global.FishingRiverExpansionFishData.RIVER_EXPANSION_FISH, global.FishingCoastFishData.COAST_FISH, global.FishingCoastExpansionFishData.COAST_EXPANSION_FISH, global.FishingAbyssFishData.ABYSS_FISH);
   const FISH_METADATA_VALIDATION = global.FishingFishMetadata.validate(ALL_FISH);
   if (!FISH_METADATA_VALIDATION.valid) {
     throw new Error('Fishing fish metadata is invalid: ' + FISH_METADATA_VALIDATION.errors.join('; '));

@@ -43,7 +43,7 @@
         rareFishIds: Object.freeze(['icefin', 'starlight', 'koi', 'moon', 'cherry-salmon', 'torrent-catfish', 'taimen']),
         clueItemIds: Object.freeze(['message-bottle', 'old-compass']),
       }),
-      fishIds: Object.freeze(['silver-sardine', 'blue-mackerel', 'sand-flounder', 'sea-bream', 'sea-bass', 'puffer', 'eel', 'reef-octopus', 'bluefin-tuna', 'starlit-sailfish']),
+      fishIds: Object.freeze(['silver-sardine', 'blue-mackerel', 'sand-flounder', 'sea-bream', 'sea-bass', 'puffer', 'eel', 'reef-octopus', 'bluefin-tuna', 'starlit-sailfish', 'pacific-saury', 'horse-mackerel-coast', 'coastal-grouper', 'flying-fish', 'sunset-ray', 'sunwheel-sunfish']),
     }),
     abyss: Object.freeze({
       id: 'abyss',
