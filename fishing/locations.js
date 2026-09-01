@@ -26,7 +26,7 @@
       legendaryTitle: '溪谷传说！',
       mechanic: 'current',
       unlock: Object.freeze({ discoveredFish: 6 }),
-      fishIds: Object.freeze(['loach', 'trout', 'ayu', 'pale-chub', 'yamame', 'silver-minnow', 'stone-loach', 'cherry-salmon', 'torrent-catfish', 'taimen']),
+      fishIds: Object.freeze(['loach', 'trout', 'ayu', 'pale-chub', 'yamame', 'silver-minnow', 'stone-loach', 'cherry-salmon', 'torrent-catfish', 'taimen', 'horse-mouth', 'stone-grouper', 'yellow-catfish', 'river-bream', 'cherry-rain-trout', 'jade-sturgeon']),
     }),
     coast: Object.freeze({
       id: 'coast',

@@ -33,9 +33,11 @@
       const catalogFish = visibleFish || fish;
       const found = catalogFish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
       elements.catalogKicker.textContent = kicker;
-      const baseFish = catalogFish.filter((item) => (item.collectionSets || []).includes('lake-base'));
-      const expansionFish = catalogFish.filter((item) => (item.collectionSets || []).includes('lake-expansion-1'));
-      if (locationId === 'lake' && expansionFish.length) {
+      const baseSetId = locationId + '-base';
+      const expansionSetId = locationId + '-expansion-1';
+      const baseFish = catalogFish.filter((item) => (item.collectionSets || []).includes(baseSetId));
+      const expansionFish = catalogFish.filter((item) => (item.collectionSets || []).includes(expansionSetId));
+      if (expansionFish.length) {
         const baseFound = baseFish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
         const expansionFound = expansionFish.filter((item) => collection[item.id] && collection[item.id].count > 0).length;
         elements.catalogProgress.textContent = '已发现 ' + found + ' / ' + catalogFish.length + ' · 基础 ' + baseFound + ' / ' + baseFish.length + ' · 新发现 ' + expansionFound + ' / ' + expansionFish.length;
