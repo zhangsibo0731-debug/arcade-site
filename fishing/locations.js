@@ -64,7 +64,7 @@
         requiredItemIds: Object.freeze(['chart-fragment']),
         clueItemIds: Object.freeze(['rusty-key', 'old-compass']),
       }),
-      fishIds: Object.freeze(['lanternfish', 'hatchetfish', 'fangtooth', 'barreleye', 'giant-isopod', 'reef-octopus', 'bluefin-tuna', 'viperfish', 'oarfish', 'luminous-coelacanth']),
+      fishIds: Object.freeze(['lanternfish', 'hatchetfish', 'fangtooth', 'barreleye', 'giant-isopod', 'reef-octopus', 'bluefin-tuna', 'viperfish', 'oarfish', 'luminous-coelacanth', 'deepsea-cod', 'soft-spine-sculpin', 'lionfish', 'amethyst-octopus', 'crystal-jellyfish', 'starsea-whale']),
     }),
   });
 
