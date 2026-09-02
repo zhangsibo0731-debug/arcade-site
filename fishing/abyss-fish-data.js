@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const SHEET = 'abyss-fish-sheet-v2.png';
+  const SHEET = 'abyss-fish-sheet-v3.png';
   // Slightly zoom into each 4 × 2 cell so artwork near a cell edge cannot
   // bleed into the neighbouring fish card.
   const SPRITE_SIZE = '420% 210%';

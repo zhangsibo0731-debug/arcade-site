@@ -21,7 +21,7 @@
       } else {
         const row = Math.floor(item.sprite / 4);
         const sheets = ['common', 'uncommon', 'rare'];
-        element.style.backgroundImage = 'url("assets/moonlake-fish-' + sheets[row] + '-v1.png")';
+        element.style.backgroundImage = 'url("assets/moonlake-fish-' + sheets[row] + '-v2.png")';
       }
       element.style.setProperty('--fish-x', (typeof item.spriteX === 'number' ? item.spriteX : column * 100 / 3) + '%');
       element.style.setProperty('--fish-y', (typeof item.spriteY === 'number' ? item.spriteY : 50) + '%');

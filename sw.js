@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v92';
+const CACHE = 'arcade-v93';
 const ASSETS = [
   './',
   './index.html',
@@ -35,11 +35,11 @@ const ASSETS = [
   './fishing/fish-metadata.js?v=1',
   './fishing/fish-data.js?v=3',
   './fishing/lake-expansion-fish-data.js?v=3',
-  './fishing/river-fish-data.js?v=3',
+  './fishing/river-fish-data.js?v=4',
   './fishing/river-expansion-fish-data.js?v=3',
-  './fishing/coast-fish-data.js?v=3',
+  './fishing/coast-fish-data.js?v=4',
   './fishing/coast-expansion-fish-data.js?v=1',
-  './fishing/abyss-fish-data.js?v=4',
+  './fishing/abyss-fish-data.js?v=5',
   './fishing/catchables.js?v=3',
   './fishing/economy.js?v=1',
   './fishing/environments.js?v=2',
@@ -50,7 +50,7 @@ const ASSETS = [
   './fishing/achievement-engine.js?v=3',
   './fishing/achievement-ui.js?v=9',
   './fishing/audio.js?v=4',
-  './fishing/ui.js?v=11',
+  './fishing/ui.js?v=12',
   './fishing/scene-renderer.js?v=6',
   './fishing/session-state.js?v=2',
   './fishing/catch-mechanics.js?v=4',
@@ -58,17 +58,17 @@ const ASSETS = [
   './fishing/location-ui.js?v=3',
   './fishing/collection-ui.js?v=4',
   './fishing/game.js?v=61',
-  './fishing/assets/moonlake-fish-common-v1.png',
-  './fishing/assets/moonlake-fish-uncommon-v1.png',
-  './fishing/assets/moonlake-fish-rare-v1.png',
+  './fishing/assets/moonlake-fish-common-v2.png',
+  './fishing/assets/moonlake-fish-uncommon-v2.png',
+  './fishing/assets/moonlake-fish-rare-v2.png',
   './fishing/assets/lake-white-strip-v2.png',
   './fishing/assets/lake-bitterling-v3.png',
   './fishing/assets/lake-black-carp-v2.png',
   './fishing/assets/lake-mandarin-fish-v2.png',
   './fishing/assets/lake-rain-crucian-v3.png',
   './fishing/assets/lake-glass-koi-v2.png',
-  './fishing/assets/clearstream-fish-common-v1.png',
-  './fishing/assets/clearstream-fish-rare-v1.png',
+  './fishing/assets/clearstream-fish-common-v2.png',
+  './fishing/assets/clearstream-fish-rare-v2.png',
   './fishing/assets/clearstream-taimen-v1.png',
   './fishing/assets/river-horse-mouth-v2.png',
   './fishing/assets/river-stone-grouper-v3.png',
@@ -76,14 +76,14 @@ const ASSETS = [
   './fishing/assets/river-bream-v3.png',
   './fishing/assets/river-cherry-rain-trout-v2.png',
   './fishing/assets/river-jade-sturgeon-v2.png',
-  './fishing/assets/coast-fish-sheet-v1.png',
+  './fishing/assets/coast-fish-sheet-v2.png',
   './fishing/assets/coast-pacific-saury-v1.png',
   './fishing/assets/coast-horse-mackerel-v1.png',
   './fishing/assets/coast-grouper-v1.png',
   './fishing/assets/coast-flying-fish-v1.png',
   './fishing/assets/coast-sunset-ray-v1.png',
   './fishing/assets/coast-sunwheel-sunfish-v1.png',
-  './fishing/assets/abyss-fish-sheet-v2.png',
+  './fishing/assets/abyss-fish-sheet-v3.png',
   './fishing/assets/achievements/achievement-icons-v1.png',
 ];
 
@@ -105,6 +105,18 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  if (e.request.destination === 'image') {
+    e.respondWith(
+      caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
+        if (res && res.status === 200 && (res.type === 'basic' || res.type === 'cors')) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      }))
+    );
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then((res) => {

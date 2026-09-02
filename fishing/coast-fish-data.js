@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const SHEET = 'coast-fish-sheet-v1.png';
+  const SHEET = 'coast-fish-sheet-v2.png';
   const SPRITE_SIZE = '400% 200%';
   const RAW_COAST_FISH = [
     { id: 'silver-sardine', name: '银沙丁鱼', rarity: '常见', color: '#b9d9dd', min: 90, max: 360, behavior: 'calm', difficulty: .78, weight: 22, sprite: 0, spriteX: 0, spriteY: 0, spriteSize: SPRITE_SIZE, sheet: SHEET, times: ['day','dusk','night'], weathers: ['clear','rain'], habitat: '潮汐湾 · 全天', hint: '银亮的小鱼群会贴着潮线一起转向。' },
