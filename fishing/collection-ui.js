@@ -60,6 +60,7 @@
       elements.tackle.hidden = true;
       elements.basket.hidden = true;
       options.ui.renderItems(visibleItems, current.itemCollection, location.itemsLabel);
+      if (options.renderVoyageLog) options.renderVoyageLog();
       elements.itemPanel.hidden = false;
     }
 

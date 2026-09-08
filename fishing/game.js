@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.FishingFishMetadata || !window.FishingFishData || !window.FishingLakeExpansionFishData || !window.FishingRiverFishData || !window.FishingRiverExpansionFishData || !window.FishingCoastFishData || !window.FishingCoastExpansionFishData || !window.FishingAbyssFishData || !window.FishingAbyssExpansionFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingAchievementData || !window.FishingAchievementStorage || !window.FishingAchievementEngine || !window.FishingAchievementUI || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
+  if (!window.FishingFishMetadata || !window.FishingFishData || !window.FishingLakeExpansionFishData || !window.FishingRiverFishData || !window.FishingRiverExpansionFishData || !window.FishingCoastFishData || !window.FishingCoastExpansionFishData || !window.FishingAbyssFishData || !window.FishingAbyssExpansionFishData || !window.FishingCatchables || !window.FishingEconomy || !window.FishingEnvironments || !window.FishingLocations || !window.FishingStorage || !window.FishingVoyageLog || !window.FishingAchievementData || !window.FishingAchievementStorage || !window.FishingAchievementEngine || !window.FishingAchievementUI || !window.FishingAudio || !window.FishingUI || !window.FishingSceneRenderer || !window.FishingSessionState || !window.FishingCatchMechanics || !window.FishingEconomyUI || !window.FishingLocationUI || !window.FishingCollectionUI) {
     throw new Error('Fishing data modules failed to load.');
   }
 
@@ -47,6 +47,7 @@
   const itemsBtn = $('itemsBtn');
   const itemsPanel = $('itemsPanel');
   const itemsClose = $('itemsClose');
+  const voyageLogElement = $('voyageLog');
   const tackleBtn = $('tackleBtn');
   const tacklePanel = $('tacklePanel');
   const tackleClose = $('tackleClose');
@@ -132,6 +133,7 @@
     COINS: COINS_KEY,
     FISH_BAG: FISH_BAG_KEY,
     ACHIEVEMENTS: ACHIEVEMENT_KEY,
+    VOYAGE_LOG: VOYAGE_LOG_KEY,
   } = storage.KEYS;
   const sessionState = window.FishingSessionState.create({ storage, key: SAVE_KEY });
   let mode = 'menu';
@@ -175,6 +177,8 @@
   let pendingResume = null;
   let collection = storage.readObject(COLLECTION_KEY, {});
   let itemCollection = storage.readObject(ITEM_COLLECTION_KEY, {});
+  let voyageLogState = window.FishingVoyageLog.normalize(storage.readObject(VOYAGE_LOG_KEY, {}), itemCollection);
+  storage.writeObject(VOYAGE_LOG_KEY, voyageLogState);
   let tackle = economy.normalizeTackle(storage.readObject(TACKLE_KEY, {}));
   let coins = economy.normalizeCoins(storage.readInt(COINS_KEY));
   let fishBag = economy.normalizeBag(storage.readObject(FISH_BAG_KEY, []), FISH_BY_ID);
@@ -255,6 +259,7 @@
     currentFishPool,
     refreshLocations: locationUI.refreshUnlocks,
     pause: showPause,
+    renderVoyageLog: () => window.FishingVoyageLog.render(voyageLogElement, voyageLogState),
   });
   const achievementStore = window.FishingAchievementStorage.create({ storage, key: ACHIEVEMENT_KEY });
   achievementEngine = window.FishingAchievementEngine.create({
@@ -276,6 +281,7 @@
     return {
       totalCaught, bestWeight, bestStreak, coins, collection, itemCollection,
       treasureCollection, junkCollection, unlockedLocations, locations: LOCATIONS,
+      voyage: { completed: voyageLogState.completed ? 1 : 0 },
     };
   }
 
@@ -785,6 +791,9 @@
     const first = recorded.first;
     const itemCount = recorded.count;
     const newlyUnlocked = recorded.newlyUnlocked;
+    const voyageUpdate = window.FishingVoyageLog.reconcile(voyageLogState, itemCollection);
+    voyageLogState = voyageUpdate.state;
+    storage.writeObject(VOYAGE_LOG_KEY, voyageLogState);
     emitAchievement({ type: 'itemCaught', itemId: item.id, itemType: item.type, locationId: currentLocationId });
     if (item.type === 'treasure') {
       tackle.premiumBait = Math.min(economy.MAX_BAIT, tackle.premiumBait + 1);
@@ -792,10 +801,12 @@
     }
     caughtFlash = 1;
     const treasure = item.type === 'treasure';
-    const title = treasure && first ? 'NEW! ' + item.name : (treasure ? '再次发现' + item.name : '捞到了……');
+    const title = voyageUpdate.justCompleted ? '航线终点！' : (treasure && first ? 'NEW! ' + item.name : (treasure ? '再次发现' + item.name : '捞到了……'));
     const collectionFeedback = treasure ? (first ? '\n✨ 首次发现 · 已登记到水边收藏' : '\n水边收藏 · 已发现 × ' + itemCount) : '';
     const unlockFeedback = newlyUnlocked.includes('coast') ? '\n🌊 海风带来新的方向 · 潮汐湾已解锁！' : '';
-    const text = item.name + ' · ' + item.rarity + '\n' + item.line + collectionFeedback + (treasure ? '\n🦐 获得高级鱼饵 × 1' : '') + unlockFeedback;
+    const logFeedback = voyageUpdate.newlyRecorded.length ? '\n📖 新线索已记录到航海日志' : '';
+    const endingFeedback = voyageUpdate.justCompleted ? '\n✨ 旧箱子开启 · 获得旧船长的星图' : '';
+    const text = item.name + ' · ' + item.rarity + '\n' + item.line + collectionFeedback + logFeedback + endingFeedback + (treasure ? '\n🦐 获得高级鱼饵 × 1' : '') + unlockFeedback;
     clearState();
     advanceEnvironment();
     beginReveal({ item: item, title: title, text: text, first: first });
@@ -1072,7 +1083,7 @@
   requestAnimationFrame(frame);
 
   window.__fishingTest = {
-    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: catchable && catchable.type === 'fish' ? fish.id : null, catchable: catchable && catchable.id, catchableType: catchable && catchable.type, fishY, zoneY, zoneV, catchProgress, peakCatchProgress, surgeTimer, surgeLeft, surgeDirection, totalCaught, bestWeight, streak, bestStreak, muted: audio.isMuted(), tackle: Object.assign({}, tackle), coins, fishBag: fishBag.slice(), currentLocationId, unlockedLocations: unlockedLocations.slice(), environmentStep, environment: environment.time + '-' + environment.weather }),
+    getState: () => ({ mode, power, castDistance, waitLeft, biteLeft, fish: catchable && catchable.type === 'fish' ? fish.id : null, catchable: catchable && catchable.id, catchableType: catchable && catchable.type, fishY, zoneY, zoneV, catchProgress, peakCatchProgress, surgeTimer, surgeLeft, surgeDirection, totalCaught, bestWeight, streak, bestStreak, muted: audio.isMuted(), tackle: Object.assign({}, tackle), coins, fishBag: fishBag.slice(), currentLocationId, unlockedLocations: unlockedLocations.slice(), environmentStep, environment: environment.time + '-' + environment.weather, voyage: voyageLogState }),
     getLocations: () => Object.values(LOCATIONS).map((location) => ({
       id: location.id,
       name: location.name,
@@ -1129,6 +1140,8 @@
       state: achievementEngine.getState(),
       queued: achievementUnlockQueue.map((entry) => ({ id: entry.definition.id, retroactive: entry.retroactive })),
     }),
+    getVoyageLog: () => voyageLogState,
+    reconcileVoyageLog: (items) => window.FishingVoyageLog.reconcile(voyageLogState, items || itemCollection),
     emitAchievement: (event) => emitAchievement(event),
     previewAchievementEvent: (event) => prepareAchievementEvent(event, false),
     testAchievementEvents: (events) => {

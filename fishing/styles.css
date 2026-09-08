@@ -145,6 +145,21 @@ button, a { font: inherit; }
 .fish-card__art { width: 100%; aspect-ratio: 1; border-radius: 12px; background-color: rgba(5,15,31,.38); }
 .item-card .fish-card__art { font-size: 54px; }
 .item-card.is-locked .fish-card__art { color: rgba(255,255,255,.28); filter: none; }
+.voyage-log { margin-top: 18px; padding: 16px; border: 1px solid rgba(142,184,207,.22); border-radius: 19px; background: linear-gradient(145deg, rgba(19,38,67,.9), rgba(10,23,45,.88)); }
+.voyage-log__head { display: grid; grid-template-columns: 1fr auto; align-items: end; margin-bottom: 12px; }
+.voyage-log__head span { grid-column: 1 / -1; color: var(--gold); font-size: 8px; letter-spacing: .15em; }
+.voyage-log__head h3 { margin-top: 3px; font-size: 19px; }
+.voyage-log__head p { color: var(--mint); font-size: 10px; }
+.voyage-log__pages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.voyage-page { min-width: 0; display: grid; grid-template-columns: 34px 1fr; gap: 9px; padding: 11px; border: 1px solid rgba(150,188,207,.16); border-radius: 13px; background: rgba(4,15,32,.32); }
+.voyage-page > i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(116,213,201,.1); font-size: 20px; font-style: normal; }
+.voyage-page small { color: var(--mint); font-size: 8px; letter-spacing: .1em; }
+.voyage-page h4 { margin-top: 2px; color: var(--ink); font-size: 12px; }
+.voyage-page p { margin-top: 4px; color: var(--soft); font-size: 9px; line-height: 1.55; }
+.voyage-page.is-locked { opacity: .5; }
+.voyage-page.is-locked > i { color: var(--soft); filter: grayscale(1); }
+.voyage-reward { grid-column: 1 / -1; border-color: rgba(255,212,122,.4); background: linear-gradient(120deg, rgba(90,70,28,.28), rgba(39,34,80,.32)); }
+.voyage-reward.is-found { box-shadow: inset 0 0 20px rgba(255,212,122,.06); }
 .fish-card.is-locked .fish-card__art { filter: grayscale(1) brightness(.16); }
 .fish-card h3 { margin-top: 7px; overflow: hidden; color: var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .fish-card p { margin-top: 3px; color: var(--soft); font-size: 9px; line-height: 1.45; white-space: pre-line; }
@@ -228,7 +243,7 @@ button, a { font: inherit; }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 @media (max-height: 720px) { .app { gap: 8px; padding-top: 8px; } .stage { height: 52svh; min-height: 330px; } .catch-game { top: 52px; } .hud > div { padding-block: 6px; } .action-btn { min-height: 48px; } }
 @media (max-width: 420px) { .app { padding-inline: 11px; } .stage { min-height: 365px; border-radius: 20px; } .top-actions { right: 8px; gap: 4px; } .top-actions .icon-btn { width: 32px; height: 32px; border-radius: 10px; } .environment { top: 52px; max-width: 52%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .catch-game { right: 11px; width: 44%; } .hud { gap: 4px; } .hud > div { padding-inline: 3px; } .hud strong { font-size: 12px; } }
-@media (max-width: 520px) { .catalog__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .catalog__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .voyage-log__pages { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .locations__grid { grid-template-columns: 1fr; } .location-card { display: grid; grid-template-columns: 38% 62%; } .location-card__art { height: auto; min-height: 175px; } .location-card__art span { font-size: 46px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } .stage[data-location="abyss"] .fish-marker span.mystery-silhouette { opacity: .62; } }
 

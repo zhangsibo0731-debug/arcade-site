@@ -62,6 +62,7 @@
     achievement('unlock-coast', 'exploration', '听见海风', '解锁潮汐湾', 'lighthouse', 'rare', true, { type: 'includes', source: 'unlockedLocations', value: 'coast' }),
     achievement('unlock-abyss', 'exploration', '海图背面', '解锁隐藏钓场星渊', 'abyss-map', 'legendary', true, { type: 'includes', source: 'unlockedLocations', value: 'abyss' }, { special: true }),
     achievement('complete-abyss-items', 'exploration', '深海考古', '完成星渊基础水边收藏', 'relic', 'legendary', true, { type: 'collectionSet', set: 'abyss-items-base', source: 'itemCollection' }, { special: true }),
+    achievement('captains-star-chart', 'exploration', '星图归航', '集齐四件航路线索，取得旧船长的星图', 'abyss-map', 'legendary', true, { type: 'stat', path: 'voyage.completed', gte: 1 }, { special: true }),
 
     achievement('first-sale', 'journey', '第一桶金', '第一次出售鱼获', 'coin', 'common', false, { type: 'counter', key: 'fishSold', gte: 1 }),
     achievement('coins-500', 'journey', '小有积蓄', '持有 500 金币', 'coins', 'common', true, { type: 'stat', path: 'coins', gte: 500 }),
