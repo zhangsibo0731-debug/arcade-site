@@ -314,15 +314,22 @@
     else if (outcome.expired) showChallengeMessage('新任务出现', false);
     turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
     updateChallengeHud();
+    updateHud();
+    return removed.length > 0 || placed.length > 0;
   }
 
-  function resolveStep(chain, token) {
+  function resolveStep(chain, token, taskSettled = false) {
     if (token !== resolveToken) return;
     const groups = findClearGroups();
     if (!groups.length) {
       popCells.clear();
       if (chain > 2) showChainResult(chain - 1);
-      finishChallengeTurn();
+      // Reward gravity may form another clear. Finish it before spawning,
+      // without spending another turn or crediting the newly issued task.
+      if (!taskSettled && finishChallengeTurn()) {
+        setTimeout(() => resolveStep(chain, token, true), fallDuration);
+        return;
+      }
       mode = 'playing';
       btnPause.hidden = false;
       spawnPair();
@@ -343,14 +350,14 @@
     const previousLevel = level;
     score += gained;
     clearedTotal += cells.length;
-    if (gameType === 'challenge') {
+    if (gameType === 'challenge' && !taskSettled) {
       turnStats.maxChain = Math.max(turnStats.maxChain, chain);
       turnStats.cleared += cells.length;
       turnStats.maxColors = Math.max(turnStats.maxColors, colors.size);
-      challengeState.garbageCleared += garbageCells.length;
       challengeState.mission.progress = Math.max(challengeState.mission.progress, challengeState.mission.type === 'chain' ? turnStats.maxChain : (challengeState.mission.type === 'colors' ? turnStats.maxColors : turnStats.cleared));
       updateChallengeHud();
     }
+    if (gameType === 'challenge') challengeState.garbageCleared += garbageCells.length;
     level = Math.min(12, Math.floor(clearedTotal / 35) + 1);
     runMaxChain = Math.max(runMaxChain, chain);
     if (chain > bestChain) {
@@ -377,7 +384,7 @@
       popCells.clear();
       applyGravity(true);
       const settleDelay = Math.max(120, 225 - (chain - 1) * 14);
-      setTimeout(() => resolveStep(chain + 1, token), settleDelay);
+      setTimeout(() => resolveStep(chain + 1, token, taskSettled), settleDelay);
     }, popDuration);
   }
 
@@ -602,13 +609,15 @@
   }
 
   function loadState() {
-    try {
-      const saves = Object.keys(SAVE_KEYS).map((type) => {
+    const saves = Object.keys(SAVE_KEYS).map((type) => {
+      try {
         const value = JSON.parse(localStorage.getItem(SAVE_KEYS[type]));
-        return value && typeof value === 'object' ? value : null;
-      }).filter(Boolean);
-      return saves.sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0))[0] || null;
-    } catch (e) { return null; }
+        if (!value || !validBoard(value.board)) return null;
+        if (type === 'classic' && value.board.some((row) => row.includes(GARBAGE))) return null;
+        return Object.assign({}, value, { gameType: type });
+      } catch (e) { return null; }
+    }).filter(Boolean);
+    return saves.sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0))[0] || null;
   }
 
   function validBoard(value) {
