@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v101';
+const CACHE = 'arcade-v102';
 const ASSETS = [
   './',
   './index.html',
