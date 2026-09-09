@@ -14,8 +14,15 @@ assert.equal(initial.turnsLeft, 8);
 const complete = rules.resolveTurn(initial, { maxChain: 2, cleared: 8, maxColors: 1 }, () => 0);
 assert.equal(complete.completed, true);
 assert.equal(complete.state.completed, 1);
+assert.equal(complete.state.stage, 2);
 assert.equal(complete.bonus, 120);
 assert.ok(complete.reward >= 2);
+
+const second = rules.resolveTurn(complete.state, { maxChain: 2, cleared: 20, maxColors: 2 }, () => 0);
+assert.equal(second.completed, true);
+assert.equal(second.state.completed, 2);
+assert.equal(second.state.stage, 3);
+assert.equal(second.bonus, 240);
 
 let expiring = rules.normalize({ turnsLeft: 1, mission: { type: 'chain', target: 3, title: '完成 3 CHAIN', progress: 0 } }, () => 0);
 expiring = rules.resolveTurn(expiring, { maxChain: 1 }, () => 0);

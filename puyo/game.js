@@ -82,6 +82,8 @@
   let fallOffsets = new Map();
   let fallStartedAt = 0;
   let fallDuration = 210;
+  let garbageFalls = new Map();
+  let garbageFallStartedAt = 0;
   let muted = readMuted();
   let audioCtx = null;
   let touchStart = null;
@@ -307,8 +309,9 @@
       challengeState.garbageCleared += removed.length;
       score += outcome.bonus;
     }
+    if (removed.length) applyGravity(true);
     const placed = outcome.pressure ? challengeRules.placeGarbage(board, outcome.pressure, Math.random, GARBAGE) : [];
-    if (removed.length || placed.length) applyGravity(true);
+    if (placed.length) startGarbageFall(placed);
     if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus, true);
     else if (placed.length) showChallengeMessage('压力上升 · 干扰 × ' + placed.length, false);
     else if (outcome.expired) showChallengeMessage('新任务出现', false);
@@ -408,6 +411,27 @@
     fallDuration = 190;
   }
 
+  function startGarbageFall(cells) {
+    garbageFalls = new Map(cells.map((cell, index) => [cell[0] + ',' + cell[1], {
+      startY: -1.1 - index * 0.28,
+      delay: index * 55,
+    }]));
+    garbageFallStartedAt = performance.now();
+    fallDuration = 590 + Math.max(0, cells.length - 1) * 55;
+    play('drop', 0.72);
+    haptic(18);
+  }
+
+  function bounceOut(t) {
+    const n = 7.5625;
+    const d = 2.75;
+    if (t < 1 / d) return n * t * t;
+    if (t < 2 / d) { t -= 1.5 / d; return n * t * t + 0.75; }
+    if (t < 2.5 / d) { t -= 2.25 / d; return n * t * t + 0.9375; }
+    t -= 2.625 / d;
+    return n * t * t + 0.984375;
+  }
+
   function showChain(chain, gained) {
     clearTimeout(chainPopTimer);
     chainValue.textContent = chain === 1 ? '消除' : chain;
@@ -497,6 +521,7 @@
     particles = [];
     popCells.clear();
     fallOffsets.clear();
+    garbageFalls.clear();
     clearTimeout(chainPopTimer);
     clearTimeout(chainResultTimer);
     clearTimeout(levelPopTimer);
@@ -887,9 +912,30 @@
             alpha = 1 - shrink * 0.72;
           }
         }
-        const offset = fallOffsets.get(x + ',' + y) || 0;
-        const drawY = y + 0.5 - offset * (1 - fallEase);
-        if (color === GARBAGE) drawGarbage(ctx, (x + 0.5) * cell, drawY * cell, cell * 0.44, alpha, scale);
+        const key = x + ',' + y;
+        const offset = fallOffsets.get(key) || 0;
+        const garbageFall = color === GARBAGE ? garbageFalls.get(key) : null;
+        let drawY = y + 0.5 - offset * (1 - fallEase);
+        let garbageScaleX = scale;
+        let garbageScaleY = scale;
+        if (garbageFall) {
+          const elapsed = now - garbageFallStartedAt - garbageFall.delay;
+          const t = Math.min(1, Math.max(0, elapsed / 540));
+          const progress = bounceOut(t);
+          drawY = garbageFall.startY + (y + 0.5 - garbageFall.startY) * progress;
+          if (t > 0.72 && t < 1) {
+            const squash = Math.sin(((t - 0.72) / 0.28) * Math.PI) * 0.11;
+            garbageScaleX *= 1 + squash;
+            garbageScaleY *= 1 - squash;
+          }
+        }
+        if (color === GARBAGE) {
+          ctx.save();
+          ctx.translate((x + 0.5) * cell, drawY * cell);
+          ctx.scale(garbageScaleX, garbageScaleY);
+          drawGarbage(ctx, 0, 0, cell * 0.44, alpha, 1);
+          ctx.restore();
+        }
         else drawBlob(ctx, (x + 0.5) * cell, drawY * cell, cell * 0.44 * scale, color, alpha, true);
         if (flash > 0) {
           ctx.fillStyle = 'rgba(255,255,255,' + flash.toFixed(3) + ')';
@@ -920,6 +966,7 @@
     }
     ctx.globalAlpha = 1;
     if (fallT >= 1 && fallOffsets.size) fallOffsets.clear();
+    if (garbageFalls.size && now - garbageFallStartedAt >= fallDuration) garbageFalls.clear();
   }
 
   function drawNext() {
@@ -1105,7 +1152,11 @@
       newGame: (type) => { if (type) selectGameType(type); newGame(); },
       selectMode: selectGameType,
       resolveChallengeTurn: (stats) => challengeRules.resolveTurn(challengeState, stats || turnStats, () => 0),
-      placeGarbage: (count) => challengeRules.placeGarbage(board, count, () => 0, GARBAGE),
+      placeGarbage: (count) => {
+        const placed = challengeRules.placeGarbage(board, count, () => 0, GARBAGE);
+        startGarbageFall(placed);
+        return placed;
+      },
     };
   }
 })();

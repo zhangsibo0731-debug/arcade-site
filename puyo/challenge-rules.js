@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 2;
   const GARBAGE = 6;
 
   function boundedInt(value, fallback, min, max) {
@@ -25,7 +25,7 @@
   function normalize(source, random) {
     const saved = source && typeof source === 'object' ? source : {};
     const completed = boundedInt(saved.completed, 0, 0, 999999);
-    const stage = Math.max(1, Math.floor(completed / 2) + 1);
+    const stage = Math.max(1, completed + 1);
     const mission = saved.mission && ['chain', 'clear', 'colors'].includes(saved.mission.type)
       ? {
           type: saved.mission.type,
@@ -61,10 +61,11 @@
     let reward = 0;
     let bonus = 0;
     if (completed) {
+      const completedStage = state.stage;
       state.completed++;
-      state.stage = Math.floor(state.completed / 2) + 1;
+      state.stage = state.completed + 1;
       reward = Math.min(5, 2 + Math.floor(state.stage / 3));
-      bonus = 120 * state.stage;
+      bonus = 120 * completedStage;
       state.turnsLeft = Math.max(6, 9 - Math.floor(state.stage / 3));
       state.mission = missionFor(state.stage, random);
     } else if (expired) {
