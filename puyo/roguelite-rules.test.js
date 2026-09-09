@@ -41,4 +41,16 @@ assert.ok(!rules.choicesFor(maxed, () => 0).includes('chainShield'));
 const legacy = rules.normalize(null, 8);
 assert.equal(legacy.picks, 2);
 
+const modifiers = rules.modifiers({ upgrades: { chainShield: 2, chainEcho: 3, colorBurst: 1, largeGroup: 2, cleaner: 3, buffer: 1, steadyHands: 2, foresight: 3 } });
+assert.equal(modifiers.chainDefense, 2);
+assert.equal(modifiers.chainScoreMultiplier, 1.5);
+assert.equal(modifiers.colorBurstThreshold, 7);
+assert.equal(modifiers.largeGroupThreshold, 8);
+assert.equal(modifiers.cleanerClear, 3);
+assert.equal(modifiers.bufferReduction, 1);
+assert.equal(modifiers.lockDelayMultiplier, 1.2);
+assert.equal(modifiers.foresightLevel, 3);
+
+assert.equal(rules.normalize({ bufferedStage: 7 }, 0).bufferedStage, 7);
+
 console.log('roguelite-rules tests passed');

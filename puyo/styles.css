@@ -334,6 +334,9 @@ body {
 .garbage-preview > div i { width: 7px; height: 7px; flex: 0 0 7px; border: 1px solid #514b60; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f0edf6 0 14%, #bdb7ca 38%, #716b80 100%); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 .garbage-preview > b { color: #e5e0ed; font-size: 8px; }
 .garbage-preview > small { margin: 0; color: var(--soft); font-size: 7px; white-space: nowrap; }
+.build-summary { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.08); color: var(--soft); font-size: 7px; line-height: 1.45; }
+.build-summary b { color: var(--cyan); font-weight: 700; }
+.next-panel.is-foresight { border-color: rgba(86,220,237,.42); box-shadow: inset 0 0 16px rgba(86,220,237,.07); }
 .challenge-card.is-imminent { border-color: rgba(255,111,174,.68); animation: garbage-warning 1.1s ease-in-out infinite; }
 .challenge-card.is-safe .garbage-preview > b { color: var(--lime); }
 .challenge-card.is-safe .garbage-preview > div::after { content: '已抵消'; color: var(--lime); font-size: 7px; font-weight: 700; }

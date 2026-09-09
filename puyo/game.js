@@ -42,6 +42,9 @@
   const garbageQueue = $('garbageQueue');
   const garbageCount = $('garbageCount');
   const garbageEta = $('garbageEta');
+  const buildSummary = $('buildSummary');
+  const nextPanel = nextCanvas.parentElement;
+  const nextLabel = nextPanel.querySelector('.next-panel__label');
   const upgradeOverlay = $('upgradeOverlay');
   const upgradeChoices = $('upgradeChoices');
 
@@ -99,7 +102,11 @@
   let lockResets = 0;
   let challengeState = challengeRules.normalize({});
   let runBuild = rogueliteRules.normalize({}, 0);
-  let turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
+  let turnStats = freshTurnStats();
+
+  function freshTurnStats() {
+    return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, extraDefense: 0 };
+  }
 
   function hasUpgradeChoice() {
     return gameType === 'challenge' && runBuild.pendingChoice.length > 0;
@@ -159,6 +166,9 @@
     garbageEta.textContent = challengeState.pressureIn + ' 组后';
     challengeCard.classList.toggle('is-imminent', pending > 0 && challengeState.pressureIn <= 2);
     challengeCard.classList.toggle('is-safe', pending === 0);
+    const activeUpgrades = rogueliteRules.DEFINITIONS.filter((item) => runBuild.upgrades[item.id]);
+    buildSummary.hidden = !activeUpgrades.length;
+    buildSummary.innerHTML = activeUpgrades.length ? '<b>构筑</b> · ' + activeUpgrades.map((item) => item.name + ['','Ⅰ','Ⅱ','Ⅲ'][runBuild.upgrades[item.id]]).join(' · ') : '';
   }
 
   function showChallengeMessage(text, complete) {
@@ -338,6 +348,9 @@
 
   function finishChallengeTurn() {
     if (gameType !== 'challenge') return;
+    const modifiers = rogueliteRules.modifiers(runBuild);
+    if (turnStats.maxChain >= 2) turnStats.extraDefense += modifiers.chainDefense;
+    if (modifiers.largeGroupThreshold && turnStats.largestGroup >= modifiers.largeGroupThreshold) turnStats.extraDefense += modifiers.largeGroupDefense;
     const outcome = challengeRules.resolveTurn(challengeState, turnStats);
     challengeState = outcome.state;
     if (outcome.completed) runBuild = rogueliteRules.offer(runBuild, challengeState.completed, Math.random);
@@ -348,13 +361,21 @@
       score += outcome.bonus;
     }
     if (removed.length) applyGravity(true);
-    const placed = outcome.pressure ? challengeRules.placeGarbage(board, outcome.pressure, Math.random, GARBAGE) : [];
+    let pressure = outcome.pressure;
+    let buffered = 0;
+    if (pressure && modifiers.bufferReduction && runBuild.bufferedStage !== challengeState.stage) {
+      pressure = Math.max(0, pressure - modifiers.bufferReduction);
+      buffered = outcome.pressure - pressure;
+      runBuild.bufferedStage = challengeState.stage;
+    }
+    const placed = pressure ? challengeRules.placeGarbage(board, pressure, Math.random, GARBAGE) : [];
     if (placed.length) startGarbageFall(placed);
     if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus + (outcome.canceled ? ' · 抵消 × ' + outcome.canceled : ''), true);
-    else if (placed.length) showChallengeMessage((outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + '干扰落下 × ' + placed.length, false);
+    else if (placed.length) showChallengeMessage((outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, false);
+    else if (buffered) showChallengeMessage('缓冲层抵消 · × ' + buffered, true);
     else if (outcome.canceled) showChallengeMessage((outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消') + ' · × ' + outcome.canceled, outcome.pressureTriggered);
     else if (outcome.expired) showChallengeMessage('新任务出现', false);
-    turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
+    turnStats = freshTurnStats();
     updateChallengeHud();
     updateHud();
     return removed.length > 0 || placed.length > 0;
@@ -382,13 +403,29 @@
 
     const colors = new Set(groups.map((g) => g.color));
     const cells = groups.flatMap((g) => g.cells);
-    const garbageCells = gameType === 'challenge' ? challengeRules.adjacentGarbage(board, cells, GARBAGE) : [];
+    const modifiers = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild) : rogueliteRules.modifiers({});
+    let garbageCells = gameType === 'challenge' ? challengeRules.adjacentGarbage(board, cells, GARBAGE) : [];
+    if (gameType === 'challenge') {
+      let extraClear = garbageCells.length ? modifiers.cleanerClear : 0;
+      if (modifiers.colorBurstThreshold && groups.some((group) => group.cells.length >= modifiers.colorBurstThreshold)) extraClear += modifiers.colorBurstClear;
+      if (extraClear) {
+        const excluded = new Set(garbageCells.map((p) => p[0] + ',' + p[1]));
+        const extraCells = [];
+        for (let y = ROWS - 1; y >= 0 && extraCells.length < extraClear; y--) {
+          for (let x = 0; x < COLS && extraCells.length < extraClear; x++) {
+            if (board[y][x] === GARBAGE && !excluded.has(x + ',' + y)) extraCells.push([x, y]);
+          }
+        }
+        garbageCells = garbageCells.concat(extraCells);
+      }
+    }
     const clearingCells = cells.concat(garbageCells);
     const chainPower = CHAIN_POWER[Math.min(chain - 1, CHAIN_POWER.length - 1)];
     const colorBonus = colors.size <= 1 ? 0 : Math.pow(2, colors.size + 1);
     const sizeBonus = groups.reduce((sum, g) => sum + groupBonus(g.cells.length), 0);
     const multiplier = Math.max(1, chainPower + colorBonus + sizeBonus);
-    const gained = cells.length * 10 * multiplier;
+    const chainScoreMultiplier = chain >= 3 ? modifiers.chainScoreMultiplier : 1;
+    const gained = Math.round(cells.length * 10 * multiplier * chainScoreMultiplier);
 
     const previousLevel = level;
     score += gained;
@@ -397,6 +434,7 @@
       turnStats.maxChain = Math.max(turnStats.maxChain, chain);
       turnStats.cleared += cells.length;
       turnStats.maxColors = Math.max(turnStats.maxColors, colors.size);
+      turnStats.largestGroup = Math.max(turnStats.largestGroup, ...groups.map((group) => group.cells.length));
       challengeState.mission.progress = Math.max(challengeState.mission.progress, challengeState.mission.type === 'chain' ? turnStats.maxChain : (challengeState.mission.type === 'colors' ? turnStats.maxColors : turnStats.cleared));
       updateChallengeHud();
     }
@@ -536,7 +574,8 @@
     }
     if (collidesAt(pair.x, pair.y + 1, pair.rot)) {
       lockAcc += dt;
-      if (lockAcc >= 0.48) lockPair();
+      const lockMultiplier = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild).lockDelayMultiplier : 1;
+      if (lockAcc >= 0.48 * lockMultiplier) lockPair();
     } else {
       lockAcc = 0;
     }
@@ -558,7 +597,7 @@
     bestChainAtStart = bestChain;
     challengeState = challengeRules.normalize({});
     runBuild = rogueliteRules.normalize({}, 0);
-    turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
+    turnStats = freshTurnStats();
     particles = [];
     popCells.clear();
     fallOffsets.clear();
@@ -725,7 +764,7 @@
     bestChainAtStart = Number.isFinite(s.bestChainAtStart) ? Math.max(0, s.bestChainAtStart) : bestChain;
     challengeState = challengeRules.normalize(gameType === 'challenge' ? s.challengeState : {});
     runBuild = rogueliteRules.normalize(gameType === 'challenge' ? s.runBuild : null, challengeState.completed);
-    turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
+    turnStats = freshTurnStats();
     fillQueue();
     if (!hasUpgradeChoice() && (!pair || collidesAt(pair.x, pair.y, pair.rot))) spawnPair();
     updateHud();
@@ -1017,6 +1056,9 @@
   function drawNext() {
     if (!nextCtx) return;
     nextCtx.clearRect(0, 0, 72, 124);
+    const foresight = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild).foresightLevel : 0;
+    nextPanel.classList.toggle('is-foresight', foresight >= 1);
+    nextLabel.textContent = foresight >= 3 ? 'NEXT 1 · 2 · 3' : 'NEXT 1 · 2';
     const first = queue[0];
     const second = queue[1];
     if (first) {
@@ -1028,6 +1070,17 @@
       nextCtx.beginPath(); nextCtx.moveTo(15, 68); nextCtx.lineTo(57, 68); nextCtx.stroke();
       drawBlob(nextCtx, 36, 105, 14, second[0], 0.82, true);
       drawBlob(nextCtx, 36, 80, 14, second[1], 0.82, true);
+    }
+    if (foresight >= 2 && first && first[0] === first[1]) {
+      nextCtx.strokeStyle = '#b8f34a';
+      nextCtx.lineWidth = 1.5;
+      nextCtx.beginPath();
+      nextCtx.arc(36, 31, 28, 0, Math.PI * 2);
+      nextCtx.stroke();
+    }
+    if (foresight >= 3 && queue[2]) {
+      drawBlob(nextCtx, 55, 115, 7, queue[2][0], 0.72, false);
+      drawBlob(nextCtx, 55, 102, 7, queue[2][1], 0.72, false);
     }
   }
 
@@ -1158,6 +1211,8 @@
     mode = 'playing';
     btnPause.hidden = false;
     if (!pair) spawnPair();
+    updateChallengeHud();
+    drawNext();
     showChallengeMessage(result.selected.name + ' · 已强化', true);
     play('level', challengeState.stage);
     haptic([14, 30, 20]);

@@ -59,6 +59,9 @@ assert.equal(fullyCanceled.canceled, 1);
 assert.equal(fullyCanceled.pressure, 0);
 assert.equal(fullyCanceled.pressureTriggered, true);
 
+const upgradedDefense = rules.resolveTurn({ pendingGarbage: 5, pressureIn: 3 }, { maxChain: 2, extraDefense: 2 }, () => 0);
+assert.equal(upgradedDefense.canceled, 3);
+
 const board = Array.from({ length: 6 }, () => Array(4).fill(0));
 board[5][1] = 1;
 board[5][2] = rules.GARBAGE;

@@ -69,7 +69,7 @@
     state.mission.progress = missionProgress(state.mission, stats || {});
     state.turnsLeft--;
     state.pressureIn--;
-    const defense = defenseForChain(stats && stats.maxChain);
+    const defense = defenseForChain(stats && stats.maxChain) + boundedInt(stats && stats.extraDefense, 0, 0, 99);
     const canceled = Math.min(state.pendingGarbage, defense);
     state.pendingGarbage -= canceled;
     const completed = state.mission.progress >= state.mission.target;
