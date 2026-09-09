@@ -324,6 +324,7 @@ body {
 .challenge-card { padding: 9px; border: 1px solid rgba(255,111,174,.3); border-radius: 14px; background: linear-gradient(145deg, rgba(255,111,174,.11), rgba(86,220,237,.06)); }
 .challenge-card > span { display: block; color: var(--pink); font-size: 8px; font-weight: 700; letter-spacing: .12em; }
 .challenge-card > span b { color: var(--text); }
+.challenge-card > span em { float: right; padding: 1px 4px; color: #171329; font-size: 6px; font-style: normal; border-radius: 99px; background: var(--lime); }
 .challenge-card strong { display: block; margin-top: 5px; font-size: 10px; line-height: 1.3; }
 .challenge-card small { display: block; margin-top: 4px; color: var(--soft); font-size: 8px; line-height: 1.35; }
 .challenge-card > i { display: block; height: 4px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.1); }
@@ -341,6 +342,7 @@ body {
 .challenge-card.is-safe .garbage-preview > b { color: var(--lime); }
 .challenge-card.is-safe .garbage-preview > div::after { content: '已抵消'; color: var(--lime); font-size: 7px; font-weight: 700; }
 .challenge-card.is-complete { animation: mission-card-clear .55s ease both; }
+.challenge-card.is-special { border-color: rgba(184,243,74,.58); background: linear-gradient(145deg, rgba(184,243,74,.12), rgba(169,121,247,.1)); box-shadow: inset 0 0 18px rgba(184,243,74,.05); }
 @keyframes mission-card-clear { 50% { border-color: var(--lime); box-shadow: 0 0 20px rgba(184,243,74,.22); transform: scale(1.035); } }
 @keyframes garbage-warning { 50% { box-shadow: 0 0 15px rgba(255,93,143,.18); } }
 .upgrade-overlay { z-index: 8; overflow-y: auto; padding: 10px; background: rgba(18,14,34,.88); backdrop-filter: blur(7px); }

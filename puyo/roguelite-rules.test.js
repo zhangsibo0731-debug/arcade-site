@@ -53,4 +53,11 @@ assert.equal(modifiers.foresightLevel, 3);
 
 assert.equal(rules.normalize({ bufferedStage: 7 }, 0).bufferedStage, 7);
 
+const specialOffer = rules.offerSpecial(rules.normalize({}, 0), 5, () => 0);
+assert.equal(specialOffer.pendingKind, 'special');
+assert.ok(specialOffer.pendingChoice.some((id) => rules.BY_ID[id].rarity === 'rare'));
+const specialPick = rules.choose(specialOffer, specialOffer.pendingChoice[0], 5).state;
+assert.equal(specialPick.specialPicks, 1);
+assert.equal(specialPick.picks, 0);
+
 console.log('roguelite-rules tests passed');

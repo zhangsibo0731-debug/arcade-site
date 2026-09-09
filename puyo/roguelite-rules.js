@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 2;
+  const VERSION = 3;
   const MAX_LEVEL = 3;
   const DEFINITIONS = Object.freeze([
     { id: 'chainShield', name: '连锁护盾', school: '连锁', rarity: 'common', effects: ['额外抵消 1 颗干扰', '额外抵消 2 颗干扰', '额外抵消 3 颗干扰'] },
@@ -36,6 +36,8 @@
       picks: saved ? boundedInt(saved.picks, 0, 0, 999999) : Math.floor(Math.max(0, Number(completed) || 0) / 3),
       upgrades,
       pendingChoice,
+      pendingKind: pendingChoice.length && saved && saved.pendingKind === 'special' ? 'special' : (pendingChoice.length ? 'normal' : ''),
+      specialPicks: saved ? boundedInt(saved.specialPicks, 0, 0, 999999) : 0,
       bufferedStage: saved ? boundedInt(saved.bufferedStage, 0, 0, 999999) : 0,
     };
   }
@@ -68,10 +70,18 @@
     };
   }
 
-  function choicesFor(state, random) {
+  function choicesFor(state, random, options) {
     const rng = typeof random === 'function' ? random : Math.random;
     const pool = DEFINITIONS.filter((item) => (state.upgrades[item.id] || 0) < MAX_LEVEL).slice();
     const choices = [];
+    if (options && options.rare) {
+      const rarePool = pool.filter((item) => item.rarity === 'rare');
+      if (rarePool.length) {
+        const rare = rarePool[Math.floor(rng() * rarePool.length) % rarePool.length];
+        choices.push(rare.id);
+        pool.splice(pool.findIndex((item) => item.id === rare.id), 1);
+      }
+    }
     while (pool.length && choices.length < 3) {
       const index = Math.floor(rng() * pool.length) % pool.length;
       choices.push(pool.splice(index, 1)[0].id);
@@ -85,6 +95,15 @@
     const earned = Math.floor(Math.max(0, Number(completed) || 0) / 3);
     if (state.picks >= earned) return state;
     state.pendingChoice = choicesFor(state, random);
+    state.pendingKind = state.pendingChoice.length ? 'normal' : '';
+    return state;
+  }
+
+  function offerSpecial(source, completed, random) {
+    const state = normalize(source, completed);
+    if (state.pendingChoice.length) return state;
+    state.pendingChoice = choicesFor(state, random, { rare: true });
+    state.pendingKind = state.pendingChoice.length ? 'special' : '';
     return state;
   }
 
@@ -92,8 +111,10 @@
     const state = normalize(source, completed);
     if (!state.pendingChoice.includes(id) || !BY_ID[id]) return { state, selected: null };
     state.upgrades[id] = Math.min(MAX_LEVEL, (state.upgrades[id] || 0) + 1);
-    state.picks++;
+    if (state.pendingKind === 'special') state.specialPicks++;
+    else state.picks++;
     state.pendingChoice = [];
+    state.pendingKind = '';
     return { state, selected: BY_ID[id] };
   }
 
@@ -105,5 +126,5 @@
     return Object.assign({}, item, { currentLevel: current, nextLevel: next, effect: item.effects[next - 1] });
   }
 
-  global.PuyoRogueliteRules = Object.freeze({ VERSION, MAX_LEVEL, DEFINITIONS, BY_ID, normalize, modifiers, choicesFor, offer, choose, cardFor });
+  global.PuyoRogueliteRules = Object.freeze({ VERSION, MAX_LEVEL, DEFINITIONS, BY_ID, normalize, modifiers, choicesFor, offer, offerSpecial, choose, cardFor });
 })(window);

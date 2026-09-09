@@ -16,6 +16,11 @@ assert.equal(rules.defenseForChain(2), 1);
 assert.equal(rules.defenseForChain(3), 3);
 assert.equal(rules.defenseForChain(4), 6);
 assert.equal(rules.defenseForChain(5), 8);
+assert.ok(rules.MISSION_TYPES.includes('largeGroup'));
+assert.ok(rules.MISSION_TYPES.includes('targetColor'));
+const generatedTypes = new Set(Array.from({ length: 9 }, (_, index) => rules.missionFor(10, () => (index + 0.1) / 9).type));
+assert.deepEqual(generatedTypes, new Set(rules.MISSION_TYPES));
+assert.equal(rules.normalize({ mission: { type: 'scoreTurn', target: 1000, title: '得分', progress: 750 } }).mission.progress, 750);
 
 const complete = rules.resolveTurn(initial, { maxChain: 2, cleared: 8, maxColors: 1 }, () => 0);
 assert.equal(complete.completed, true);
@@ -61,6 +66,68 @@ assert.equal(fullyCanceled.pressureTriggered, true);
 
 const upgradedDefense = rules.resolveTurn({ pendingGarbage: 5, pressureIn: 3 }, { maxChain: 2, extraDefense: 2 }, () => 0);
 assert.equal(upgradedDefense.canceled, 3);
+
+assert.equal(rules.missionProgress({ type: 'largeGroup', progress: 0 }, { largestGroup: 7 }), 7);
+assert.equal(rules.missionProgress({ type: 'garbageClear', progress: 2 }, { garbageCleared: 3 }), 5);
+assert.equal(rules.missionProgress({ type: 'clearStreak', progress: 1 }, { clearStreak: 2 }), 2);
+assert.equal(rules.missionProgress({ type: 'scoreTurn', progress: 300 }, { scoreGained: 750 }), 750);
+assert.equal(rules.missionProgress({ type: 'lowBoard', maxHeight: 5, progress: 0 }, { boardHeight: 5, clearedThisTurn: true }), 1);
+assert.equal(rules.missionProgress({ type: 'lowBoard', maxHeight: 5, progress: 0 }, { boardHeight: 6, clearedThisTurn: true }), 0);
+assert.equal(rules.missionProgress({ type: 'lowBoard', maxHeight: 5, progress: 0 }, { boardHeight: 0, clearedThisTurn: false }), 0);
+assert.equal(rules.missionProgress({ type: 'lowBoard', maxHeight: 5, progress: 0 }, { boardHeight: null, clearedThisTurn: true }), 0);
+assert.equal(rules.missionProgress({ type: 'clearStreak', progress: 2 }, { clearStreak: 0 }), 0);
+assert.equal(rules.missionProgress({ type: 'targetColor', progress: 4 }, { colorClearedCount: 3 }), 7);
+
+const streakMission = rules.resolveTurn({
+  completed: 4,
+  clearStreak: 1,
+  mission: { type: 'clearStreak', target: 2, title: '连续消除', progress: 1 },
+}, { clearedThisTurn: true }, () => 0);
+assert.equal(streakMission.completed, true);
+assert.equal(streakMission.state.clearStreak, 2);
+
+const noTriple = rules.resolveTurn({
+  completed: 5,
+  lastMissionType: 'chain',
+  sameMissionCount: 1,
+  mission: { type: 'chain', target: 2, title: '完成 2 CHAIN', progress: 0 },
+}, { maxChain: 2 }, () => 0);
+assert.notEqual(noTriple.state.mission.type, 'chain');
+
+const enterSpecial = rules.resolveTurn({
+  completed: 3,
+  mission: { type: 'clear', target: 4, title: '测试', progress: 0 },
+}, { cleared: 4, clearedThisTurn: true }, () => 0);
+assert.equal(enterSpecial.enteredSpecial, true);
+assert.equal(enterSpecial.state.stage, 5);
+assert.equal(enterSpecial.state.special.type, 'storm');
+assert.equal(enterSpecial.state.turnsLeft, 5);
+
+const clearSpecial = rules.resolveTurn(enterSpecial.state, { garbageCleared: 4, clearedThisTurn: true }, () => 0.4);
+assert.equal(clearSpecial.specialCompleted, true);
+assert.equal(clearSpecial.state.stage, 6);
+assert.equal(clearSpecial.state.special, null);
+assert.equal(clearSpecial.bonus, 1200);
+
+const failSpecial = rules.resolveTurn(Object.assign({}, enterSpecial.state, {
+  turnsLeft: 1,
+  special: { type: 'storm', title: '干扰风暴' },
+  mission: { type: 'garbageClear', target: 9, title: '测试', progress: 0 },
+}), { clearedThisTurn: false }, () => 0.4);
+assert.equal(failSpecial.specialFailed, true);
+assert.equal(failSpecial.specialPenalty, 3);
+assert.equal(failSpecial.state.special, null);
+assert.equal(failSpecial.state.stage, 5);
+const afterFailedNormal = rules.resolveTurn(Object.assign({}, failSpecial.state, { turnsLeft: 1 }), { clearedThisTurn: false }, () => 0);
+assert.equal(afterFailedNormal.state.special, null);
+
+const towerEntry = rules.resolveTurn({
+  completed: 3,
+  mission: { type: 'clear', target: 4, title: '测试', progress: 0 },
+}, { cleared: 4, clearedThisTurn: true }, () => 0.99);
+assert.equal(towerEntry.state.special.type, 'tower');
+assert.equal(towerEntry.entryGarbage, 5);
+assert.notEqual(rules.specialFor(10, () => 0, 'storm').type, 'storm');
 
 const board = Array.from({ length: 6 }, () => Array(4).fill(0));
 board[5][1] = 1;

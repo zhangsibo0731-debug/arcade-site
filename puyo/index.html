@@ -7,7 +7,7 @@
 <title>噗呦噗呦 · 连锁消除</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
 <main class="app">
@@ -77,7 +77,7 @@
         </div>
         <div class="overlay upgrade-overlay" id="upgradeOverlay" hidden>
           <div class="ov-card upgrade-panel">
-            <span class="upgrade-kicker">STAGE REWARD</span>
+            <span class="upgrade-kicker" id="upgradeKicker">STAGE REWARD</span>
             <h2 class="ov-title">选择一项强化</h2>
             <p class="ov-sub">本局有效 · 重复选择可升级</p>
             <div class="upgrade-choices" id="upgradeChoices"></div>
@@ -98,7 +98,7 @@
         <canvas id="nextCanvas" aria-label="下一组噗呦"></canvas>
       </div>
       <div class="challenge-card" id="challengeCard" hidden>
-        <span>STAGE <b id="challengeStage">1</b></span>
+        <span>STAGE <b id="challengeStage">1</b> <em id="specialBadge" hidden>SPECIAL</em></span>
         <strong id="missionTitle">完成 2 CHAIN</strong>
         <small id="missionProgress">0 / 2 · 剩余 8 组</small>
         <i><em id="missionMeter"></em></i>
@@ -129,8 +129,8 @@
   <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · P 暂停</p>
 </main>
 <script src="../input-guard.js?v=7"></script>
-<script src="challenge-rules.js?v=3"></script>
-<script src="roguelite-rules.js?v=2"></script>
-<script src="game.js?v=20"></script>
+<script src="challenge-rules.js?v=5"></script>
+<script src="roguelite-rules.js?v=3"></script>
+<script src="game.js?v=22"></script>
 </body>
 </html>

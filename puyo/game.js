@@ -47,6 +47,8 @@
   const nextLabel = nextPanel.querySelector('.next-panel__label');
   const upgradeOverlay = $('upgradeOverlay');
   const upgradeChoices = $('upgradeChoices');
+  const upgradeKicker = $('upgradeKicker');
+  const specialBadge = $('specialBadge');
 
   const COLS = 6;
   const ROWS = 12;
@@ -105,7 +107,7 @@
   let turnStats = freshTurnStats();
 
   function freshTurnStats() {
-    return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, extraDefense: 0 };
+    return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, garbageCleared: 0, scoreGained: 0, clearedThisTurn: false, boardHeight: null, clearedColors: [], colorClearedCount: 0, extraDefense: 0, missionBaseProgress: null };
   }
 
   function hasUpgradeChoice() {
@@ -113,6 +115,7 @@
   }
 
   function renderUpgradeChoices() {
+    upgradeKicker.textContent = runBuild.pendingKind === 'special' ? 'SPECIAL REWARD · 稀有保底' : 'STAGE REWARD';
     upgradeChoices.innerHTML = runBuild.pendingChoice.map((id) => {
       const card = rogueliteRules.cardFor(runBuild, id);
       if (!card) return '';
@@ -157,9 +160,14 @@
     if (!active) return;
     const mission = challengeState.mission;
     challengeStage.textContent = challengeState.stage;
+    specialBadge.hidden = !challengeState.special;
+    specialBadge.textContent = challengeState.special ? challengeState.special.title : 'SPECIAL';
+    challengeCard.classList.toggle('is-special', !!challengeState.special);
     missionTitle.textContent = mission.title;
-    missionProgress.textContent = mission.progress + ' / ' + mission.target + ' · 剩余 ' + challengeState.turnsLeft + ' 组';
-    missionMeter.style.width = Math.min(100, mission.progress / mission.target * 100) + '%';
+    const previewMission = turnStats.missionBaseProgress == null ? mission : Object.assign({}, mission, { progress: turnStats.missionBaseProgress });
+    const displayProgress = mode === 'resolving' ? challengeRules.missionProgress(previewMission, turnStats) : mission.progress;
+    missionProgress.textContent = displayProgress + ' / ' + mission.target + ' · 剩余 ' + challengeState.turnsLeft + ' 组';
+    missionMeter.style.width = Math.min(100, displayProgress / mission.target * 100) + '%';
     const pending = challengeState.pendingGarbage || 0;
     garbageQueue.innerHTML = Array.from({ length: Math.min(6, pending) }, () => '<i></i>').join('');
     garbageCount.textContent = '×' + pending;
@@ -348,12 +356,15 @@
 
   function finishChallengeTurn() {
     if (gameType !== 'challenge') return;
+    const occupiedTop = board.findIndex((row) => row.some(Boolean));
+    turnStats.boardHeight = occupiedTop < 0 ? 0 : ROWS - occupiedTop;
     const modifiers = rogueliteRules.modifiers(runBuild);
     if (turnStats.maxChain >= 2) turnStats.extraDefense += modifiers.chainDefense;
     if (modifiers.largeGroupThreshold && turnStats.largestGroup >= modifiers.largeGroupThreshold) turnStats.extraDefense += modifiers.largeGroupDefense;
     const outcome = challengeRules.resolveTurn(challengeState, turnStats);
     challengeState = outcome.state;
-    if (outcome.completed) runBuild = rogueliteRules.offer(runBuild, challengeState.completed, Math.random);
+    if (outcome.specialCompleted) runBuild = rogueliteRules.offerSpecial(runBuild, challengeState.completed, Math.random);
+    else if (outcome.completed) runBuild = rogueliteRules.offer(runBuild, challengeState.completed, Math.random);
     let removed = [];
     if (outcome.reward) {
       removed = challengeRules.removeGarbage(board, outcome.reward, GARBAGE);
@@ -369,8 +380,13 @@
       runBuild.bufferedStage = challengeState.stage;
     }
     const placed = pressure ? challengeRules.placeGarbage(board, pressure, Math.random, GARBAGE) : [];
+    const entryPlaced = outcome.entryGarbage ? challengeRules.placeGarbage(board, outcome.entryGarbage, Math.random, GARBAGE) : [];
+    placed.push(...entryPlaced);
     if (placed.length) startGarbageFall(placed);
-    if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus + (outcome.canceled ? ' · 抵消 × ' + outcome.canceled : ''), true);
+    if (outcome.enteredSpecial) showChallengeMessage('SPECIAL STAGE · ' + challengeState.special.title, true);
+    else if (outcome.specialCompleted) showChallengeMessage('SPECIAL CLEAR!  +' + outcome.bonus, true);
+    else if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus + (outcome.canceled ? ' · 抵消 × ' + outcome.canceled : ''), true);
+    else if (outcome.specialFailed) showChallengeMessage('SPECIAL FAILED · 惩罚干扰 × ' + outcome.specialPenalty, false);
     else if (placed.length) showChallengeMessage((outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, false);
     else if (buffered) showChallengeMessage('缓冲层抵消 · × ' + buffered, true);
     else if (outcome.canceled) showChallengeMessage((outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消') + ' · × ' + outcome.canceled, outcome.pressureTriggered);
@@ -431,11 +447,16 @@
     score += gained;
     clearedTotal += cells.length;
     if (gameType === 'challenge' && !taskSettled) {
+      if (turnStats.missionBaseProgress == null) turnStats.missionBaseProgress = challengeState.mission.progress || 0;
       turnStats.maxChain = Math.max(turnStats.maxChain, chain);
       turnStats.cleared += cells.length;
       turnStats.maxColors = Math.max(turnStats.maxColors, colors.size);
       turnStats.largestGroup = Math.max(turnStats.largestGroup, ...groups.map((group) => group.cells.length));
-      challengeState.mission.progress = Math.max(challengeState.mission.progress, challengeState.mission.type === 'chain' ? turnStats.maxChain : (challengeState.mission.type === 'colors' ? turnStats.maxColors : turnStats.cleared));
+      turnStats.garbageCleared += garbageCells.length;
+      turnStats.scoreGained += gained;
+      turnStats.clearedThisTurn = true;
+      turnStats.clearedColors = Array.from(new Set(turnStats.clearedColors.concat(Array.from(colors))));
+      if (challengeState.mission.type === 'targetColor') turnStats.colorClearedCount += groups.filter((group) => group.color === challengeState.mission.color).reduce((sum, group) => sum + group.cells.length, 0);
       updateChallengeHud();
     }
     if (gameType === 'challenge') challengeState.garbageCleared += garbageCells.length;
