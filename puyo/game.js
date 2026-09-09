@@ -1048,7 +1048,12 @@
     updateChallengeHud();
     ensureAudio();
   });
-  btnResumeNew.addEventListener('click', newGame);
+  btnResumeNew.addEventListener('click', () => {
+    resumeOverlay.hidden = true;
+    selectedGameType = gameType;
+    mode = 'menu';
+    showOverlay('menu');
+  });
 
   window.addEventListener('resize', resize);
   window.addEventListener('pagehide', saveState);
