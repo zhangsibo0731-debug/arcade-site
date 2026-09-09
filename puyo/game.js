@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  if (!window.PuyoChallengeRules) throw new Error('Puyo challenge rules failed to load.');
+
   const $ = (id) => document.getElementById(id);
   const canvas = $('board');
   const ctx = canvas.getContext('2d');
@@ -31,6 +33,12 @@
   const chainGain = $('chainGain');
   const chainResult = $('chainResult');
   const levelPop = $('levelPop');
+  const modePicker = $('modePicker');
+  const challengeCard = $('challengeCard');
+  const challengeStage = $('challengeStage');
+  const missionTitle = $('missionTitle');
+  const missionProgress = $('missionProgress');
+  const missionMeter = $('missionMeter');
 
   const COLS = 6;
   const ROWS = 12;
@@ -38,15 +46,21 @@
   const DARKS = ['#bc2858', '#b98912', '#269b42', '#1686ac', '#6740bc'];
   const ROT = [[0, -1], [1, 0], [0, 1], [-1, 0]];
   const CHAIN_POWER = [0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512];
+  const challengeRules = window.PuyoChallengeRules;
+  const GARBAGE = challengeRules.GARBAGE;
   const HI_KEY = 'puyo_hi_v1';
+  const CHALLENGE_HI_KEY = 'puyo_challenge_hi_v1';
   const CHAIN_KEY = 'puyo_chain_v1';
-  const SAVE_KEY = 'puyo_save_v1';
+  const CHALLENGE_CHAIN_KEY = 'puyo_challenge_chain_v1';
+  const SAVE_KEYS = { classic: 'puyo_save_v1', challenge: 'puyo_challenge_save_v1' };
   const MUTE_KEY = 'puyo_muted_v1';
 
   let board = [];
   let pair = null;
   let queue = [];
   let mode = 'menu';
+  let gameType = 'classic';
+  let selectedGameType = 'challenge';
   let score = 0;
   let hi = readNumber(HI_KEY);
   let level = 1;
@@ -75,6 +89,8 @@
   let chainResultTimer = null;
   let levelPopTimer = null;
   let lockResets = 0;
+  let challengeState = challengeRules.normalize({});
+  let turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
 
   function readNumber(key) {
     try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
@@ -82,6 +98,41 @@
 
   function readMuted() {
     try { return localStorage.getItem(MUTE_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function hiKey(type) { return type === 'challenge' ? CHALLENGE_HI_KEY : HI_KEY; }
+  function chainKey(type) { return type === 'challenge' ? CHALLENGE_CHAIN_KEY : CHAIN_KEY; }
+  function saveKey(type) { return SAVE_KEYS[type === 'challenge' ? 'challenge' : 'classic']; }
+
+  function selectGameType(type) {
+    selectedGameType = type === 'classic' ? 'classic' : 'challenge';
+    modePicker.querySelectorAll('button').forEach((button) => {
+      button.setAttribute('aria-pressed', button.dataset.mode === selectedGameType ? 'true' : 'false');
+    });
+  }
+
+  function updateChallengeHud() {
+    const active = gameType === 'challenge' && ['playing', 'paused', 'resolving'].includes(mode);
+    challengeCard.hidden = !active;
+    if (!active) return;
+    const mission = challengeState.mission;
+    challengeStage.textContent = challengeState.stage;
+    missionTitle.textContent = mission.title;
+    missionProgress.textContent = mission.progress + ' / ' + mission.target + ' · 剩余 ' + challengeState.turnsLeft + ' 组 · 干扰 ' + challengeState.pressureIn;
+    missionMeter.style.width = Math.min(100, mission.progress / mission.target * 100) + '%';
+  }
+
+  function showChallengeMessage(text, complete) {
+    clearTimeout(chainResultTimer);
+    chainResult.textContent = text;
+    chainResult.hidden = true;
+    void chainResult.offsetWidth;
+    chainResult.hidden = false;
+    challengeCard.classList.toggle('is-complete', !!complete);
+    chainResultTimer = setTimeout(() => {
+      chainResult.hidden = true;
+      challengeCard.classList.remove('is-complete');
+    }, 1120);
   }
 
   function emptyBoard() {
@@ -213,7 +264,7 @@
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
         const color = board[y][x];
-        if (!color || seen[y][x]) continue;
+        if (!color || color === GARBAGE || seen[y][x]) continue;
         const group = [];
         const stack = [[x, y]];
         seen[y][x] = true;
@@ -246,12 +297,32 @@
     return 10;
   }
 
+  function finishChallengeTurn() {
+    if (gameType !== 'challenge') return;
+    const outcome = challengeRules.resolveTurn(challengeState, turnStats);
+    challengeState = outcome.state;
+    let removed = [];
+    if (outcome.reward) {
+      removed = challengeRules.removeGarbage(board, outcome.reward, GARBAGE);
+      challengeState.garbageCleared += removed.length;
+      score += outcome.bonus;
+    }
+    const placed = outcome.pressure ? challengeRules.placeGarbage(board, outcome.pressure, Math.random, GARBAGE) : [];
+    if (removed.length || placed.length) applyGravity(true);
+    if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus, true);
+    else if (placed.length) showChallengeMessage('压力上升 · 干扰 × ' + placed.length, false);
+    else if (outcome.expired) showChallengeMessage('新任务出现', false);
+    turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
+    updateChallengeHud();
+  }
+
   function resolveStep(chain, token) {
     if (token !== resolveToken) return;
     const groups = findClearGroups();
     if (!groups.length) {
       popCells.clear();
       if (chain > 2) showChainResult(chain - 1);
+      finishChallengeTurn();
       mode = 'playing';
       btnPause.hidden = false;
       spawnPair();
@@ -261,6 +332,8 @@
 
     const colors = new Set(groups.map((g) => g.color));
     const cells = groups.flatMap((g) => g.cells);
+    const garbageCells = gameType === 'challenge' ? challengeRules.adjacentGarbage(board, cells, GARBAGE) : [];
+    const clearingCells = cells.concat(garbageCells);
     const chainPower = CHAIN_POWER[Math.min(chain - 1, CHAIN_POWER.length - 1)];
     const colorBonus = colors.size <= 1 ? 0 : Math.pow(2, colors.size + 1);
     const sizeBonus = groups.reduce((sum, g) => sum + groupBonus(g.cells.length), 0);
@@ -270,11 +343,19 @@
     const previousLevel = level;
     score += gained;
     clearedTotal += cells.length;
+    if (gameType === 'challenge') {
+      turnStats.maxChain = Math.max(turnStats.maxChain, chain);
+      turnStats.cleared += cells.length;
+      turnStats.maxColors = Math.max(turnStats.maxColors, colors.size);
+      challengeState.garbageCleared += garbageCells.length;
+      challengeState.mission.progress = Math.max(challengeState.mission.progress, challengeState.mission.type === 'chain' ? turnStats.maxChain : (challengeState.mission.type === 'colors' ? turnStats.maxColors : turnStats.cleared));
+      updateChallengeHud();
+    }
     level = Math.min(12, Math.floor(clearedTotal / 35) + 1);
     runMaxChain = Math.max(runMaxChain, chain);
     if (chain > bestChain) {
       bestChain = chain;
-      try { localStorage.setItem(CHAIN_KEY, String(bestChain)); } catch (e) {}
+      try { localStorage.setItem(chainKey(gameType), String(bestChain)); } catch (e) {}
     }
     updateHud();
     showChain(chain, gained);
@@ -283,13 +364,13 @@
     haptic(chain >= 3 ? [22, 28, 22 + chain * 2] : chain > 1 ? [16, 24, 16] : 10);
     if (chain >= 2) shakeBoard(chain);
 
-    popCells = new Set(cells.map((p) => p[0] + ',' + p[1]));
+    popCells = new Set(clearingCells.map((p) => p[0] + ',' + p[1]));
     popStartedAt = performance.now();
     popDuration = Math.max(170, 300 - (chain - 1) * 22);
 
     setTimeout(() => {
       if (token !== resolveToken) return;
-      for (const p of cells) {
+      for (const p of clearingCells) {
         makeBurst(p[0], p[1], board[p[1]][p[0]], chain);
         board[p[1]][p[0]] = 0;
       }
@@ -392,6 +473,9 @@
 
   function newGame() {
     resolveToken++;
+    gameType = selectedGameType;
+    hi = readNumber(hiKey(gameType));
+    bestChain = readNumber(chainKey(gameType));
     board = emptyBoard();
     queue = [];
     pair = null;
@@ -401,6 +485,8 @@
     runMaxChain = 0;
     hiAtStart = hi;
     bestChainAtStart = bestChain;
+    challengeState = challengeRules.normalize({});
+    turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
     particles = [];
     popCells.clear();
     fallOffsets.clear();
@@ -418,8 +504,10 @@
     overlayEl.hidden = true;
     resumeOverlay.hidden = true;
     btnPause.hidden = false;
+    modePicker.hidden = true;
     spawnPair();
     updateHud();
+    updateChallengeHud();
     saveState();
     play('start');
   }
@@ -448,9 +536,10 @@
 
   function showOverlay(kind) {
     ovBack.hidden = true;
+    modePicker.hidden = kind === 'paused';
     if (kind === 'menu') {
       ovTitle.textContent = '噗呦噗呦';
-      ovSub.textContent = '连接 4 颗同色噗呦即可消除\n连续坠落消除会形成高分连锁';
+      ovSub.textContent = selectedGameType === 'challenge' ? '完成动态任务，清除不断出现的干扰噗呦' : '连接 4 颗同色噗呦，挑战纯粹的高分连锁';
       ovBtn.textContent = '开始游戏';
     } else if (kind === 'paused') {
       ovTitle.textContent = '游戏暂停';
@@ -461,11 +550,13 @@
       const records = [];
       if (score > hiAtStart && score > 0) records.push('最高分新纪录');
       if (runMaxChain > bestChainAtStart && runMaxChain > 0) records.push('连锁新纪录');
-      ovSub.textContent = 'SCORE  ' + score + '\nLEVEL  ' + level + '\nMAX CHAIN  ' + runMaxChain + '\nBEST CHAIN  ' + bestChain + '\n消除  ' + clearedTotal + ' 颗' + (records.length ? '\nNEW RECORD! · ' + records.join(' / ') : '');
+      ovSub.textContent = (gameType === 'challenge' ? '挑战模式\n' : '经典模式\n') + 'SCORE  ' + score + '\nLEVEL  ' + level + '\nMAX CHAIN  ' + runMaxChain + '\nBEST CHAIN  ' + bestChain + '\n消除  ' + clearedTotal + ' 颗' + (gameType === 'challenge' ? '\n完成任务  ' + challengeState.completed + ' · 清除干扰  ' + challengeState.garbageCleared : '') + (records.length ? '\nNEW RECORD! · ' + records.join(' / ') : '');
       ovBtn.textContent = '再来一局';
       ovBack.hidden = false;
     }
+    selectGameType(kind === 'gameover' ? gameType : selectedGameType);
     overlayEl.hidden = false;
+    updateChallengeHud();
   }
 
   function togglePause() {
@@ -483,7 +574,7 @@
     scoreEl.textContent = score;
     if (score > hi) {
       hi = score;
-      try { localStorage.setItem(HI_KEY, String(hi)); } catch (e) {}
+      try { localStorage.setItem(hiKey(gameType), String(hi)); } catch (e) {}
     }
     hiEl.textContent = hi;
     levelEl.textContent = level;
@@ -493,7 +584,9 @@
   function saveState() {
     if (mode !== 'playing' && mode !== 'paused') return;
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({
+      localStorage.setItem(saveKey(gameType), JSON.stringify({
+        savedAt: Date.now(),
+        gameType: gameType,
         board: board,
         pair: pair,
         queue: queue,
@@ -503,17 +596,24 @@
         runMaxChain: runMaxChain,
         hiAtStart: hiAtStart,
         bestChainAtStart: bestChainAtStart,
+        challengeState: gameType === 'challenge' ? challengeState : null,
       }));
     } catch (e) {}
   }
 
   function loadState() {
-    try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; }
+    try {
+      const saves = Object.keys(SAVE_KEYS).map((type) => {
+        const value = JSON.parse(localStorage.getItem(SAVE_KEYS[type]));
+        return value && typeof value === 'object' ? value : null;
+      }).filter(Boolean);
+      return saves.sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0))[0] || null;
+    } catch (e) { return null; }
   }
 
   function validBoard(value) {
     return Array.isArray(value) && value.length === ROWS && value.every((row) =>
-      Array.isArray(row) && row.length === COLS && row.every((v) => Number.isInteger(v) && v >= 0 && v <= COLORS.length)
+      Array.isArray(row) && row.length === COLS && row.every((v) => Number.isInteger(v) && v >= 0 && v <= GARBAGE)
     );
   }
 
@@ -532,6 +632,10 @@
   }
 
   function restoreState(s) {
+    gameType = s.gameType === 'challenge' ? 'challenge' : 'classic';
+    selectedGameType = gameType;
+    hi = readNumber(hiKey(gameType));
+    bestChain = readNumber(chainKey(gameType));
     board = validBoard(s.board) ? s.board : emptyBoard();
     pair = validPair(s.pair) ? s.pair : null;
     queue = Array.isArray(s.queue) ? s.queue.filter(validColors) : [];
@@ -541,15 +645,18 @@
     runMaxChain = Number.isFinite(s.runMaxChain) ? Math.max(0, s.runMaxChain) : 0;
     hiAtStart = Number.isFinite(s.hiAtStart) ? Math.max(0, s.hiAtStart) : hi;
     bestChainAtStart = Number.isFinite(s.bestChainAtStart) ? Math.max(0, s.bestChainAtStart) : bestChain;
+    challengeState = challengeRules.normalize(gameType === 'challenge' ? s.challengeState : {});
+    turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
     fillQueue();
     if (!pair || collidesAt(pair.x, pair.y, pair.rot)) spawnPair();
     updateHud();
     drawNext();
+    updateChallengeHud();
     return mode !== 'gameover' && !!pair;
   }
 
   function clearState() {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    try { localStorage.removeItem(saveKey(gameType)); } catch (e) {}
   }
 
   function ensureAudio() {
@@ -646,7 +753,7 @@
         vy: Math.sin(a) * speed - 20,
         life: 0.55 + Math.random() * 0.25,
         size: cell * (0.08 + Math.random() * 0.1),
-        color: COLORS[color - 1],
+        color: color === GARBAGE ? '#b9b4c8' : COLORS[color - 1],
       });
     }
   }
@@ -693,6 +800,30 @@
     target.restore();
   }
 
+  function drawGarbage(target, x, y, radius, alpha, scale) {
+    target.save();
+    target.globalAlpha = alpha == null ? 1 : alpha;
+    target.translate(x, y);
+    target.scale(scale || 1, scale || 1);
+    const grad = target.createRadialGradient(-radius * .3, -radius * .35, radius * .08, 0, 0, radius);
+    grad.addColorStop(0, '#f0edf6');
+    grad.addColorStop(.42, '#bdb7ca');
+    grad.addColorStop(1, '#716b80');
+    target.fillStyle = grad;
+    target.beginPath();
+    target.arc(0, 0, radius * .88, 0, Math.PI * 2);
+    target.fill();
+    target.strokeStyle = '#514b60';
+    target.lineWidth = Math.max(1, radius * .08);
+    target.stroke();
+    target.fillStyle = '#514b60';
+    target.beginPath();
+    target.arc(-radius * .22, -radius * .02, radius * .09, 0, Math.PI * 2);
+    target.arc(radius * .22, -radius * .02, radius * .09, 0, Math.PI * 2);
+    target.fill();
+    target.restore();
+  }
+
   function drawBridge(x, y, color, nx, ny) {
     ctx.fillStyle = COLORS[color - 1];
     const pad = cell * 0.12;
@@ -723,8 +854,8 @@
         if (!color) continue;
         if (popCells.has(x + ',' + y)) continue;
         if (fallT < 1 && fallOffsets.has(x + ',' + y)) continue;
-        if (x + 1 < COLS && board[y][x + 1] === color && !popCells.has((x + 1) + ',' + y) && !fallOffsets.has((x + 1) + ',' + y)) drawBridge(x, y, color, x + 1, y);
-        if (y + 1 < ROWS && board[y + 1][x] === color && !popCells.has(x + ',' + (y + 1)) && !fallOffsets.has(x + ',' + (y + 1))) drawBridge(x, y, color, x, y + 1);
+        if (color !== GARBAGE && x + 1 < COLS && board[y][x + 1] === color && !popCells.has((x + 1) + ',' + y) && !fallOffsets.has((x + 1) + ',' + y)) drawBridge(x, y, color, x + 1, y);
+        if (color !== GARBAGE && y + 1 < ROWS && board[y + 1][x] === color && !popCells.has(x + ',' + (y + 1)) && !fallOffsets.has(x + ',' + (y + 1))) drawBridge(x, y, color, x, y + 1);
       }
     }
     for (let y = 0; y < ROWS; y++) {
@@ -749,7 +880,8 @@
         }
         const offset = fallOffsets.get(x + ',' + y) || 0;
         const drawY = y + 0.5 - offset * (1 - fallEase);
-        drawBlob(ctx, (x + 0.5) * cell, drawY * cell, cell * 0.44 * scale, color, alpha, true);
+        if (color === GARBAGE) drawGarbage(ctx, (x + 0.5) * cell, drawY * cell, cell * 0.44, alpha, scale);
+        else drawBlob(ctx, (x + 0.5) * cell, drawY * cell, cell * 0.44 * scale, color, alpha, true);
         if (flash > 0) {
           ctx.fillStyle = 'rgba(255,255,255,' + flash.toFixed(3) + ')';
           ctx.beginPath();
@@ -885,6 +1017,15 @@
     applyMuted();
     if (!muted) ensureAudio();
   });
+  modePicker.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-mode]');
+    if (!button) return;
+    selectGameType(button.dataset.mode);
+    hi = readNumber(hiKey(selectedGameType));
+    bestChain = readNumber(chainKey(selectedGameType));
+    hiEl.textContent = hi;
+    if (mode === 'menu') ovSub.textContent = selectedGameType === 'challenge' ? '完成动态任务，清除不断出现的干扰噗呦' : '连接 4 颗同色噗呦，挑战纯粹的高分连锁';
+  });
   ovBtn.addEventListener('click', () => {
     ensureAudio();
     if (mode === 'menu' || mode === 'gameover') newGame();
@@ -895,6 +1036,7 @@
     lastT = performance.now();
     mode = 'playing';
     btnPause.hidden = false;
+    updateChallengeHud();
     ensureAudio();
   });
   btnResumeNew.addEventListener('click', newGame);
@@ -914,7 +1056,7 @@
   if (saved && validBoard(saved.board)) {
     if (restoreState(saved)) {
       mode = 'resume';
-      resumeSub.textContent = '得分 ' + score + ' · 等级 ' + level + ' · 本局最高连锁 ' + runMaxChain;
+      resumeSub.textContent = (gameType === 'challenge' ? '挑战模式' : '经典模式') + ' · 得分 ' + score + ' · 等级 ' + level + ' · 本局最高连锁 ' + runMaxChain;
       resumeOverlay.hidden = false;
       btnPause.hidden = true;
     } else {
@@ -933,7 +1075,7 @@
 
   if (window.__DSH_TEST__ || new URLSearchParams(location.search).has('test')) {
     window.__puyoTest = {
-      getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, runMaxChain, bestChain, clearedTotal }),
+      getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, gameType, runMaxChain, bestChain, clearedTotal, challengeState: JSON.parse(JSON.stringify(challengeState)) }),
       setBoard: (next) => { if (validBoard(next)) board = next.map((r) => r.slice()); },
       setPair: (next) => {
         if (validPair(next)) pair = JSON.parse(JSON.stringify(next));
@@ -946,7 +1088,10 @@
       },
       resolve: () => { mode = 'resolving'; pair = null; resolveStep(1, ++resolveToken); },
       hardDrop: hardDrop,
-      newGame: newGame,
+      newGame: (type) => { if (type) selectGameType(type); newGame(); },
+      selectMode: selectGameType,
+      resolveChallengeTurn: (stats) => challengeRules.resolveTurn(challengeState, stats || turnStats, () => 0),
+      placeGarbage: (count) => challengeRules.placeGarbage(board, count, () => 0, GARBAGE),
     };
   }
 })();

@@ -7,7 +7,7 @@
 <title>噗呦噗呦 · 连锁消除</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=6" />
+<link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
 <main class="app">
@@ -57,6 +57,10 @@
             <div class="ov-orbit" aria-hidden="true"><i></i><i></i></div>
             <h2 class="ov-title" id="ovTitle">噗呦噗呦</h2>
             <p class="ov-sub" id="ovSub">连接 4 颗同色噗呦即可消除<br />连续坠落消除会形成高分连锁</p>
+            <div class="mode-picker" id="modePicker" aria-label="选择游戏模式">
+              <button type="button" data-mode="classic">经典<small>纯粹连锁</small></button>
+              <button type="button" data-mode="challenge" aria-pressed="true">挑战<small>任务与干扰</small></button>
+            </div>
             <button class="ov-btn" id="ovBtn" type="button">开始游戏</button>
             <a class="ov-back" id="ovBack" href="../" hidden>返回游戏厅</a>
           </div>
@@ -85,6 +89,12 @@
         <span class="next-panel__label">NEXT 1 · 2</span>
         <canvas id="nextCanvas" aria-label="下一组噗呦"></canvas>
       </div>
+      <div class="challenge-card" id="challengeCard" hidden>
+        <span>STAGE <b id="challengeStage">1</b></span>
+        <strong id="missionTitle">完成 2 CHAIN</strong>
+        <small id="missionProgress">0 / 2 · 剩余 8 组</small>
+        <i><em id="missionMeter"></em></i>
+      </div>
       <div class="recipe">
         <span class="recipe__dot"></span>
         <p>四颗同色<br />即可消除</p>
@@ -104,6 +114,7 @@
   <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · P 暂停</p>
 </main>
 <script src="../input-guard.js?v=7"></script>
-<script src="game.js?v=12"></script>
+<script src="challenge-rules.js?v=1"></script>
+<script src="game.js?v=13"></script>
 </body>
 </html>

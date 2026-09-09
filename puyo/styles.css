@@ -201,6 +201,10 @@ body {
 .ov-orbit i:last-child { bottom: -20px; left: 10px; background: var(--cyan); }
 .ov-title { position: relative; font-size: 23px; margin-bottom: 9px; }
 .ov-sub { position: relative; margin-bottom: 18px; color: var(--soft); font-size: 12px; line-height: 1.65; white-space: pre-line; }
+.mode-picker { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: -5px 0 12px; }
+.mode-picker button { padding: 9px 4px; color: var(--soft); border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.035); font: 700 12px var(--font); cursor: pointer; }
+.mode-picker button small { display: block; margin-top: 3px; font-size: 8px; letter-spacing: 0; opacity: .72; }
+.mode-picker button[aria-pressed="true"] { color: #171329; border-color: var(--lime); background: var(--lime); }
 .ov-btn {
   position: relative;
   width: 100%;
@@ -317,6 +321,15 @@ body {
 .back-btn:focus-visible, .icon-btn:focus-visible, .ctl:focus-visible, .ov-btn:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
 
 .hint { overflow: hidden; color: var(--soft); font-size: 10px; text-align: center; white-space: nowrap; text-overflow: ellipsis; }
+.challenge-card { padding: 9px; border: 1px solid rgba(255,111,174,.3); border-radius: 14px; background: linear-gradient(145deg, rgba(255,111,174,.11), rgba(86,220,237,.06)); }
+.challenge-card > span { display: block; color: var(--pink); font-size: 8px; font-weight: 700; letter-spacing: .12em; }
+.challenge-card > span b { color: var(--text); }
+.challenge-card strong { display: block; margin-top: 5px; font-size: 10px; line-height: 1.3; }
+.challenge-card small { display: block; margin-top: 4px; color: var(--soft); font-size: 8px; line-height: 1.35; }
+.challenge-card > i { display: block; height: 4px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.1); }
+.challenge-card > i em { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--pink), var(--lime)); transition: width .25s ease; }
+.challenge-card.is-complete { animation: mission-card-clear .55s ease both; }
+@keyframes mission-card-clear { 50% { border-color: var(--lime); box-shadow: 0 0 20px rgba(184,243,74,.22); transform: scale(1.035); } }
 
 @media (max-height: 720px) {
   .app { gap: 7px; padding-top: 9px; }
@@ -326,6 +339,7 @@ body {
   .next-panel { padding: 7px; }
   .next-panel canvas { width: 56px; height: 96px; }
   .recipe { display: none; }
+  .challenge-card { padding: 7px; }
   .ctl { min-height: 40px; padding: 7px 1px; }
 }
 
