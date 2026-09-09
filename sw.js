@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v103';
+const CACHE = 'arcade-v104';
 const ASSETS = [
   './',
   './index.html',
@@ -29,9 +29,9 @@ const ASSETS = [
   './pacman/styles.css',
   './pacman/game.js?v=7',
   './puyo/index.html',
-  './puyo/styles.css?v=7',
-  './puyo/challenge-rules.js?v=2',
-  './puyo/game.js?v=17',
+  './puyo/styles.css?v=8',
+  './puyo/challenge-rules.js?v=3',
+  './puyo/game.js?v=18',
   './fishing/index.html',
   './fishing/styles.css?v=27',
   './fishing/fish-metadata.js?v=1',

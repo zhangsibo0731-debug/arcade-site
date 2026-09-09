@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 2;
+  const VERSION = 3;
   const GARBAGE = 6;
 
   function boundedInt(value, fallback, min, max) {
@@ -20,6 +20,18 @@
     if (type === 'colors') return { type, target: 2, title: '同时消除 2 种颜色', progress: 0 };
     const target = Math.min(14, 7 + stage);
     return { type, target, title: '一回合消除 ' + target + ' 颗', progress: 0 };
+  }
+
+  function garbageForStage(stage) {
+    return Math.min(5, 1 + Math.floor(Math.max(1, stage) / 2));
+  }
+
+  function defenseForChain(chain) {
+    const value = boundedInt(chain, 0, 0, 99);
+    if (value < 2) return 0;
+    if (value === 2) return 1;
+    if (value === 3) return 3;
+    return 6 + Math.max(0, value - 4) * 2;
   }
 
   function normalize(source, random) {
@@ -41,6 +53,7 @@
       garbageCleared: boundedInt(saved.garbageCleared, 0, 0, 999999),
       turnsLeft: boundedInt(saved.turnsLeft, 8, 1, 12),
       pressureIn: boundedInt(saved.pressureIn, Math.max(6, 10 - Math.floor(stage / 2)), 1, 12),
+      pendingGarbage: boundedInt(saved.pendingGarbage, garbageForStage(stage), 0, 99),
       mission,
     };
   }
@@ -56,6 +69,9 @@
     state.mission.progress = missionProgress(state.mission, stats || {});
     state.turnsLeft--;
     state.pressureIn--;
+    const defense = defenseForChain(stats && stats.maxChain);
+    const canceled = Math.min(state.pendingGarbage, defense);
+    state.pendingGarbage -= canceled;
     const completed = state.mission.progress >= state.mission.target;
     const expired = !completed && state.turnsLeft <= 0;
     let reward = 0;
@@ -73,11 +89,14 @@
       state.mission = missionFor(state.stage, random);
     }
     let pressure = 0;
+    let pressureTriggered = false;
     if (state.pressureIn <= 0) {
-      pressure = Math.min(5, 1 + Math.floor(state.stage / 2));
+      pressureTriggered = true;
+      pressure = state.pendingGarbage;
       state.pressureIn = Math.max(6, 10 - Math.floor(state.stage / 2));
+      state.pendingGarbage = garbageForStage(state.stage);
     }
-    return { state, completed, expired, reward, bonus, pressure };
+    return { state, completed, expired, reward, bonus, pressure, pressureTriggered, canceled };
   }
 
   function adjacentGarbage(board, cells, garbageValue) {
@@ -123,5 +142,5 @@
     return placed;
   }
 
-  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, missionFor, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
+  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, missionFor, garbageForStage, defenseForChain, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
 })(window);

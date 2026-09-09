@@ -39,6 +39,9 @@
   const missionTitle = $('missionTitle');
   const missionProgress = $('missionProgress');
   const missionMeter = $('missionMeter');
+  const garbageQueue = $('garbageQueue');
+  const garbageCount = $('garbageCount');
+  const garbageEta = $('garbageEta');
 
   const COLS = 6;
   const ROWS = 12;
@@ -120,8 +123,14 @@
     const mission = challengeState.mission;
     challengeStage.textContent = challengeState.stage;
     missionTitle.textContent = mission.title;
-    missionProgress.textContent = mission.progress + ' / ' + mission.target + ' · 剩余 ' + challengeState.turnsLeft + ' 组 · 干扰 ' + challengeState.pressureIn;
+    missionProgress.textContent = mission.progress + ' / ' + mission.target + ' · 剩余 ' + challengeState.turnsLeft + ' 组';
     missionMeter.style.width = Math.min(100, mission.progress / mission.target * 100) + '%';
+    const pending = challengeState.pendingGarbage || 0;
+    garbageQueue.innerHTML = Array.from({ length: Math.min(6, pending) }, () => '<i></i>').join('');
+    garbageCount.textContent = '×' + pending;
+    garbageEta.textContent = challengeState.pressureIn + ' 组后';
+    challengeCard.classList.toggle('is-imminent', pending > 0 && challengeState.pressureIn <= 2);
+    challengeCard.classList.toggle('is-safe', pending === 0);
   }
 
   function showChallengeMessage(text, complete) {
@@ -312,8 +321,9 @@
     if (removed.length) applyGravity(true);
     const placed = outcome.pressure ? challengeRules.placeGarbage(board, outcome.pressure, Math.random, GARBAGE) : [];
     if (placed.length) startGarbageFall(placed);
-    if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus, true);
-    else if (placed.length) showChallengeMessage('压力上升 · 干扰 × ' + placed.length, false);
+    if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus + (outcome.canceled ? ' · 抵消 × ' + outcome.canceled : ''), true);
+    else if (placed.length) showChallengeMessage((outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + '干扰落下 × ' + placed.length, false);
+    else if (outcome.canceled) showChallengeMessage((outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消') + ' · × ' + outcome.canceled, outcome.pressureTriggered);
     else if (outcome.expired) showChallengeMessage('新任务出现', false);
     turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
     updateChallengeHud();

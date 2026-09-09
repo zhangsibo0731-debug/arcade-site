@@ -7,7 +7,7 @@
 <title>噗呦噗呦 · 连锁消除</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=7" />
+<link rel="stylesheet" href="styles.css?v=8" />
 </head>
 <body>
 <main class="app">
@@ -94,6 +94,12 @@
         <strong id="missionTitle">完成 2 CHAIN</strong>
         <small id="missionProgress">0 / 2 · 剩余 8 组</small>
         <i><em id="missionMeter"></em></i>
+        <div class="garbage-preview" aria-live="polite">
+          <span>待落</span>
+          <div id="garbageQueue" aria-hidden="true"></div>
+          <b id="garbageCount">×1</b>
+          <small id="garbageEta">10 组后</small>
+        </div>
       </div>
       <div class="recipe">
         <span class="recipe__dot"></span>
@@ -114,7 +120,7 @@
   <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · P 暂停</p>
 </main>
 <script src="../input-guard.js?v=7"></script>
-<script src="challenge-rules.js?v=2"></script>
-<script src="game.js?v=17"></script>
+<script src="challenge-rules.js?v=3"></script>
+<script src="game.js?v=18"></script>
 </body>
 </html>
