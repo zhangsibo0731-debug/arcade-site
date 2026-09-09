@@ -1,13 +1,14 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v102';
+const CACHE = 'arcade-v103';
 const ASSETS = [
   './',
   './index.html',
   './styles.css?v=6',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/apple-touch-icon.png',
+  './manifest.json?v=2',
+  './icons/moon-arcade-192-v2.png',
+  './icons/moon-arcade-512-v2.png',
+  './icons/moon-arcade-maskable-v2.png',
+  './icons/moon-arcade-apple-v2.png',
   './input-guard.js?v=7',
   './sudoku/index.html',
   './sudoku/styles.css',
