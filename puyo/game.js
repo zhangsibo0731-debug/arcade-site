@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.PuyoChallengeRules) throw new Error('Puyo challenge rules failed to load.');
+  if (!window.PuyoChallengeRules || !window.PuyoRogueliteRules) throw new Error('Puyo rules failed to load.');
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('board');
@@ -42,6 +42,8 @@
   const garbageQueue = $('garbageQueue');
   const garbageCount = $('garbageCount');
   const garbageEta = $('garbageEta');
+  const upgradeOverlay = $('upgradeOverlay');
+  const upgradeChoices = $('upgradeChoices');
 
   const COLS = 6;
   const ROWS = 12;
@@ -50,6 +52,7 @@
   const ROT = [[0, -1], [1, 0], [0, 1], [-1, 0]];
   const CHAIN_POWER = [0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512];
   const challengeRules = window.PuyoChallengeRules;
+  const rogueliteRules = window.PuyoRogueliteRules;
   const GARBAGE = challengeRules.GARBAGE;
   const HI_KEY = 'puyo_hi_v1';
   const CHALLENGE_HI_KEY = 'puyo_challenge_hi_v1';
@@ -95,7 +98,32 @@
   let levelPopTimer = null;
   let lockResets = 0;
   let challengeState = challengeRules.normalize({});
+  let runBuild = rogueliteRules.normalize({}, 0);
   let turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
+
+  function hasUpgradeChoice() {
+    return gameType === 'challenge' && runBuild.pendingChoice.length > 0;
+  }
+
+  function renderUpgradeChoices() {
+    upgradeChoices.innerHTML = runBuild.pendingChoice.map((id) => {
+      const card = rogueliteRules.cardFor(runBuild, id);
+      if (!card) return '';
+      const levelText = card.currentLevel ? '升级至 ' + ['Ⅰ', 'Ⅱ', 'Ⅲ'][card.nextLevel - 1] : '获得 Ⅰ';
+      return '<button type="button" data-upgrade="' + card.id + '" class="upgrade-card" data-rarity="' + card.rarity + '">' +
+        '<span><em>' + card.school + '</em><b>' + levelText + '</b></span><strong>' + card.name + '</strong><small>' + card.effect + '</small></button>';
+    }).join('');
+  }
+
+  function openUpgradeChoice() {
+    if (!hasUpgradeChoice()) return false;
+    mode = 'choosing';
+    btnPause.hidden = true;
+    renderUpgradeChoices();
+    upgradeOverlay.hidden = false;
+    saveState();
+    return true;
+  }
 
   function readNumber(key) {
     try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
@@ -312,6 +340,7 @@
     if (gameType !== 'challenge') return;
     const outcome = challengeRules.resolveTurn(challengeState, turnStats);
     challengeState = outcome.state;
+    if (outcome.completed) runBuild = rogueliteRules.offer(runBuild, challengeState.completed, Math.random);
     let removed = [];
     if (outcome.reward) {
       removed = challengeRules.removeGarbage(board, outcome.reward, GARBAGE);
@@ -343,6 +372,7 @@
         setTimeout(() => resolveStep(chain, token, true), fallDuration);
         return;
       }
+      if (openUpgradeChoice()) return;
       mode = 'playing';
       btnPause.hidden = false;
       spawnPair();
@@ -527,6 +557,7 @@
     hiAtStart = hi;
     bestChainAtStart = bestChain;
     challengeState = challengeRules.normalize({});
+    runBuild = rogueliteRules.normalize({}, 0);
     turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
     particles = [];
     popCells.clear();
@@ -545,6 +576,8 @@
     mode = 'playing';
     overlayEl.hidden = true;
     resumeOverlay.hidden = true;
+    upgradeOverlay.hidden = true;
+    upgradeOverlay.hidden = true;
     btnPause.hidden = false;
     modePicker.hidden = true;
     spawnPair();
@@ -624,7 +657,7 @@
   }
 
   function saveState() {
-    if (mode !== 'playing' && mode !== 'paused') return;
+    if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing') return;
     try {
       localStorage.setItem(saveKey(gameType), JSON.stringify({
         savedAt: Date.now(),
@@ -639,6 +672,7 @@
         hiAtStart: hiAtStart,
         bestChainAtStart: bestChainAtStart,
         challengeState: gameType === 'challenge' ? challengeState : null,
+        runBuild: gameType === 'challenge' ? runBuild : null,
       }));
     } catch (e) {}
   }
@@ -690,13 +724,14 @@
     hiAtStart = Number.isFinite(s.hiAtStart) ? Math.max(0, s.hiAtStart) : hi;
     bestChainAtStart = Number.isFinite(s.bestChainAtStart) ? Math.max(0, s.bestChainAtStart) : bestChain;
     challengeState = challengeRules.normalize(gameType === 'challenge' ? s.challengeState : {});
+    runBuild = rogueliteRules.normalize(gameType === 'challenge' ? s.runBuild : null, challengeState.completed);
     turnStats = { maxChain: 0, cleared: 0, maxColors: 0 };
     fillQueue();
-    if (!pair || collidesAt(pair.x, pair.y, pair.rot)) spawnPair();
+    if (!hasUpgradeChoice() && (!pair || collidesAt(pair.x, pair.y, pair.rot))) spawnPair();
     updateHud();
     drawNext();
     updateChallengeHud();
-    return mode !== 'gameover' && !!pair;
+    return mode !== 'gameover' && (!!pair || hasUpgradeChoice());
   }
 
   function clearState() {
@@ -1100,8 +1135,10 @@
   btnResumeContinue.addEventListener('click', () => {
     resumeOverlay.hidden = true;
     lastT = performance.now();
-    mode = 'playing';
-    btnPause.hidden = false;
+    if (!openUpgradeChoice()) {
+      mode = 'playing';
+      btnPause.hidden = false;
+    }
     updateChallengeHud();
     ensureAudio();
   });
@@ -1110,6 +1147,21 @@
     selectedGameType = gameType;
     mode = 'menu';
     showOverlay('menu');
+  });
+  upgradeChoices.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-upgrade]');
+    if (!button || mode !== 'choosing') return;
+    const result = rogueliteRules.choose(runBuild, button.dataset.upgrade, challengeState.completed);
+    if (!result.selected) return;
+    runBuild = result.state;
+    upgradeOverlay.hidden = true;
+    mode = 'playing';
+    btnPause.hidden = false;
+    if (!pair) spawnPair();
+    showChallengeMessage(result.selected.name + ' · 已强化', true);
+    play('level', challengeState.stage);
+    haptic([14, 30, 20]);
+    saveState();
   });
 
   window.addEventListener('resize', resize);
@@ -1146,7 +1198,7 @@
 
   if (window.__DSH_TEST__ || new URLSearchParams(location.search).has('test')) {
     window.__puyoTest = {
-      getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, gameType, runMaxChain, bestChain, clearedTotal, challengeState: JSON.parse(JSON.stringify(challengeState)) }),
+      getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, gameType, runMaxChain, bestChain, clearedTotal, challengeState: JSON.parse(JSON.stringify(challengeState)), runBuild: JSON.parse(JSON.stringify(runBuild)) }),
       setBoard: (next) => { if (validBoard(next)) board = next.map((r) => r.slice()); },
       setPair: (next) => {
         if (validPair(next)) pair = JSON.parse(JSON.stringify(next));

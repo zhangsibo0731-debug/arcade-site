@@ -340,6 +340,20 @@ body {
 .challenge-card.is-complete { animation: mission-card-clear .55s ease both; }
 @keyframes mission-card-clear { 50% { border-color: var(--lime); box-shadow: 0 0 20px rgba(184,243,74,.22); transform: scale(1.035); } }
 @keyframes garbage-warning { 50% { box-shadow: 0 0 15px rgba(255,93,143,.18); } }
+.upgrade-overlay { z-index: 8; overflow-y: auto; padding: 10px; background: rgba(18,14,34,.88); backdrop-filter: blur(7px); }
+.upgrade-panel { width: 100%; padding: 14px 10px; }
+.upgrade-kicker { display: block; color: var(--lime); font-size: 8px; font-weight: 700; letter-spacing: .15em; }
+.upgrade-panel .ov-title { margin-top: 5px; font-size: 19px; }
+.upgrade-panel .ov-sub { margin: 4px 0 9px; font-size: 9px; }
+.upgrade-choices { display: grid; gap: 6px; }
+.upgrade-card { width: 100%; padding: 8px 9px; color: var(--text); text-align: left; border: 1px solid rgba(255,255,255,.12); border-radius: 11px; background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(86,220,237,.04)); cursor: pointer; font-family: var(--font); }
+.upgrade-card[data-rarity="rare"] { border-color: rgba(86,220,237,.42); background: linear-gradient(135deg, rgba(86,220,237,.14), rgba(169,121,247,.1)); }
+.upgrade-card:hover, .upgrade-card:focus-visible { border-color: var(--lime); outline: none; transform: translateY(-1px); }
+.upgrade-card > span { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.upgrade-card em { color: var(--pink); font-size: 7px; font-style: normal; font-weight: 700; letter-spacing: .08em; }
+.upgrade-card b { color: var(--lime); font-size: 8px; }
+.upgrade-card strong { display: block; margin-top: 3px; font-size: 11px; }
+.upgrade-card small { display: block; margin-top: 2px; color: var(--soft); font-size: 8px; line-height: 1.3; }
 
 @media (max-height: 720px) {
   .app { gap: 7px; padding-top: 9px; }
