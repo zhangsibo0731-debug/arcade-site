@@ -1,14 +1,14 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 3;
+  const VERSION = 4;
   const MAX_LEVEL = 3;
   const DEFINITIONS = Object.freeze([
     { id: 'chainShield', name: '连锁护盾', school: '连锁', rarity: 'common', effects: ['额外抵消 1 颗干扰', '额外抵消 2 颗干扰', '额外抵消 3 颗干扰'] },
     { id: 'chainEcho', name: '连锁回响', school: '连锁', rarity: 'common', effects: ['3 CHAIN 得分 +15%', '3 CHAIN 得分 +30%', '3 CHAIN 得分 +50%'] },
-    { id: 'colorBurst', name: '彩色爆破', school: '消除', rarity: 'rare', effects: ['7 颗同消额外爆破 1 颗干扰', '6 颗同消额外爆破 1 颗干扰', '5 颗同消额外爆破 1 颗干扰'] },
+    { id: 'colorBurst', name: '彩色爆破', school: '消除', rarity: 'rare', effects: ['7 颗同消时远程爆破 1 颗干扰', '6 颗同消时远程爆破 1 颗干扰', '5 颗同消时远程爆破 1 颗干扰'] },
     { id: 'largeGroup', name: '大团奖励', school: '消除', rarity: 'common', effects: ['9 颗同消抵消 2 颗', '8 颗同消抵消 2 颗', '7 颗同消抵消 2 颗'] },
-    { id: 'cleaner', name: '清道夫', school: '防御', rarity: 'common', effects: ['额外清除 1 颗干扰', '额外清除 2 颗干扰', '额外清除 3 颗干扰'] },
+    { id: 'cleaner', name: '清道夫', school: '防御', rarity: 'common', effects: ['清除相邻干扰时，再清除附近 1 颗', '清除相邻干扰时，再清除附近 2 颗', '清除相邻干扰时，再清除附近 3 颗'] },
     { id: 'buffer', name: '缓冲层', school: '防御', rarity: 'rare', effects: ['每个 Stage 首次干扰 -1', '每个 Stage 首次干扰 -2', '每个 Stage 首次干扰 -3'] },
     { id: 'steadyHands', name: '从容落子', school: '操作', rarity: 'common', effects: ['锁定时间 +10%', '锁定时间 +20%', '锁定时间 +30%'] },
     { id: 'foresight', name: '预知', school: '操作', rarity: 'rare', effects: ['NEXT 对比更清晰', '标记下一组同色', '显示第 3 组 NEXT'] },

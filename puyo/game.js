@@ -1,15 +1,13 @@
 (function () {
   'use strict';
 
-  if (!window.PuyoChallengeRules || !window.PuyoRogueliteRules) throw new Error('Puyo rules failed to load.');
+  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoBoardRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules) throw new Error('Puyo modules failed to load.');
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('board');
-  const ctx = canvas.getContext('2d');
   const boardWrap = $('boardWrap');
   const boardArea = boardWrap.parentElement;
   const nextCanvas = $('nextCanvas');
-  const nextCtx = nextCanvas.getContext('2d');
   const scoreEl = $('score');
   const hiEl = $('hi');
   const levelEl = $('level');
@@ -67,12 +65,47 @@
   const challengeRules = window.PuyoChallengeRules;
   const rogueliteRules = window.PuyoRogueliteRules;
   const GARBAGE = challengeRules.GARBAGE;
+  const boardRules = window.PuyoBoardRules.create({ rows: ROWS, cols: COLS, garbage: GARBAGE, rotations: ROT });
+  const challengeEffects = window.PuyoChallengeEffects.create({ challengeRules, rogueliteRules, boardRules, garbage: GARBAGE, rows: ROWS });
+  const renderer = window.PuyoRenderer.create({ canvas, nextCanvas, boardWrap, boardArea, nextPanel, nextLabel, colors: COLORS, darks: DARKS, rows: ROWS, cols: COLS });
+  const ui = window.PuyoUI.create({
+    challengeRules,
+    rogueliteRules,
+    elements: {
+      score: scoreEl, highScore: hiEl, level: levelEl, runChain: runChainEl,
+      overlay: overlayEl, ovTitle, ovSub, ovBtn, ovBack, modePicker,
+      challengeCard, challengeStage, specialBadge, missionTitle, missionScope,
+      missionProgress, missionDeadline, missionMeter, garbageQueue, garbageCount,
+      garbageEta, buildSummary, buildCount, buildChips, buildDetails,
+      upgradeKicker, upgradeChoices, chainResult, chainValue, chainLabel,
+      chainGain, chainPop, levelPop, btnPause, buildButton, buildClose,
+      btnSound, btnResumeContinue, btnResumeNew,
+    },
+  });
   const HI_KEY = 'puyo_hi_v1';
   const CHALLENGE_HI_KEY = 'puyo_challenge_hi_v1';
   const CHAIN_KEY = 'puyo_chain_v1';
   const CHALLENGE_CHAIN_KEY = 'puyo_challenge_chain_v1';
   const SAVE_KEYS = { classic: 'puyo_save_v1', challenge: 'puyo_challenge_save_v1' };
   const MUTE_KEY = 'puyo_muted_v1';
+  const storage = window.PuyoStorage.create({
+    rows: ROWS,
+    cols: COLS,
+    garbage: GARBAGE,
+    colorCount: COLORS.length,
+    rotationCount: ROT.length,
+    keys: {
+      highScore: { classic: HI_KEY, challenge: CHALLENGE_HI_KEY },
+      bestChain: { classic: CHAIN_KEY, challenge: CHALLENGE_CHAIN_KEY },
+      save: SAVE_KEYS,
+      muted: MUTE_KEY,
+    },
+  });
+  const audio = window.PuyoAudio.create({ storage, button: btnSound, soundOnIcon: icSoundOn, soundOffIcon: icSoundOff });
+  const sessionState = window.PuyoSessionState.create({ storage, challengeRules, rogueliteRules, emptyBoard: boardRules.emptyBoard });
+  const ensureAudio = audio.ensure;
+  const play = audio.play;
+  const haptic = audio.haptic;
 
   let board = [];
   let pair = null;
@@ -81,10 +114,10 @@
   let gameType = 'classic';
   let selectedGameType = 'challenge';
   let score = 0;
-  let hi = readNumber(HI_KEY);
+  let hi = storage.readHighScore('classic');
   let level = 1;
   let clearedTotal = 0;
-  let bestChain = readNumber(CHAIN_KEY);
+  let bestChain = storage.readBestChain('classic');
   let runMaxChain = 0;
   let hiAtStart = hi;
   let bestChainAtStart = bestChain;
@@ -94,21 +127,9 @@
   let lockAcc = 0;
   let saveAcc = 0;
   let resolveToken = 0;
-  let particles = [];
-  let popCells = new Set();
-  let popStartedAt = 0;
   let popDuration = 280;
-  let fallOffsets = new Map();
-  let fallStartedAt = 0;
   let fallDuration = 210;
-  let garbageFalls = new Map();
-  let garbageFallStartedAt = 0;
-  let muted = readMuted();
-  let audioCtx = null;
-  let touchStart = null;
-  let chainPopTimer = null;
-  let chainResultTimer = null;
-  let levelPopTimer = null;
+  let input = null;
   let lockResets = 0;
   let challengeState = challengeRules.normalize({});
   let runBuild = rogueliteRules.normalize({}, 0);
@@ -118,7 +139,7 @@
   let buildReturnMode = 'playing';
 
   function freshTurnStats() {
-    return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, garbageCleared: 0, scoreGained: 0, clearedThisTurn: false, boardHeight: null, clearedColors: [], colorClearedCount: 0, extraDefense: 0, missionBaseProgress: null };
+    return sessionState.freshTurnStats();
   }
 
   function hasUpgradeChoice() {
@@ -138,30 +159,17 @@
   }
 
   function flashGarbageDefense() {
-    challengeCard.classList.remove('is-defending');
-    void challengeCard.offsetWidth;
-    challengeCard.classList.add('is-defending');
-    setTimeout(() => challengeCard.classList.remove('is-defending'), 520);
+    ui.flashGarbageDefense();
   }
 
   function renderUpgradeChoices() {
-    upgradeKicker.textContent = runBuild.pendingKind === 'special' ? 'SPECIAL REWARD · 稀有保底' : 'STAGE REWARD';
-    upgradeChoices.innerHTML = runBuild.pendingChoice.map((id) => {
-      const card = rogueliteRules.cardFor(runBuild, id);
-      if (!card) return '';
-      const levelText = card.currentLevel ? '升级至 ' + ['Ⅰ', 'Ⅱ', 'Ⅲ'][card.nextLevel - 1] : '获得 Ⅰ';
-      return '<button type="button" data-upgrade="' + card.id + '" class="upgrade-card" data-rarity="' + card.rarity + '">' +
-        '<span><em>' + card.school + '</em><b>' + levelText + '</b></span><strong>' + card.name + '</strong><small>' + card.effect + '</small></button>';
-    }).join('');
+    ui.renderUpgradeChoices(runBuild);
   }
 
   function renderBuildDetails() {
-    const active = rogueliteRules.DEFINITIONS.filter((item) => runBuild.upgrades[item.id]);
-    buildDetails.innerHTML = active.map((item) => {
-      const level = runBuild.upgrades[item.id];
-      return '<article class="build-detail" data-rarity="' + item.rarity + '"><span><em>' + item.school + '</em><b>' + ['','Ⅰ','Ⅱ','Ⅲ'][level] + '</b></span><strong>' + item.name + '</strong><small>' + item.effects[level - 1] + '</small></article>';
-    }).join('');
+    ui.renderBuildDetails(runBuild);
   }
+
 
   function openBuildOverlay() {
     if (gameType !== 'challenge' || !Object.keys(runBuild.upgrades).length || !['playing', 'paused'].includes(mode)) return;
@@ -190,71 +198,28 @@
     return true;
   }
 
-  function readNumber(key) {
-    try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
-  }
-
-  function readMuted() {
-    try { return localStorage.getItem(MUTE_KEY) === '1'; } catch (e) { return false; }
-  }
-
-  function hiKey(type) { return type === 'challenge' ? CHALLENGE_HI_KEY : HI_KEY; }
-  function chainKey(type) { return type === 'challenge' ? CHALLENGE_CHAIN_KEY : CHAIN_KEY; }
-  function saveKey(type) { return SAVE_KEYS[type === 'challenge' ? 'challenge' : 'classic']; }
-
   function selectGameType(type) {
     selectedGameType = type === 'classic' ? 'classic' : 'challenge';
-    modePicker.querySelectorAll('button').forEach((button) => {
-      button.setAttribute('aria-pressed', button.dataset.mode === selectedGameType ? 'true' : 'false');
-    });
+    ui.selectGameType(selectedGameType);
   }
 
   function updateChallengeHud() {
-    const active = gameType === 'challenge' && ['playing', 'paused', 'resolving'].includes(mode);
-    challengeCard.hidden = !active;
-    if (!active) return;
-    const mission = challengeState.mission;
-    challengeStage.textContent = challengeState.stage;
-    specialBadge.hidden = !challengeState.special;
-    specialBadge.textContent = challengeState.special ? challengeState.special.title : 'SPECIAL';
-    challengeCard.classList.toggle('is-special', !!challengeState.special);
-    missionTitle.textContent = mission.title;
-    const previewMission = turnStats.missionBaseProgress == null ? mission : Object.assign({}, mission, { progress: turnStats.missionBaseProgress });
-    const displayProgress = mode === 'resolving' ? challengeRules.missionProgress(previewMission, turnStats) : mission.progress;
-    const presentation = challengeRules.missionPresentation(mission, displayProgress);
-    missionScope.textContent = presentation.scope;
-    missionProgress.textContent = presentation.progress;
-    missionDeadline.textContent = '任务期限：还可放 ' + challengeState.turnsLeft + ' 组';
-    missionDeadline.classList.toggle('is-urgent', challengeState.turnsLeft <= 2);
-    missionMeter.style.width = Math.min(100, displayProgress / mission.target * 100) + '%';
-    const pending = challengeState.pendingGarbage || 0;
-    garbageQueue.innerHTML = Array.from({ length: Math.min(6, pending) }, () => '<i></i>').join('');
-    garbageCount.textContent = '×' + pending;
-    garbageEta.textContent = challengeState.pressureIn + ' 组后落下';
-    challengeCard.classList.toggle('is-imminent', pending > 0 && challengeState.pressureIn <= 2);
-    challengeCard.classList.toggle('is-safe', pending === 0);
-    const activeUpgrades = rogueliteRules.DEFINITIONS.filter((item) => runBuild.upgrades[item.id]);
-    buildSummary.hidden = !activeUpgrades.length;
-    buildCount.textContent = activeUpgrades.length;
-    buildChips.innerHTML = activeUpgrades.map((item) => '<span data-upgrade="' + item.id + '" class="' + (triggeredUpgrades.has(item.id) ? 'is-triggered' : '') + '">' + item.name + ['','Ⅰ','Ⅱ','Ⅲ'][runBuild.upgrades[item.id]] + '</span>').join(' · ');
+    ui.renderChallenge({
+      active: gameType === 'challenge' && ['playing', 'paused', 'resolving'].includes(mode),
+      challengeState,
+      mode,
+      turnStats,
+      runBuild,
+      triggeredUpgrades,
+    });
   }
 
   function showChallengeMessage(text, complete, duration) {
-    clearTimeout(chainResultTimer);
-    chainResult.textContent = text;
-    chainResult.hidden = true;
-    void chainResult.offsetWidth;
-    chainResult.hidden = false;
-    challengeCard.classList.toggle('is-complete', !!complete);
-    chainResultTimer = setTimeout(() => {
-      chainResult.hidden = true;
-      challengeCard.classList.remove('is-complete');
-    }, duration || 1120);
+    ui.showChallengeMessage(text, complete, duration);
   }
 
-  function emptyBoard() {
-    return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-  }
+
+  const emptyBoard = boardRules.emptyBoard;
 
   function colorCount() {
     return level >= 6 ? 5 : 4;
@@ -270,11 +235,7 @@
   }
 
   function pairCells(p, x, y, rot) {
-    const o = ROT[rot];
-    return [
-      { x: x, y: y, color: p.colors[0] },
-      { x: x + o[0], y: y + o[1], color: p.colors[1] },
-    ];
+    return boardRules.pairCells(p, x, y, rot);
   }
 
   function currentCells() {
@@ -282,11 +243,7 @@
   }
 
   function collidesAt(x, y, rot) {
-    if (!pair) return true;
-    return pairCells(pair, x, y, rot).some((p) => {
-      if (p.x < 0 || p.x >= COLS || p.y >= ROWS) return true;
-      return p.y >= 0 && board[p.y][p.x] !== 0;
-    });
+    return boardRules.collides(board, pair, x, y, rot);
   }
 
   function spawnPair() {
@@ -375,102 +332,62 @@
   }
 
   function findClearGroups() {
-    const seen = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
-    const groups = [];
-    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
-        const color = board[y][x];
-        if (!color || color === GARBAGE || seen[y][x]) continue;
-        const group = [];
-        const stack = [[x, y]];
-        seen[y][x] = true;
-        while (stack.length) {
-          const p = stack.pop();
-          group.push(p);
-          for (const d of dirs) {
-            const nx = p[0] + d[0], ny = p[1] + d[1];
-            if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
-            if (!seen[ny][nx] && board[ny][nx] === color) {
-              seen[ny][nx] = true;
-              stack.push([nx, ny]);
-            }
-          }
-        }
-        if (group.length >= 4) groups.push({ color: color, cells: group });
-      }
-    }
-    return groups;
+    return boardRules.findClearGroups(board);
   }
 
-  function groupBonus(size) {
-    if (size <= 4) return 0;
-    if (size === 5) return 2;
-    if (size === 6) return 3;
-    if (size === 7) return 4;
-    if (size === 8) return 5;
-    if (size === 9) return 6;
-    if (size === 10) return 7;
-    return 10;
+  const groupBonus = boardRules.groupBonus;
+
+  function animateStageReward(cells, incomingCount) {
+    popDuration = 340;
+    renderer.startPop(cells, popDuration);
+    const incomingDuration = incomingCount ? 590 + Math.max(0, incomingCount - 1) * 55 : 0;
+    fallDuration = popDuration + 220 + incomingDuration;
+    setTimeout(() => {
+      cells.forEach((p) => {
+        if (board[p[1]][p[0]] !== GARBAGE) return;
+        renderer.burst(p[0], p[1], GARBAGE, 2);
+        board[p[1]][p[0]] = 0;
+      });
+      renderer.clearPop();
+      play('clear', 2);
+      applyGravity(true);
+      setTimeout(() => {
+        if (!incomingCount) return;
+        const placed = challengeRules.placeGarbage(board, incomingCount, Math.random, GARBAGE);
+        if (placed.length) startGarbageFall(placed);
+      }, 210);
+    }, popDuration);
   }
 
   function finishChallengeTurn() {
     if (gameType !== 'challenge') return;
-    const stageBefore = challengeState.stage;
-    const occupiedTop = board.findIndex((row) => row.some(Boolean));
-    turnStats.boardHeight = occupiedTop < 0 ? 0 : ROWS - occupiedTop;
-    const modifiers = rogueliteRules.modifiers(runBuild);
-    if (turnStats.maxChain >= 2 && modifiers.chainDefense) {
-      turnStats.extraDefense += modifiers.chainDefense;
-      flashUpgrade('chainShield');
-    }
-    if (modifiers.largeGroupThreshold && turnStats.largestGroup >= modifiers.largeGroupThreshold) {
-      turnStats.extraDefense += modifiers.largeGroupDefense;
-      flashUpgrade('largeGroup');
-    }
-    const outcome = challengeRules.resolveTurn(challengeState, turnStats);
-    challengeState = outcome.state;
-    if (outcome.specialCompleted) runBuild = rogueliteRules.offerSpecial(runBuild, challengeState.completed, Math.random);
-    else if (outcome.completed) runBuild = rogueliteRules.offer(runBuild, challengeState.completed, Math.random);
-    let removed = [];
-    if (outcome.reward) {
-      removed = challengeRules.removeGarbage(board, outcome.reward, GARBAGE);
-      challengeState.garbageCleared += removed.length;
-      score += outcome.bonus;
-    }
-    if (removed.length) applyGravity(true);
-    let pressure = outcome.pressure;
-    let buffered = 0;
-    if (pressure && modifiers.bufferReduction && runBuild.bufferedStage !== challengeState.stage) {
-      pressure = Math.max(0, pressure - modifiers.bufferReduction);
-      buffered = outcome.pressure - pressure;
-      runBuild.bufferedStage = challengeState.stage;
-      if (buffered) flashUpgrade('buffer');
-    }
-    const placed = pressure ? challengeRules.placeGarbage(board, pressure, Math.random, GARBAGE) : [];
-    const entryPlaced = outcome.entryGarbage ? challengeRules.placeGarbage(board, outcome.entryGarbage, Math.random, GARBAGE) : [];
-    placed.push(...entryPlaced);
-    if (placed.length) startGarbageFall(placed);
-    if (outcome.canceled || buffered) flashGarbageDefense();
-    if (outcome.enteredSpecial) showChallengeMessage('STAGE ' + stageBefore + ' 完成\n特殊关：' + challengeState.special.title, true, 1650);
-    else if (outcome.specialCompleted) showChallengeMessage('特殊关完成 → STAGE ' + challengeState.stage + '\n奖励 +' + outcome.bonus, true, 1650);
-    else if (outcome.completed) showChallengeMessage('STAGE ' + stageBefore + ' 完成 → STAGE ' + challengeState.stage + '\n奖励 +' + outcome.bonus + (outcome.canceled ? ' · 抵消 ×' + outcome.canceled : ''), true, 1550);
-    else if (outcome.specialFailed) showChallengeMessage('特殊关失败 · STAGE ' + stageBefore + ' 保持不变\n惩罚干扰 ×' + outcome.specialPenalty, false, 1900);
-    else if (placed.length) showChallengeMessage((outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, false);
-    else if (buffered) showChallengeMessage('缓冲层抵消 · × ' + buffered, true);
-    else if (outcome.canceled) showChallengeMessage((outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消') + ' · × ' + outcome.canceled, outcome.pressureTriggered);
-    else if (outcome.expired) showChallengeMessage('任务失败 · STAGE ' + stageBefore + ' 保持不变\n已更换新任务', false, 1800);
+    const result = challengeEffects.settleTurn({
+      challengeState,
+      runBuild,
+      turnStats,
+      board,
+      random: Math.random,
+    });
+    challengeState = result.challengeState;
+    runBuild = result.runBuild;
+    result.triggered.forEach(flashUpgrade);
+    score += result.scoreBonus;
+    if (result.removed.length) animateStageReward(result.removed, result.incomingCount);
+    else if (result.placed.length) startGarbageFall(result.placed);
+    if (result.defenseFlash) flashGarbageDefense();
+    if (result.message) showChallengeMessage(result.message.text, result.message.complete, result.message.duration);
     turnStats = freshTurnStats();
     updateChallengeHud();
     updateHud();
-    return removed.length > 0 || placed.length > 0;
+    return result.waitsForBoard;
   }
+
 
   function resolveStep(chain, token, taskSettled = false) {
     if (token !== resolveToken) return;
     const groups = findClearGroups();
     if (!groups.length) {
-      popCells.clear();
+      renderer.clearPop();
       if (chain > 2) showChainResult(chain - 1);
       // Reward gravity may form another clear. Finish it before spawning,
       // without spending another turn or crediting the newly issued task.
@@ -489,25 +406,10 @@
     const colors = new Set(groups.map((g) => g.color));
     const cells = groups.flatMap((g) => g.cells);
     const modifiers = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild) : rogueliteRules.modifiers({});
-    let garbageCells = gameType === 'challenge' ? challengeRules.adjacentGarbage(board, cells, GARBAGE) : [];
-    if (gameType === 'challenge') {
-      let extraClear = garbageCells.length ? modifiers.cleanerClear : 0;
-      if (extraClear) flashUpgrade('cleaner');
-      if (modifiers.colorBurstThreshold && groups.some((group) => group.cells.length >= modifiers.colorBurstThreshold)) {
-        extraClear += modifiers.colorBurstClear;
-        flashUpgrade('colorBurst');
-      }
-      if (extraClear) {
-        const excluded = new Set(garbageCells.map((p) => p[0] + ',' + p[1]));
-        const extraCells = [];
-        for (let y = ROWS - 1; y >= 0 && extraCells.length < extraClear; y--) {
-          for (let x = 0; x < COLS && extraCells.length < extraClear; x++) {
-            if (board[y][x] === GARBAGE && !excluded.has(x + ',' + y)) extraCells.push([x, y]);
-          }
-        }
-        garbageCells = garbageCells.concat(extraCells);
-      }
-    }
+    const clearEffects = challengeEffects.resolveClear({ active: gameType === 'challenge', board, cells, groups, modifiers });
+    const garbageCells = clearEffects.garbageCells;
+    clearEffects.triggered.forEach(flashUpgrade);
+    clearEffects.remoteLinks.forEach((link) => renderer.addRemoteLink(link.from, link.to));
     const clearingCells = cells.concat(garbageCells);
     const chainPower = CHAIN_POWER[Math.min(chain - 1, CHAIN_POWER.length - 1)];
     const colorBonus = colors.size <= 1 ? 0 : Math.pow(2, colors.size + 1);
@@ -538,7 +440,7 @@
     runMaxChain = Math.max(runMaxChain, chain);
     if (chain > bestChain) {
       bestChain = chain;
-      try { localStorage.setItem(chainKey(gameType), String(bestChain)); } catch (e) {}
+      storage.writeBestChain(gameType, bestChain);
     }
     updateHud();
     showChain(chain, gained);
@@ -547,17 +449,17 @@
     haptic(chain >= 3 ? [22, 28, 22 + chain * 2] : chain > 1 ? [16, 24, 16] : 10);
     if (chain >= 2) shakeBoard(chain);
 
-    popCells = new Set(clearingCells.map((p) => p[0] + ',' + p[1]));
-    popStartedAt = performance.now();
     popDuration = Math.max(170, 300 - (chain - 1) * 22);
+    renderer.startPop(clearingCells, popDuration);
 
     setTimeout(() => {
       if (token !== resolveToken) return;
       for (const p of clearingCells) {
-        makeBurst(p[0], p[1], board[p[1]][p[0]], chain);
+        renderer.burst(p[0], p[1], board[p[1]][p[0]], chain);
         board[p[1]][p[0]] = 0;
       }
-      popCells.clear();
+      renderer.clearPop();
+      renderer.clearRemoteLinks();
       applyGravity(true);
       const settleDelay = Math.max(120, 225 - (chain - 1) * 14);
       setTimeout(() => resolveStep(chain + 1, token, taskSettled), settleDelay);
@@ -565,82 +467,33 @@
   }
 
   function applyGravity(animate) {
-    const offsets = new Map();
-    for (let x = 0; x < COLS; x++) {
-      let write = ROWS - 1;
-      for (let y = ROWS - 1; y >= 0; y--) {
-        if (board[y][x]) {
-          const distance = write - y;
-          board[write][x] = board[y][x];
-          if (write !== y) board[y][x] = 0;
-          if (animate && distance > 0) offsets.set(x + ',' + write, distance);
-          write--;
-        }
-      }
-      while (write >= 0) board[write--][x] = 0;
-    }
-    fallOffsets = offsets;
-    fallStartedAt = performance.now();
+    const result = boardRules.applyGravity(board, animate);
+    board = result.board;
     fallDuration = 190;
+    renderer.startFall(result.offsets, fallDuration);
   }
 
   function startGarbageFall(cells) {
-    garbageFalls = new Map(cells.map((cell, index) => [cell[0] + ',' + cell[1], {
-      startY: -1.1 - index * 0.28,
-      delay: index * 55,
-    }]));
-    garbageFallStartedAt = performance.now();
     fallDuration = 590 + Math.max(0, cells.length - 1) * 55;
+    renderer.startGarbageFall(cells, fallDuration);
     play('drop', 0.72);
     haptic(18);
   }
 
-  function bounceOut(t) {
-    const n = 7.5625;
-    const d = 2.75;
-    if (t < 1 / d) return n * t * t;
-    if (t < 2 / d) { t -= 1.5 / d; return n * t * t + 0.75; }
-    if (t < 2.5 / d) { t -= 2.25 / d; return n * t * t + 0.9375; }
-    t -= 2.625 / d;
-    return n * t * t + 0.984375;
-  }
-
   function showChain(chain, gained) {
-    clearTimeout(chainPopTimer);
-    chainValue.textContent = chain === 1 ? '消除' : chain;
-    chainLabel.textContent = chain === 1 ? 'CLEAR' : 'CHAIN';
-    chainGain.textContent = '+' + gained;
-    chainPop.style.setProperty('--chain-size', (chain === 1 ? 36 : Math.min(92, 50 + (chain - 2) * 7)) + 'px');
-    chainPop.style.setProperty('--chain-hue', String(Math.max(0, 82 - Math.max(0, chain - 2) * 13)));
-    chainPop.style.setProperty('--chain-tilt', (chain <= 1 ? -4 : Math.min(8, chain) * (chain % 2 ? 1 : -1)) + 'deg');
-    chainPop.hidden = true;
-    void chainPop.offsetWidth;
-    chainPop.hidden = false;
-    chainPopTimer = setTimeout(() => {
-      chainPop.hidden = true;
-      chainPopTimer = null;
-    }, 760);
+    ui.showChain(chain, gained);
   }
 
   function showChainResult(chain) {
-    clearTimeout(chainResultTimer);
-    chainResult.textContent = '本次 ' + chain + ' CHAIN!';
-    chainResult.hidden = true;
-    void chainResult.offsetWidth;
-    chainResult.hidden = false;
-    chainResultTimer = setTimeout(() => { chainResult.hidden = true; }, 1120);
+    ui.showChainResult(chain);
   }
 
   function showLevel(nextLevel) {
-    clearTimeout(levelPopTimer);
-    levelPop.textContent = 'LEVEL UP! · ' + nextLevel;
-    levelPop.hidden = true;
-    void levelPop.offsetWidth;
-    levelPop.hidden = false;
+    ui.showLevel(nextLevel);
     play('level', nextLevel);
     haptic([16, 28, 24]);
-    levelPopTimer = setTimeout(() => { levelPop.hidden = true; }, 980);
   }
+
 
   function shakeBoard(chain) {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -660,7 +513,7 @@
   }
 
   function update(dt) {
-    updateParticles(dt);
+    renderer.update(dt);
     if (mode !== 'playing' || !pair) return;
     gravityAcc += dt;
     if (gravityAcc >= gravityInterval()) {
@@ -683,8 +536,8 @@
   function newGame() {
     resolveToken++;
     gameType = selectedGameType;
-    hi = readNumber(hiKey(gameType));
-    bestChain = readNumber(chainKey(gameType));
+    hi = storage.readHighScore(gameType);
+    bestChain = storage.readBestChain(gameType);
     board = emptyBoard();
     queue = [];
     pair = null;
@@ -697,22 +550,11 @@
     challengeState = challengeRules.normalize({});
     runBuild = rogueliteRules.normalize({}, 0);
     turnStats = freshTurnStats();
-    particles = [];
+    renderer.resetEffects();
     triggeredUpgrades.clear();
     upgradeFlashTimers.forEach((timer) => clearTimeout(timer));
     upgradeFlashTimers.clear();
-    popCells.clear();
-    fallOffsets.clear();
-    garbageFalls.clear();
-    clearTimeout(chainPopTimer);
-    clearTimeout(chainResultTimer);
-    clearTimeout(levelPopTimer);
-    chainPopTimer = null;
-    chainResultTimer = null;
-    levelPopTimer = null;
-    chainPop.hidden = true;
-    chainResult.hidden = true;
-    levelPop.hidden = true;
+    ui.resetTransient();
     fillQueue();
     mode = 'playing';
     overlayEl.hidden = true;
@@ -751,32 +593,25 @@
   }
 
   function showOverlay(kind) {
-    ovBack.hidden = true;
-    modePicker.hidden = kind === 'paused';
-    if (kind === 'menu') {
-      ovTitle.textContent = '噗呦噗呦';
-      ovSub.textContent = selectedGameType === 'challenge' ? '完成动态任务，清除不断出现的干扰噗呦' : '连接 4 颗同色噗呦，挑战纯粹的高分连锁';
-      ovBtn.textContent = '开始游戏';
-    } else if (kind === 'paused') {
-      ovTitle.textContent = '游戏暂停';
-      ovSub.textContent = '按「继续」或 P 回到连锁现场';
-      ovBtn.textContent = '继续';
-    } else if (kind === 'gameover') {
-      ovTitle.textContent = '游戏结束';
-      const records = [];
-      if (score > hiAtStart && score > 0) records.push('最高分新纪录');
-      if (runMaxChain > bestChainAtStart && runMaxChain > 0) records.push('连锁新纪录');
-      ovSub.textContent = (gameType === 'challenge' ? '挑战模式\n' : '经典模式\n') + 'SCORE  ' + score + '\nLEVEL  ' + level + '\nMAX CHAIN  ' + runMaxChain + '\nBEST CHAIN  ' + bestChain + '\n消除  ' + clearedTotal + ' 颗' + (gameType === 'challenge' ? '\n完成任务  ' + challengeState.completed + ' · 清除干扰  ' + challengeState.garbageCleared : '') + (records.length ? '\nNEW RECORD! · ' + records.join(' / ') : '');
-      ovBtn.textContent = '再来一局';
-      ovBack.hidden = false;
-    }
+    ui.showOverlay(kind, {
+      selectedGameType,
+      gameType,
+      score,
+      level,
+      runMaxChain,
+      bestChain,
+      clearedTotal,
+      hiAtStart,
+      bestChainAtStart,
+      challengeState,
+    });
     selectGameType(kind === 'gameover' ? gameType : selectedGameType);
-    overlayEl.hidden = false;
     updateChallengeHud();
   }
 
+
   function togglePause() {
-    stopHold();
+    if (input) input.stop();
     if (mode === 'playing') {
       setMode('paused');
       saveState();
@@ -787,85 +622,35 @@
   }
 
   function updateHud() {
-    scoreEl.textContent = score;
     if (score > hi) {
       hi = score;
-      try { localStorage.setItem(hiKey(gameType), String(hi)); } catch (e) {}
+      storage.writeHighScore(gameType, hi);
     }
-    hiEl.textContent = hi;
-    levelEl.textContent = level;
-    runChainEl.textContent = runMaxChain;
+    ui.renderHud({ score, highScore: hi, level, runChain: runMaxChain });
   }
 
   function saveState() {
     if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing' && mode !== 'build') return;
-    try {
-      localStorage.setItem(saveKey(gameType), JSON.stringify({
-        savedAt: Date.now(),
-        gameType: gameType,
-        board: board,
-        pair: pair,
-        queue: queue,
-        score: score,
-        level: level,
-        clearedTotal: clearedTotal,
-        runMaxChain: runMaxChain,
-        hiAtStart: hiAtStart,
-        bestChainAtStart: bestChainAtStart,
-        challengeState: gameType === 'challenge' ? challengeState : null,
-        runBuild: gameType === 'challenge' ? runBuild : null,
-      }));
-    } catch (e) {}
-  }
-
-  function loadState() {
-    const saves = Object.keys(SAVE_KEYS).map((type) => {
-      try {
-        const value = JSON.parse(localStorage.getItem(SAVE_KEYS[type]));
-        if (!value || !validBoard(value.board)) return null;
-        if (type === 'classic' && value.board.some((row) => row.includes(GARBAGE))) return null;
-        return Object.assign({}, value, { gameType: type });
-      } catch (e) { return null; }
-    }).filter(Boolean);
-    return saves.sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0))[0] || null;
-  }
-
-  function validBoard(value) {
-    return Array.isArray(value) && value.length === ROWS && value.every((row) =>
-      Array.isArray(row) && row.length === COLS && row.every((v) => Number.isInteger(v) && v >= 0 && v <= GARBAGE)
-    );
-  }
-
-  function validColors(value) {
-    return Array.isArray(value) && value.length === 2 && value.every((color) =>
-      Number.isInteger(color) && color >= 1 && color <= COLORS.length
-    );
-  }
-
-  function validPair(value) {
-    return !!value &&
-      Number.isInteger(value.x) && value.x >= 0 && value.x < COLS &&
-      Number.isInteger(value.y) && value.y >= -1 && value.y < ROWS &&
-      Number.isInteger(value.rot) && value.rot >= 0 && value.rot < ROT.length &&
-      validColors(value.colors);
+    storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, hiAtStart, bestChainAtStart, challengeState, runBuild }));
   }
 
   function restoreState(s) {
     gameType = s.gameType === 'challenge' ? 'challenge' : 'classic';
     selectedGameType = gameType;
-    hi = readNumber(hiKey(gameType));
-    bestChain = readNumber(chainKey(gameType));
-    board = validBoard(s.board) ? s.board : emptyBoard();
-    pair = validPair(s.pair) ? s.pair : null;
-    queue = Array.isArray(s.queue) ? s.queue.filter(validColors) : [];
-    score = Number.isFinite(s.score) ? Math.max(0, s.score) : 0;
-    level = Number.isFinite(s.level) ? Math.max(1, Math.min(12, s.level)) : 1;
-    clearedTotal = Number.isFinite(s.clearedTotal) ? Math.max(0, s.clearedTotal) : 0;
-    runMaxChain = Number.isFinite(s.runMaxChain) ? Math.max(0, s.runMaxChain) : 0;
-    hiAtStart = Number.isFinite(s.hiAtStart) ? Math.max(0, s.hiAtStart) : hi;
-    bestChainAtStart = Number.isFinite(s.bestChainAtStart) ? Math.max(0, s.bestChainAtStart) : bestChain;
-    challengeState = challengeRules.normalize(gameType === 'challenge' ? s.challengeState : {});
-    runBuild = rogueliteRules.normalize(gameType === 'challenge' ? s.runBuild : null, challengeState.completed);
+    hi = storage.readHighScore(gameType);
+    bestChain = storage.readBestChain(gameType);
+    const restored = sessionState.restore(s, { highScore: hi, bestChain });
+    board = restored.board;
+    pair = restored.pair;
+    queue = restored.queue;
+    score = restored.score;
+    level = restored.level;
+    clearedTotal = restored.clearedTotal;
+    runMaxChain = restored.runMaxChain;
+    hiAtStart = restored.hiAtStart;
+    bestChainAtStart = restored.bestChainAtStart;
+    challengeState = restored.challengeState;
+    runBuild = restored.runBuild;
     turnStats = freshTurnStats();
     fillQueue();
     if (!hasUpgradeChoice() && (!pair || collidesAt(pair.x, pair.y, pair.rot))) spawnPair();
@@ -876,314 +661,31 @@
   }
 
   function clearState() {
-    try { localStorage.removeItem(saveKey(gameType)); } catch (e) {}
-  }
-
-  function ensureAudio() {
-    if (muted) return null;
-    if (audioCtx) return audioCtx;
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return null;
-      audioCtx = new AC();
-      return audioCtx;
-    } catch (e) { return null; }
-  }
-
-  function play(name, chain) {
-    const ac = ensureAudio();
-    if (!ac) return;
-    if (ac.state === 'suspended') ac.resume();
-    const now = ac.currentTime;
-    let freq = 240, dur = 0.06, type = 'sine', vol = 0.07;
-    if (name === 'rotate') { freq = 430; dur = 0.07; type = 'triangle'; }
-    else if (name === 'land') { freq = 120; dur = 0.06; type = 'square'; vol = 0.04; }
-    else if (name === 'drop') { freq = 190; dur = 0.12; type = 'sawtooth'; }
-    else if (name === 'clear') { freq = 560; dur = 0.16; type = 'triangle'; vol = 0.1; }
-    else if (name === 'chain') { freq = 520 + Math.min(chain || 1, 10) * 75; dur = 0.22; type = 'triangle'; vol = 0.11; }
-    else if (name === 'level') { freq = 520 + Math.min(chain || 1, 12) * 24; dur = 0.32; type = 'triangle'; vol = 0.1; }
-    else if (name === 'start') { freq = 390; dur = 0.18; type = 'triangle'; vol = 0.09; }
-    else if (name === 'over') { freq = 260; dur = 0.6; type = 'sawtooth'; vol = 0.1; }
-    else if (name === 'move') { freq = 190; dur = 0.025; vol = 0.025; }
-    const osc = ac.createOscillator();
-    const gain = ac.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, now);
-    if (name === 'over') osc.frequency.exponentialRampToValueAtTime(70, now + dur);
-    else if (name === 'chain') osc.frequency.exponentialRampToValueAtTime(freq * 1.45, now + dur);
-    gain.gain.setValueAtTime(vol, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-    osc.connect(gain);
-    gain.connect(ac.destination);
-    osc.start(now);
-    osc.stop(now + dur + 0.02);
-    if (name === 'chain' || name === 'level') {
-      const upper = ac.createOscillator();
-      const upperGain = ac.createGain();
-      upper.type = 'sine';
-      upper.frequency.setValueAtTime(freq * (name === 'chain' ? 1.5 : 1.25), now + 0.055);
-      upperGain.gain.setValueAtTime(0.001, now);
-      upperGain.gain.exponentialRampToValueAtTime(vol * 0.7, now + 0.06);
-      upperGain.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.08);
-      upper.connect(upperGain);
-      upperGain.connect(ac.destination);
-      upper.start(now + 0.05);
-      upper.stop(now + dur + 0.1);
-    }
-  }
-
-  function haptic(pattern) {
-    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
-  }
-
-  function applyMuted() {
-    icSoundOn.hidden = muted;
-    icSoundOff.hidden = !muted;
-    btnSound.setAttribute('aria-label', muted ? '开启声音' : '关闭声音');
+    storage.clear(gameType);
   }
 
   function resize() {
-    const rect = boardArea.getBoundingClientRect();
-    cell = Math.max(18, Math.floor(Math.min(rect.width / COLS, rect.height / ROWS)));
-    const w = cell * COLS, h = cell * ROWS;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    boardWrap.style.width = w + 'px';
-    boardWrap.style.height = h + 'px';
-    boardWrap.style.setProperty('--cell', cell + 'px');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    nextCanvas.width = 144;
-    nextCanvas.height = 248;
-    nextCtx.setTransform(2, 0, 0, 2, 0, 0);
+    cell = renderer.resize();
     drawNext();
   }
 
-  function makeBurst(x, y, color, chain) {
-    const count = Math.min(16, 8 + Math.max(0, (chain || 1) - 1) * 2);
-    for (let i = 0; i < count; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const speed = 35 + Math.random() * 90;
-      particles.push({
-        x: (x + 0.5) * cell,
-        y: (y + 0.5) * cell,
-        vx: Math.cos(a) * speed,
-        vy: Math.sin(a) * speed - 20,
-        life: 0.55 + Math.random() * 0.25,
-        size: cell * (0.08 + Math.random() * 0.1),
-        color: color === GARBAGE ? '#b9b4c8' : COLORS[color - 1],
-      });
-    }
-  }
-
-  function updateParticles(dt) {
-    for (const p of particles) {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += 190 * dt;
-      p.life -= dt;
-    }
-    particles = particles.filter((p) => p.life > 0);
-  }
-
-  function drawBlob(target, x, y, radius, color, alpha, eyes) {
-    const base = COLORS[color - 1];
-    const dark = DARKS[color - 1];
-    target.save();
-    target.globalAlpha = alpha == null ? 1 : alpha;
-    target.translate(x, y);
-    target.fillStyle = base;
-    target.beginPath();
-    target.ellipse(0, radius * 0.05, radius, radius * 0.94, 0, 0, Math.PI * 2);
-    target.fill();
-    target.fillStyle = 'rgba(255,255,255,.24)';
-    target.beginPath();
-    target.ellipse(-radius * 0.3, -radius * 0.36, radius * 0.28, radius * 0.18, -0.6, 0, Math.PI * 2);
-    target.fill();
-    target.strokeStyle = dark;
-    target.lineWidth = Math.max(1, radius * 0.07);
-    target.stroke();
-    if (eyes !== false && radius >= 8) {
-      target.fillStyle = '#fff';
-      target.beginPath();
-      target.ellipse(-radius * 0.18, -radius * 0.04, radius * 0.17, radius * 0.22, 0, 0, Math.PI * 2);
-      target.ellipse(radius * 0.18, -radius * 0.04, radius * 0.17, radius * 0.22, 0, 0, Math.PI * 2);
-      target.fill();
-      target.fillStyle = '#322742';
-      target.beginPath();
-      target.arc(-radius * 0.14, 0, radius * 0.075, 0, Math.PI * 2);
-      target.arc(radius * 0.22, 0, radius * 0.075, 0, Math.PI * 2);
-      target.fill();
-    }
-    target.restore();
-  }
-
-  function drawGarbage(target, x, y, radius, alpha, scale) {
-    target.save();
-    target.globalAlpha = alpha == null ? 1 : alpha;
-    target.translate(x, y);
-    target.scale(scale || 1, scale || 1);
-    const grad = target.createRadialGradient(-radius * .3, -radius * .35, radius * .08, 0, 0, radius);
-    grad.addColorStop(0, '#f0edf6');
-    grad.addColorStop(.42, '#bdb7ca');
-    grad.addColorStop(1, '#716b80');
-    target.fillStyle = grad;
-    target.beginPath();
-    target.arc(0, 0, radius * .88, 0, Math.PI * 2);
-    target.fill();
-    target.strokeStyle = '#514b60';
-    target.lineWidth = Math.max(1, radius * .08);
-    target.stroke();
-    target.fillStyle = '#514b60';
-    target.beginPath();
-    target.arc(-radius * .22, -radius * .02, radius * .09, 0, Math.PI * 2);
-    target.arc(radius * .22, -radius * .02, radius * .09, 0, Math.PI * 2);
-    target.fill();
-    target.restore();
-  }
-
-  function drawBridge(x, y, color, nx, ny) {
-    ctx.fillStyle = COLORS[color - 1];
-    const pad = cell * 0.12;
-    if (nx !== x) ctx.fillRect(Math.min(x, nx) * cell + cell / 2, y * cell + pad, cell, cell - pad * 2);
-    else ctx.fillRect(x * cell + pad, Math.min(y, ny) * cell + cell / 2, cell - pad * 2, cell);
-  }
 
   function drawBoard() {
-    const w = cell * COLS, h = cell * ROWS;
-    const now = performance.now();
-    const fallT = Math.min(1, Math.max(0, (now - fallStartedAt) / fallDuration));
-    const fallEase = 1 - Math.pow(1 - fallT, 3);
-    ctx.clearRect(0, 0, w, h);
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, '#272044');
-    grad.addColorStop(1, '#1b1732');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.strokeStyle = 'rgba(255,255,255,.035)';
-    ctx.lineWidth = 1;
-    for (let x = 1; x < COLS; x++) { ctx.beginPath(); ctx.moveTo(x * cell, 0); ctx.lineTo(x * cell, h); ctx.stroke(); }
-    for (let y = 1; y < ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * cell); ctx.lineTo(w, y * cell); ctx.stroke(); }
-
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
-        const color = board[y][x];
-        if (!color) continue;
-        if (popCells.has(x + ',' + y)) continue;
-        if (fallT < 1 && fallOffsets.has(x + ',' + y)) continue;
-        if (color !== GARBAGE && x + 1 < COLS && board[y][x + 1] === color && !popCells.has((x + 1) + ',' + y) && !fallOffsets.has((x + 1) + ',' + y)) drawBridge(x, y, color, x + 1, y);
-        if (color !== GARBAGE && y + 1 < ROWS && board[y + 1][x] === color && !popCells.has(x + ',' + (y + 1)) && !fallOffsets.has(x + ',' + (y + 1))) drawBridge(x, y, color, x, y + 1);
-      }
-    }
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
-        const color = board[y][x];
-        if (!color) continue;
-        const popping = popCells.has(x + ',' + y);
-        let scale = 1;
-        let alpha = 1;
-        let flash = 0;
-        if (popping) {
-          const t = Math.min(1, Math.max(0, (now - popStartedAt) / popDuration));
-          if (t < 0.36) {
-            scale = 1 + Math.sin(t * Math.PI * 5) * 0.1;
-            flash = Math.max(0, Math.sin((t / 0.36) * Math.PI * 3)) * 0.32;
-          }
-          else {
-            const shrink = (t - 0.36) / 0.64;
-            scale = Math.max(0.08, 1 - shrink * 0.92);
-            alpha = 1 - shrink * 0.72;
-          }
-        }
-        const key = x + ',' + y;
-        const offset = fallOffsets.get(key) || 0;
-        const garbageFall = color === GARBAGE ? garbageFalls.get(key) : null;
-        let drawY = y + 0.5 - offset * (1 - fallEase);
-        let garbageScaleX = scale;
-        let garbageScaleY = scale;
-        if (garbageFall) {
-          const elapsed = now - garbageFallStartedAt - garbageFall.delay;
-          const t = Math.min(1, Math.max(0, elapsed / 540));
-          const progress = bounceOut(t);
-          drawY = garbageFall.startY + (y + 0.5 - garbageFall.startY) * progress;
-          if (t > 0.72 && t < 1) {
-            const squash = Math.sin(((t - 0.72) / 0.28) * Math.PI) * 0.11;
-            garbageScaleX *= 1 + squash;
-            garbageScaleY *= 1 - squash;
-          }
-        }
-        if (color === GARBAGE) {
-          ctx.save();
-          ctx.translate((x + 0.5) * cell, drawY * cell);
-          ctx.scale(garbageScaleX, garbageScaleY);
-          drawGarbage(ctx, 0, 0, cell * 0.44, alpha, 1);
-          ctx.restore();
-        }
-        else drawBlob(ctx, (x + 0.5) * cell, drawY * cell, cell * 0.44 * scale, color, alpha, true);
-        if (flash > 0) {
-          ctx.fillStyle = 'rgba(255,255,255,' + flash.toFixed(3) + ')';
-          ctx.beginPath();
-          ctx.arc((x + 0.5) * cell, drawY * cell, cell * 0.42 * scale, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-
+    let ghostCells = [];
+    let activeCells = [];
     if (pair && (mode === 'playing' || mode === 'paused')) {
-      let gy = pair.y;
-      while (!collidesAt(pair.x, gy + 1, pair.rot)) gy++;
-      for (const p of pairCells(pair, pair.x, gy, pair.rot)) {
-        if (p.y >= 0) drawBlob(ctx, (p.x + 0.5) * cell, (p.y + 0.5) * cell, cell * 0.39, p.color, 0.18, false);
-      }
-      for (const p of currentCells()) {
-        if (p.y >= 0) drawBlob(ctx, (p.x + 0.5) * cell, (p.y + 0.5) * cell, cell * 0.43, p.color, 1, true);
-      }
+      let ghostY = pair.y;
+      while (!collidesAt(pair.x, ghostY + 1, pair.rot)) ghostY++;
+      ghostCells = pairCells(pair, pair.x, ghostY, pair.rot).filter((position) => position.y >= 0);
+      activeCells = currentCells().filter((position) => position.y >= 0);
     }
-
-    for (const p of particles) {
-      ctx.globalAlpha = Math.max(0, p.life / 0.7);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    if (fallT >= 1 && fallOffsets.size) fallOffsets.clear();
-    if (garbageFalls.size && now - garbageFallStartedAt >= fallDuration) garbageFalls.clear();
+    renderer.drawBoard({ board, ghostCells, activeCells });
   }
 
+
   function drawNext() {
-    if (!nextCtx) return;
-    nextCtx.clearRect(0, 0, 72, 124);
     const foresight = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild).foresightLevel : 0;
-    nextPanel.classList.toggle('is-foresight', foresight >= 1);
-    nextLabel.textContent = foresight >= 3 ? 'NEXT 1 · 2 · 3' : 'NEXT 1 · 2';
-    const first = queue[0];
-    const second = queue[1];
-    if (first) {
-      drawBlob(nextCtx, 36, 47, 19, first[0], 1, true);
-      drawBlob(nextCtx, 36, 15, 19, first[1], 1, true);
-    }
-    if (second) {
-      nextCtx.strokeStyle = 'rgba(255,255,255,.12)';
-      nextCtx.beginPath(); nextCtx.moveTo(15, 68); nextCtx.lineTo(57, 68); nextCtx.stroke();
-      drawBlob(nextCtx, 36, 105, 14, second[0], 0.82, true);
-      drawBlob(nextCtx, 36, 80, 14, second[1], 0.82, true);
-    }
-    if (foresight >= 2 && first && first[0] === first[1]) {
-      nextCtx.strokeStyle = '#b8f34a';
-      nextCtx.lineWidth = 1.5;
-      nextCtx.beginPath();
-      nextCtx.arc(36, 31, 28, 0, Math.PI * 2);
-      nextCtx.stroke();
-    }
-    if (foresight >= 3 && queue[2]) {
-      drawBlob(nextCtx, 55, 115, 7, queue[2][0], 0.72, false);
-      drawBlob(nextCtx, 55, 102, 7, queue[2][1], 0.72, false);
-    }
+    renderer.drawNext(queue, foresight);
   }
 
   function frame(now) {
@@ -1207,126 +709,68 @@
     else if (name === 'drop') hardDrop();
   }
 
-  let holdTimer = null;
-  let repeatTimer = null;
-  let heldButton = null;
-  function stopHold() {
-    clearTimeout(holdTimer);
-    clearInterval(repeatTimer);
-    holdTimer = null;
-    repeatTimer = null;
-    if (heldButton) heldButton.classList.remove('is-pressed');
-    heldButton = null;
-  }
+  input = window.PuyoInput.create({
+    controls: document.querySelectorAll('.ctl'),
+    boardWrap,
+    document,
+    onAction: action,
+    onPause: togglePause,
+    isBuildOpen: () => mode === 'build',
+    onCloseBuild: closeBuildOverlay,
+  });
 
-  document.querySelectorAll('.ctl').forEach((btn) => {
-    btn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      stopHold();
-      heldButton = btn;
-      btn.classList.add('is-pressed');
-      if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
-      const name = btn.dataset.a;
-      action(name);
-      if (name === 'left' || name === 'right' || name === 'down') {
-        holdTimer = setTimeout(() => {
-          repeatTimer = setInterval(() => action(name), name === 'down' ? 42 : 76);
-        }, 185);
+
+  ui.bindActions({
+    pause: togglePause,
+    openBuild: openBuildOverlay,
+    closeBuild: closeBuildOverlay,
+    toggleSound: audio.toggle,
+    selectMode(type) {
+      selectGameType(type);
+      hi = storage.readHighScore(selectedGameType);
+      bestChain = storage.readBestChain(selectedGameType);
+      ui.renderHud({ score, highScore: hi, level, runChain: runMaxChain });
+      if (mode === 'menu') showOverlay('menu');
+    },
+    primary() {
+      ensureAudio();
+      if (mode === 'menu' || mode === 'gameover') newGame();
+      else if (mode === 'paused') setMode('playing');
+    },
+    resume() {
+      resumeOverlay.hidden = true;
+      lastT = performance.now();
+      if (!openUpgradeChoice()) {
+        mode = 'playing';
+        btnPause.hidden = false;
       }
-    });
-    btn.addEventListener('pointerup', stopHold);
-    btn.addEventListener('pointercancel', stopHold);
-    btn.addEventListener('lostpointercapture', stopHold);
-  });
-
-  document.addEventListener('keydown', (e) => {
-    const key = e.key;
-    if (key === 'Escape' && mode === 'build') {
-      e.preventDefault();
-      closeBuildOverlay();
-      return;
-    }
-    if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X'].includes(key)) e.preventDefault();
-    if (e.repeat && !['ArrowLeft', 'ArrowRight', 'ArrowDown'].includes(key)) return;
-    if (key === 'ArrowLeft' || key === 'a' || key === 'A') action('left');
-    else if (key === 'ArrowRight' || key === 'd' || key === 'D') action('right');
-    else if (key === 'ArrowDown' || key === 's' || key === 'S') action('down');
-    else if (key === 'ArrowUp' || key === 'x' || key === 'X') action('cw');
-    else if (key === 'z' || key === 'Z') action('ccw');
-    else if (key === ' ') action('drop');
-    else if (key === 'p' || key === 'P' || key === 'Escape') togglePause();
-  });
-
-  boardWrap.addEventListener('pointerdown', (e) => {
-    touchStart = { x: e.clientX, y: e.clientY };
-  });
-  boardWrap.addEventListener('pointerup', (e) => {
-    if (!touchStart) return;
-    const dx = e.clientX - touchStart.x, dy = e.clientY - touchStart.y;
-    touchStart = null;
-    if (Math.abs(dx) < 16 && Math.abs(dy) < 16) action('cw');
-    else if (Math.abs(dx) > Math.abs(dy)) action(dx > 0 ? 'right' : 'left');
-    else if (dy > 45) action('drop');
-    else if (dy > 0) action('down');
-    else action('cw');
-  });
-
-  btnPause.addEventListener('click', togglePause);
-  buildButton.addEventListener('click', openBuildOverlay);
-  buildClose.addEventListener('click', closeBuildOverlay);
-  btnSound.addEventListener('click', () => {
-    muted = !muted;
-    try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
-    applyMuted();
-    if (!muted) ensureAudio();
-  });
-  modePicker.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-mode]');
-    if (!button) return;
-    selectGameType(button.dataset.mode);
-    hi = readNumber(hiKey(selectedGameType));
-    bestChain = readNumber(chainKey(selectedGameType));
-    hiEl.textContent = hi;
-    if (mode === 'menu') ovSub.textContent = selectedGameType === 'challenge' ? '完成动态任务，清除不断出现的干扰噗呦' : '连接 4 颗同色噗呦，挑战纯粹的高分连锁';
-  });
-  ovBtn.addEventListener('click', () => {
-    ensureAudio();
-    if (mode === 'menu' || mode === 'gameover') newGame();
-    else if (mode === 'paused') setMode('playing');
-  });
-  btnResumeContinue.addEventListener('click', () => {
-    resumeOverlay.hidden = true;
-    lastT = performance.now();
-    if (!openUpgradeChoice()) {
+      updateChallengeHud();
+      ensureAudio();
+    },
+    resumeNew() {
+      resumeOverlay.hidden = true;
+      selectedGameType = gameType;
+      mode = 'menu';
+      showOverlay('menu');
+    },
+    chooseUpgrade(id) {
+      if (mode !== 'choosing') return;
+      const result = rogueliteRules.choose(runBuild, id, challengeState.completed);
+      if (!result.selected) return;
+      runBuild = result.state;
+      upgradeOverlay.hidden = true;
       mode = 'playing';
       btnPause.hidden = false;
-    }
-    updateChallengeHud();
-    ensureAudio();
+      if (!pair) spawnPair();
+      updateChallengeHud();
+      drawNext();
+      showChallengeMessage(result.selected.name + ' · 已强化', true);
+      play('level', challengeState.stage);
+      haptic([14, 30, 20]);
+      saveState();
+    },
   });
-  btnResumeNew.addEventListener('click', () => {
-    resumeOverlay.hidden = true;
-    selectedGameType = gameType;
-    mode = 'menu';
-    showOverlay('menu');
-  });
-  upgradeChoices.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-upgrade]');
-    if (!button || mode !== 'choosing') return;
-    const result = rogueliteRules.choose(runBuild, button.dataset.upgrade, challengeState.completed);
-    if (!result.selected) return;
-    runBuild = result.state;
-    upgradeOverlay.hidden = true;
-    mode = 'playing';
-    btnPause.hidden = false;
-    if (!pair) spawnPair();
-    updateChallengeHud();
-    drawNext();
-    showChallengeMessage(result.selected.name + ' · 已强化', true);
-    play('level', challengeState.stage);
-    haptic([14, 30, 20]);
-    saveState();
-  });
+
 
   window.addEventListener('resize', resize);
   window.addEventListener('pagehide', saveState);
@@ -1337,10 +781,9 @@
   board = emptyBoard();
   fillQueue();
   resize();
-  applyMuted();
   updateHud();
-  const saved = loadState();
-  if (saved && validBoard(saved.board)) {
+  const saved = storage.loadLatest();
+  if (saved && storage.validBoard(saved.board)) {
     if (restoreState(saved)) {
       mode = 'resume';
       resumeSub.textContent = (gameType === 'challenge' ? '挑战模式' : '经典模式') + ' · 得分 ' + score + ' · 等级 ' + level + ' · 本局最高连锁 ' + runMaxChain;
@@ -1363,9 +806,9 @@
   if (window.__DSH_TEST__ || new URLSearchParams(location.search).has('test')) {
     window.__puyoTest = {
       getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, gameType, runMaxChain, bestChain, clearedTotal, challengeState: JSON.parse(JSON.stringify(challengeState)), runBuild: JSON.parse(JSON.stringify(runBuild)) }),
-      setBoard: (next) => { if (validBoard(next)) board = next.map((r) => r.slice()); },
+      setBoard: (next) => { if (storage.validBoard(next)) board = next.map((r) => r.slice()); },
       setPair: (next) => {
-        if (validPair(next)) pair = JSON.parse(JSON.stringify(next));
+        if (storage.validPair(next)) pair = JSON.parse(JSON.stringify(next));
       },
       setProgress: (cleared, nextScore) => {
         clearedTotal = Math.max(0, Number(cleared) || 0);
