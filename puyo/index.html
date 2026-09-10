@@ -7,7 +7,7 @@
 <title>噗呦噗呦 · 连锁消除</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
 <main class="app">
@@ -83,6 +83,15 @@
             <div class="upgrade-choices" id="upgradeChoices"></div>
           </div>
         </div>
+        <div class="overlay upgrade-overlay build-overlay" id="buildOverlay" role="dialog" aria-modal="true" aria-labelledby="buildTitle" hidden>
+          <div class="upgrade-panel build-panel">
+            <span class="upgrade-kicker">CURRENT BUILD</span>
+            <h2 class="ov-title" id="buildTitle">本局强化</h2>
+            <p class="ov-sub">本局结束后会清空</p>
+            <div class="build-details" id="buildDetails"></div>
+            <button class="ov-btn build-close" id="buildClose" type="button">返回游戏</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -99,16 +108,21 @@
       </div>
       <div class="challenge-card" id="challengeCard" hidden>
         <span>STAGE <b id="challengeStage">1</b> <em id="specialBadge" hidden>SPECIAL</em></span>
+        <small class="mission-scope" id="missionScope">单回合</small>
         <strong id="missionTitle">完成 2 CHAIN</strong>
-        <small id="missionProgress">0 / 2 · 剩余 8 组</small>
+        <small id="missionProgress">最高 0 / 2 CHAIN</small>
         <i><em id="missionMeter"></em></i>
+        <small class="mission-deadline" id="missionDeadline">任务期限：还可放 8 组</small>
         <div class="garbage-preview" aria-live="polite">
           <span>待落</span>
           <div id="garbageQueue" aria-hidden="true"></div>
           <b id="garbageCount">×1</b>
-          <small id="garbageEta">10 组后</small>
+          <small id="garbageEta">10 组后落下</small>
         </div>
-        <div class="build-summary" id="buildSummary" hidden></div>
+        <div class="build-summary" id="buildSummary" hidden>
+          <button class="build-button" id="buildButton" type="button"><span>本局强化</span><b id="buildCount">0</b><small>查看效果 ›</small></button>
+          <div class="build-chips" id="buildChips"></div>
+        </div>
       </div>
       <div class="recipe">
         <span class="recipe__dot"></span>
@@ -129,8 +143,8 @@
   <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · P 暂停</p>
 </main>
 <script src="../input-guard.js?v=7"></script>
-<script src="challenge-rules.js?v=5"></script>
+<script src="challenge-rules.js?v=6"></script>
 <script src="roguelite-rules.js?v=3"></script>
-<script src="game.js?v=23"></script>
+<script src="game.js?v=25"></script>
 </body>
 </html>

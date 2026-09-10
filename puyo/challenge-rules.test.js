@@ -77,6 +77,10 @@ assert.equal(rules.missionProgress({ type: 'lowBoard', maxHeight: 5, progress: 0
 assert.equal(rules.missionProgress({ type: 'lowBoard', maxHeight: 5, progress: 0 }, { boardHeight: null, clearedThisTurn: true }), 0);
 assert.equal(rules.missionProgress({ type: 'clearStreak', progress: 2 }, { clearStreak: 0 }), 0);
 assert.equal(rules.missionProgress({ type: 'targetColor', progress: 4 }, { colorClearedCount: 3 }), 7);
+assert.deepEqual(rules.missionPresentation({ type: 'chain', target: 3 }, 2), { scope: '单回合', progress: '最高 2 / 3 CHAIN' });
+assert.deepEqual(rules.missionPresentation({ type: 'garbageClear', target: 5 }, 2), { scope: '累计任务', progress: '已累计清除 2 / 5 颗' });
+assert.deepEqual(rules.missionPresentation({ type: 'clearStreak', target: 3 }, 1), { scope: '连续任务', progress: '当前连续 1 / 3 回合' });
+assert.equal(rules.missionPresentation({ type: 'lowBoard', target: 1, maxHeight: 6 }, 0).progress, '目标：消除后不超过 6 行');
 
 const streakMission = rules.resolveTurn({
   completed: 4,

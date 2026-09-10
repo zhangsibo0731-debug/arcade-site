@@ -37,12 +37,20 @@
   const challengeCard = $('challengeCard');
   const challengeStage = $('challengeStage');
   const missionTitle = $('missionTitle');
+  const missionScope = $('missionScope');
   const missionProgress = $('missionProgress');
+  const missionDeadline = $('missionDeadline');
   const missionMeter = $('missionMeter');
   const garbageQueue = $('garbageQueue');
   const garbageCount = $('garbageCount');
   const garbageEta = $('garbageEta');
   const buildSummary = $('buildSummary');
+  const buildButton = $('buildButton');
+  const buildCount = $('buildCount');
+  const buildChips = $('buildChips');
+  const buildOverlay = $('buildOverlay');
+  const buildDetails = $('buildDetails');
+  const buildClose = $('buildClose');
   const nextPanel = nextCanvas.parentElement;
   const nextLabel = nextPanel.querySelector('.next-panel__label');
   const upgradeOverlay = $('upgradeOverlay');
@@ -107,6 +115,7 @@
   let turnStats = freshTurnStats();
   const triggeredUpgrades = new Set();
   const upgradeFlashTimers = new Map();
+  let buildReturnMode = 'playing';
 
   function freshTurnStats() {
     return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, garbageCleared: 0, scoreGained: 0, clearedThisTurn: false, boardHeight: null, clearedColors: [], colorClearedCount: 0, extraDefense: 0, missionBaseProgress: null };
@@ -144,6 +153,31 @@
       return '<button type="button" data-upgrade="' + card.id + '" class="upgrade-card" data-rarity="' + card.rarity + '">' +
         '<span><em>' + card.school + '</em><b>' + levelText + '</b></span><strong>' + card.name + '</strong><small>' + card.effect + '</small></button>';
     }).join('');
+  }
+
+  function renderBuildDetails() {
+    const active = rogueliteRules.DEFINITIONS.filter((item) => runBuild.upgrades[item.id]);
+    buildDetails.innerHTML = active.map((item) => {
+      const level = runBuild.upgrades[item.id];
+      return '<article class="build-detail" data-rarity="' + item.rarity + '"><span><em>' + item.school + '</em><b>' + ['','Ⅰ','Ⅱ','Ⅲ'][level] + '</b></span><strong>' + item.name + '</strong><small>' + item.effects[level - 1] + '</small></article>';
+    }).join('');
+  }
+
+  function openBuildOverlay() {
+    if (gameType !== 'challenge' || !Object.keys(runBuild.upgrades).length || !['playing', 'paused'].includes(mode)) return;
+    buildReturnMode = mode;
+    mode = 'build';
+    btnPause.hidden = true;
+    renderBuildDetails();
+    buildOverlay.hidden = false;
+  }
+
+  function closeBuildOverlay() {
+    if (mode !== 'build') return;
+    buildOverlay.hidden = true;
+    mode = buildReturnMode === 'paused' ? 'paused' : 'playing';
+    btnPause.hidden = mode !== 'playing';
+    lastT = performance.now();
   }
 
   function openUpgradeChoice() {
@@ -187,20 +221,25 @@
     missionTitle.textContent = mission.title;
     const previewMission = turnStats.missionBaseProgress == null ? mission : Object.assign({}, mission, { progress: turnStats.missionBaseProgress });
     const displayProgress = mode === 'resolving' ? challengeRules.missionProgress(previewMission, turnStats) : mission.progress;
-    missionProgress.textContent = displayProgress + ' / ' + mission.target + ' · 剩余 ' + challengeState.turnsLeft + ' 组';
+    const presentation = challengeRules.missionPresentation(mission, displayProgress);
+    missionScope.textContent = presentation.scope;
+    missionProgress.textContent = presentation.progress;
+    missionDeadline.textContent = '任务期限：还可放 ' + challengeState.turnsLeft + ' 组';
+    missionDeadline.classList.toggle('is-urgent', challengeState.turnsLeft <= 2);
     missionMeter.style.width = Math.min(100, displayProgress / mission.target * 100) + '%';
     const pending = challengeState.pendingGarbage || 0;
     garbageQueue.innerHTML = Array.from({ length: Math.min(6, pending) }, () => '<i></i>').join('');
     garbageCount.textContent = '×' + pending;
-    garbageEta.textContent = challengeState.pressureIn + ' 组后';
+    garbageEta.textContent = challengeState.pressureIn + ' 组后落下';
     challengeCard.classList.toggle('is-imminent', pending > 0 && challengeState.pressureIn <= 2);
     challengeCard.classList.toggle('is-safe', pending === 0);
     const activeUpgrades = rogueliteRules.DEFINITIONS.filter((item) => runBuild.upgrades[item.id]);
     buildSummary.hidden = !activeUpgrades.length;
-    buildSummary.innerHTML = activeUpgrades.length ? '<b>构筑</b> · ' + activeUpgrades.map((item) => '<span data-upgrade="' + item.id + '" class="' + (triggeredUpgrades.has(item.id) ? 'is-triggered' : '') + '">' + item.name + ['','Ⅰ','Ⅱ','Ⅲ'][runBuild.upgrades[item.id]] + '</span>').join(' · ') : '';
+    buildCount.textContent = activeUpgrades.length;
+    buildChips.innerHTML = activeUpgrades.map((item) => '<span data-upgrade="' + item.id + '" class="' + (triggeredUpgrades.has(item.id) ? 'is-triggered' : '') + '">' + item.name + ['','Ⅰ','Ⅱ','Ⅲ'][runBuild.upgrades[item.id]] + '</span>').join(' · ');
   }
 
-  function showChallengeMessage(text, complete) {
+  function showChallengeMessage(text, complete, duration) {
     clearTimeout(chainResultTimer);
     chainResult.textContent = text;
     chainResult.hidden = true;
@@ -210,7 +249,7 @@
     chainResultTimer = setTimeout(() => {
       chainResult.hidden = true;
       challengeCard.classList.remove('is-complete');
-    }, 1120);
+    }, duration || 1120);
   }
 
   function emptyBoard() {
@@ -377,6 +416,7 @@
 
   function finishChallengeTurn() {
     if (gameType !== 'challenge') return;
+    const stageBefore = challengeState.stage;
     const occupiedTop = board.findIndex((row) => row.some(Boolean));
     turnStats.boardHeight = occupiedTop < 0 ? 0 : ROWS - occupiedTop;
     const modifiers = rogueliteRules.modifiers(runBuild);
@@ -412,14 +452,14 @@
     placed.push(...entryPlaced);
     if (placed.length) startGarbageFall(placed);
     if (outcome.canceled || buffered) flashGarbageDefense();
-    if (outcome.enteredSpecial) showChallengeMessage('SPECIAL STAGE · ' + challengeState.special.title, true);
-    else if (outcome.specialCompleted) showChallengeMessage('SPECIAL CLEAR!  +' + outcome.bonus, true);
-    else if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus + (outcome.canceled ? ' · 抵消 × ' + outcome.canceled : ''), true);
-    else if (outcome.specialFailed) showChallengeMessage('SPECIAL FAILED · 惩罚干扰 × ' + outcome.specialPenalty, false);
+    if (outcome.enteredSpecial) showChallengeMessage('STAGE ' + stageBefore + ' 完成\n特殊关：' + challengeState.special.title, true, 1650);
+    else if (outcome.specialCompleted) showChallengeMessage('特殊关完成 → STAGE ' + challengeState.stage + '\n奖励 +' + outcome.bonus, true, 1650);
+    else if (outcome.completed) showChallengeMessage('STAGE ' + stageBefore + ' 完成 → STAGE ' + challengeState.stage + '\n奖励 +' + outcome.bonus + (outcome.canceled ? ' · 抵消 ×' + outcome.canceled : ''), true, 1550);
+    else if (outcome.specialFailed) showChallengeMessage('特殊关失败 · STAGE ' + stageBefore + ' 保持不变\n惩罚干扰 ×' + outcome.specialPenalty, false, 1900);
     else if (placed.length) showChallengeMessage((outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, false);
     else if (buffered) showChallengeMessage('缓冲层抵消 · × ' + buffered, true);
     else if (outcome.canceled) showChallengeMessage((outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消') + ' · × ' + outcome.canceled, outcome.pressureTriggered);
-    else if (outcome.expired) showChallengeMessage('新任务出现', false);
+    else if (outcome.expired) showChallengeMessage('任务失败 · STAGE ' + stageBefore + ' 保持不变\n已更换新任务', false, 1800);
     turnStats = freshTurnStats();
     updateChallengeHud();
     updateHud();
@@ -678,7 +718,7 @@
     overlayEl.hidden = true;
     resumeOverlay.hidden = true;
     upgradeOverlay.hidden = true;
-    upgradeOverlay.hidden = true;
+    buildOverlay.hidden = true;
     btnPause.hidden = false;
     modePicker.hidden = true;
     spawnPair();
@@ -758,7 +798,7 @@
   }
 
   function saveState() {
-    if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing') return;
+    if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing' && mode !== 'build') return;
     try {
       localStorage.setItem(saveKey(gameType), JSON.stringify({
         savedAt: Date.now(),
@@ -1201,6 +1241,11 @@
 
   document.addEventListener('keydown', (e) => {
     const key = e.key;
+    if (key === 'Escape' && mode === 'build') {
+      e.preventDefault();
+      closeBuildOverlay();
+      return;
+    }
     if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X'].includes(key)) e.preventDefault();
     if (e.repeat && !['ArrowLeft', 'ArrowRight', 'ArrowDown'].includes(key)) return;
     if (key === 'ArrowLeft' || key === 'a' || key === 'A') action('left');
@@ -1227,6 +1272,8 @@
   });
 
   btnPause.addEventListener('click', togglePause);
+  buildButton.addEventListener('click', openBuildOverlay);
+  buildClose.addEventListener('click', closeBuildOverlay);
   btnSound.addEventListener('click', () => {
     muted = !muted;
     try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}

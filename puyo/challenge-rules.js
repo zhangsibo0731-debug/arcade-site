@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 5;
+  const VERSION = 6;
   const GARBAGE = 6;
   const MISSION_TYPES = Object.freeze(['chain', 'clear', 'colors', 'largeGroup', 'garbageClear', 'clearStreak', 'scoreTurn', 'lowBoard', 'targetColor']);
   const COLOR_NAMES = Object.freeze(['红色', '黄色', '绿色', '蓝色']);
@@ -118,6 +118,20 @@
     if (mission.type === 'lowBoard') return stats.clearedThisTurn && Number.isFinite(stats.boardHeight) && stats.boardHeight <= (mission.maxHeight || 6) ? 1 : 0;
     if (mission.type === 'targetColor') return (mission.progress || 0) + (stats.colorClearedCount || 0);
     return Math.max(mission.progress || 0, stats.cleared || 0);
+  }
+
+  function missionPresentation(mission, progress) {
+    const value = Math.max(0, Number(progress) || 0);
+    const target = Math.max(1, Number(mission.target) || 1);
+    if (mission.type === 'chain') return { scope: '单回合', progress: '最高 ' + value + ' / ' + target + ' CHAIN' };
+    if (mission.type === 'colors') return { scope: '单次消除', progress: '最多同时 ' + value + ' / ' + target + ' 种颜色' };
+    if (mission.type === 'largeGroup') return { scope: '单次连接', progress: '最大同色连接 ' + value + ' / ' + target + ' 颗' };
+    if (mission.type === 'garbageClear') return { scope: '累计任务', progress: '已累计清除 ' + value + ' / ' + target + ' 颗' };
+    if (mission.type === 'clearStreak') return { scope: '连续任务', progress: '当前连续 ' + value + ' / ' + target + ' 回合' };
+    if (mission.type === 'scoreTurn') return { scope: '单回合', progress: '单回合最高 ' + value + ' / ' + target + ' 分' };
+    if (mission.type === 'lowBoard') return { scope: '单回合', progress: value >= target ? '已达成低堆叠目标' : '目标：消除后不超过 ' + (mission.maxHeight || 6) + ' 行' };
+    if (mission.type === 'targetColor') return { scope: '累计任务', progress: '已累计消除 ' + value + ' / ' + target + ' 颗' };
+    return { scope: '单回合', progress: '单回合最多 ' + value + ' / ' + target + ' 颗' };
   }
 
   function advanceMission(state, random) {
@@ -240,5 +254,5 @@
     return placed;
   }
 
-  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, garbageForStage, defenseForChain, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
+  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, defenseForChain, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
 })(window);
