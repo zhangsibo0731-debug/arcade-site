@@ -67,7 +67,7 @@
   const GARBAGE = challengeRules.GARBAGE;
   const boardRules = window.PuyoBoardRules.create({ rows: ROWS, cols: COLS, garbage: GARBAGE, rotations: ROT });
   const challengeEffects = window.PuyoChallengeEffects.create({ challengeRules, rogueliteRules, boardRules, garbage: GARBAGE, rows: ROWS });
-  const renderer = window.PuyoRenderer.create({ canvas, nextCanvas, boardWrap, boardArea, nextPanel, nextLabel, colors: COLORS, darks: DARKS, rows: ROWS, cols: COLS });
+  const renderer = window.PuyoRenderer.create({ canvas, nextCanvas, boardWrap, boardArea, nextPanel, nextLabel, colors: COLORS, darks: DARKS, rows: ROWS, cols: COLS, garbage: GARBAGE });
   const ui = window.PuyoUI.create({
     challengeRules,
     rogueliteRules,

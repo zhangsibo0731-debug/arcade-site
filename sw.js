@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v122';
+const CACHE = 'arcade-v123';
 const ASSETS = [
   './',
   './index.html',
@@ -40,7 +40,7 @@ const ASSETS = [
   './puyo/challenge-rules.js?v=6',
   './puyo/roguelite-rules.js?v=4',
   './puyo/challenge-effects.js?v=1',
-  './puyo/game.js?v=35',
+  './puyo/game.js?v=36',
   './fishing/index.html',
   './fishing/styles.css?v=27',
   './fishing/fish-metadata.js?v=1',

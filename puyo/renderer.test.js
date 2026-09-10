@@ -4,9 +4,12 @@ const assert = require('assert');
 global.devicePixelRatio = 3;
 require('./renderer.js');
 
-function context() {
+function context(metrics) {
   const gradient = { addColorStop() {} };
-  return new Proxy({ createRadialGradient: () => gradient }, {
+  return new Proxy({ createRadialGradient: () => {
+    if (metrics) metrics.radialGradients++;
+    return gradient;
+  } }, {
     get(target, key) {
       if (key in target) return target[key];
       if (typeof key === 'string' && key.startsWith('create')) return () => gradient;
@@ -16,7 +19,8 @@ function context() {
   });
 }
 
-const boardContext = context();
+const metrics = { radialGradients: 0 };
+const boardContext = context(metrics);
 const nextContext = context();
 const canvas = { style: {}, getContext: () => boardContext };
 const nextCanvas = { getContext: () => nextContext };
@@ -34,6 +38,7 @@ const renderer = global.PuyoRenderer.create({
   darks: ['#900', '#990'],
   rows: 12,
   cols: 6,
+  garbage: 6,
 });
 
 assert.strictEqual(renderer.resize(), 40);
@@ -55,6 +60,7 @@ renderer.addRemoteLink([0, 11], [1, 11]);
 renderer.burst(0, 11, 1, 2);
 renderer.update(0.016);
 assert.doesNotThrow(() => renderer.drawBoard({ board, ghostCells: [], activeCells: [] }));
+assert.ok(metrics.radialGradients > 0, 'garbage cells should use the gray radial-gradient renderer');
 renderer.resetEffects();
 
 console.log('puyo renderer tests passed');
