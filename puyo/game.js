@@ -105,6 +105,8 @@
   let challengeState = challengeRules.normalize({});
   let runBuild = rogueliteRules.normalize({}, 0);
   let turnStats = freshTurnStats();
+  const triggeredUpgrades = new Set();
+  const upgradeFlashTimers = new Map();
 
   function freshTurnStats() {
     return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, garbageCleared: 0, scoreGained: 0, clearedThisTurn: false, boardHeight: null, clearedColors: [], colorClearedCount: 0, extraDefense: 0, missionBaseProgress: null };
@@ -112,6 +114,25 @@
 
   function hasUpgradeChoice() {
     return gameType === 'challenge' && runBuild.pendingChoice.length > 0;
+  }
+
+  function flashUpgrade(id) {
+    if (!runBuild.upgrades[id]) return;
+    triggeredUpgrades.add(id);
+    clearTimeout(upgradeFlashTimers.get(id));
+    updateChallengeHud();
+    upgradeFlashTimers.set(id, setTimeout(() => {
+      triggeredUpgrades.delete(id);
+      upgradeFlashTimers.delete(id);
+      updateChallengeHud();
+    }, 720));
+  }
+
+  function flashGarbageDefense() {
+    challengeCard.classList.remove('is-defending');
+    void challengeCard.offsetWidth;
+    challengeCard.classList.add('is-defending');
+    setTimeout(() => challengeCard.classList.remove('is-defending'), 520);
   }
 
   function renderUpgradeChoices() {
@@ -176,7 +197,7 @@
     challengeCard.classList.toggle('is-safe', pending === 0);
     const activeUpgrades = rogueliteRules.DEFINITIONS.filter((item) => runBuild.upgrades[item.id]);
     buildSummary.hidden = !activeUpgrades.length;
-    buildSummary.innerHTML = activeUpgrades.length ? '<b>构筑</b> · ' + activeUpgrades.map((item) => item.name + ['','Ⅰ','Ⅱ','Ⅲ'][runBuild.upgrades[item.id]]).join(' · ') : '';
+    buildSummary.innerHTML = activeUpgrades.length ? '<b>构筑</b> · ' + activeUpgrades.map((item) => '<span data-upgrade="' + item.id + '" class="' + (triggeredUpgrades.has(item.id) ? 'is-triggered' : '') + '">' + item.name + ['','Ⅰ','Ⅱ','Ⅲ'][runBuild.upgrades[item.id]] + '</span>').join(' · ') : '';
   }
 
   function showChallengeMessage(text, complete) {
@@ -359,8 +380,14 @@
     const occupiedTop = board.findIndex((row) => row.some(Boolean));
     turnStats.boardHeight = occupiedTop < 0 ? 0 : ROWS - occupiedTop;
     const modifiers = rogueliteRules.modifiers(runBuild);
-    if (turnStats.maxChain >= 2) turnStats.extraDefense += modifiers.chainDefense;
-    if (modifiers.largeGroupThreshold && turnStats.largestGroup >= modifiers.largeGroupThreshold) turnStats.extraDefense += modifiers.largeGroupDefense;
+    if (turnStats.maxChain >= 2 && modifiers.chainDefense) {
+      turnStats.extraDefense += modifiers.chainDefense;
+      flashUpgrade('chainShield');
+    }
+    if (modifiers.largeGroupThreshold && turnStats.largestGroup >= modifiers.largeGroupThreshold) {
+      turnStats.extraDefense += modifiers.largeGroupDefense;
+      flashUpgrade('largeGroup');
+    }
     const outcome = challengeRules.resolveTurn(challengeState, turnStats);
     challengeState = outcome.state;
     if (outcome.specialCompleted) runBuild = rogueliteRules.offerSpecial(runBuild, challengeState.completed, Math.random);
@@ -378,11 +405,13 @@
       pressure = Math.max(0, pressure - modifiers.bufferReduction);
       buffered = outcome.pressure - pressure;
       runBuild.bufferedStage = challengeState.stage;
+      if (buffered) flashUpgrade('buffer');
     }
     const placed = pressure ? challengeRules.placeGarbage(board, pressure, Math.random, GARBAGE) : [];
     const entryPlaced = outcome.entryGarbage ? challengeRules.placeGarbage(board, outcome.entryGarbage, Math.random, GARBAGE) : [];
     placed.push(...entryPlaced);
     if (placed.length) startGarbageFall(placed);
+    if (outcome.canceled || buffered) flashGarbageDefense();
     if (outcome.enteredSpecial) showChallengeMessage('SPECIAL STAGE · ' + challengeState.special.title, true);
     else if (outcome.specialCompleted) showChallengeMessage('SPECIAL CLEAR!  +' + outcome.bonus, true);
     else if (outcome.completed) showChallengeMessage('MISSION CLEAR!  +' + outcome.bonus + (outcome.canceled ? ' · 抵消 × ' + outcome.canceled : ''), true);
@@ -423,7 +452,11 @@
     let garbageCells = gameType === 'challenge' ? challengeRules.adjacentGarbage(board, cells, GARBAGE) : [];
     if (gameType === 'challenge') {
       let extraClear = garbageCells.length ? modifiers.cleanerClear : 0;
-      if (modifiers.colorBurstThreshold && groups.some((group) => group.cells.length >= modifiers.colorBurstThreshold)) extraClear += modifiers.colorBurstClear;
+      if (extraClear) flashUpgrade('cleaner');
+      if (modifiers.colorBurstThreshold && groups.some((group) => group.cells.length >= modifiers.colorBurstThreshold)) {
+        extraClear += modifiers.colorBurstClear;
+        flashUpgrade('colorBurst');
+      }
       if (extraClear) {
         const excluded = new Set(garbageCells.map((p) => p[0] + ',' + p[1]));
         const extraCells = [];
@@ -441,6 +474,7 @@
     const sizeBonus = groups.reduce((sum, g) => sum + groupBonus(g.cells.length), 0);
     const multiplier = Math.max(1, chainPower + colorBonus + sizeBonus);
     const chainScoreMultiplier = chain >= 3 ? modifiers.chainScoreMultiplier : 1;
+    if (chainScoreMultiplier > 1) flashUpgrade('chainEcho');
     const gained = Math.round(cells.length * 10 * multiplier * chainScoreMultiplier);
 
     const previousLevel = level;
@@ -596,6 +630,10 @@
     if (collidesAt(pair.x, pair.y + 1, pair.rot)) {
       lockAcc += dt;
       const lockMultiplier = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild).lockDelayMultiplier : 1;
+      if (lockMultiplier > 1 && lockAcc >= 0.48 && !pair.steadyNotified) {
+        pair.steadyNotified = true;
+        flashUpgrade('steadyHands');
+      }
       if (lockAcc >= 0.48 * lockMultiplier) lockPair();
     } else {
       lockAcc = 0;
@@ -620,6 +658,9 @@
     runBuild = rogueliteRules.normalize({}, 0);
     turnStats = freshTurnStats();
     particles = [];
+    triggeredUpgrades.clear();
+    upgradeFlashTimers.forEach((timer) => clearTimeout(timer));
+    upgradeFlashTimers.clear();
     popCells.clear();
     fallOffsets.clear();
     garbageFalls.clear();
