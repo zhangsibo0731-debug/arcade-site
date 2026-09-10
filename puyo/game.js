@@ -131,6 +131,7 @@
   let fallDuration = 210;
   let input = null;
   let lockResets = 0;
+  let resumeNeedsResolution = false;
   let challengeState = challengeRules.normalize({});
   let runBuild = rogueliteRules.normalize({}, 0);
   let turnStats = freshTurnStats();
@@ -337,12 +338,13 @@
 
   const groupBonus = boardRules.groupBonus;
 
-  function animateStageReward(cells, incomingCount) {
+  function animateStageReward(cells, incomingCount, token) {
     popDuration = 340;
     renderer.startPop(cells, popDuration);
     const incomingDuration = incomingCount ? 590 + Math.max(0, incomingCount - 1) * 55 : 0;
     fallDuration = popDuration + 220 + incomingDuration;
     setTimeout(() => {
+      if (token !== resolveToken || mode !== 'resolving') return;
       cells.forEach((p) => {
         if (board[p[1]][p[0]] !== GARBAGE) return;
         renderer.burst(p[0], p[1], GARBAGE, 2);
@@ -352,6 +354,7 @@
       play('clear', 2);
       applyGravity(true);
       setTimeout(() => {
+        if (token !== resolveToken || mode !== 'resolving') return;
         if (!incomingCount) return;
         const placed = challengeRules.placeGarbage(board, incomingCount, Math.random, GARBAGE);
         if (placed.length) startGarbageFall(placed);
@@ -359,7 +362,7 @@
     }, popDuration);
   }
 
-  function finishChallengeTurn() {
+  function finishChallengeTurn(token) {
     if (gameType !== 'challenge') return;
     const result = challengeEffects.settleTurn({
       challengeState,
@@ -372,7 +375,7 @@
     runBuild = result.runBuild;
     result.triggered.forEach(flashUpgrade);
     score += result.scoreBonus;
-    if (result.removed.length) animateStageReward(result.removed, result.incomingCount);
+    if (result.removed.length) animateStageReward(result.removed, result.incomingCount, token);
     else if (result.placed.length) startGarbageFall(result.placed);
     if (result.defenseFlash) flashGarbageDefense();
     if (result.message) showChallengeMessage(result.message.text, result.message.complete, result.message.duration);
@@ -391,7 +394,7 @@
       if (chain > 2) showChainResult(chain - 1);
       // Reward gravity may form another clear. Finish it before spawning,
       // without spending another turn or crediting the newly issued task.
-      if (!taskSettled && finishChallengeTurn()) {
+      if (!taskSettled && finishChallengeTurn(token)) {
         setTimeout(() => resolveStep(chain, token, true), fallDuration);
         return;
       }
@@ -535,6 +538,7 @@
 
   function newGame() {
     resolveToken++;
+    resumeNeedsResolution = false;
     gameType = selectedGameType;
     hi = storage.readHighScore(gameType);
     bestChain = storage.readBestChain(gameType);
@@ -653,11 +657,20 @@
     runBuild = restored.runBuild;
     turnStats = freshTurnStats();
     fillQueue();
-    if (!hasUpgradeChoice() && (!pair || collidesAt(pair.x, pair.y, pair.rot))) spawnPair();
+    // Older builds could save a board after a delayed Stage reward changed it,
+    // leaving an already-complete group underneath an active pair. Preserve the
+    // pair by returning it to the queue, then finish that pending resolution when
+    // the player chooses to continue.
+    resumeNeedsResolution = findClearGroups().length > 0;
+    if (resumeNeedsResolution && pair) {
+      queue.unshift(pair.colors.slice());
+      pair = null;
+    }
+    if (!resumeNeedsResolution && !hasUpgradeChoice() && (!pair || collidesAt(pair.x, pair.y, pair.rot))) spawnPair();
     updateHud();
     drawNext();
     updateChallengeHud();
-    return mode !== 'gameover' && (!!pair || hasUpgradeChoice());
+    return mode !== 'gameover' && (!!pair || hasUpgradeChoice() || resumeNeedsResolution);
   }
 
   function clearState() {
@@ -740,7 +753,12 @@
     resume() {
       resumeOverlay.hidden = true;
       lastT = performance.now();
-      if (!openUpgradeChoice()) {
+      if (resumeNeedsResolution) {
+        resumeNeedsResolution = false;
+        mode = 'resolving';
+        btnPause.hidden = true;
+        resolveStep(1, ++resolveToken, true);
+      } else if (!openUpgradeChoice()) {
         mode = 'playing';
         btnPause.hidden = false;
       }
