@@ -10,6 +10,7 @@
     if (key === 'ArrowUp' || key === 'x' || key === 'X') return 'cw';
     if (key === 'z' || key === 'Z') return 'ccw';
     if (key === ' ') return 'drop';
+    if (key === 'c' || key === 'C') return 'swap';
     return null;
   }
 
@@ -65,7 +66,7 @@
         options.onCloseBuild();
         return;
       }
-      if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X'].includes(key)) event.preventDefault();
+      if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X', 'c', 'C'].includes(key)) event.preventDefault();
       if (event.repeat && !['ArrowLeft', 'ArrowRight', 'ArrowDown'].includes(key)) return;
       const action = actionForKey(key);
       if (action) options.onAction(action);

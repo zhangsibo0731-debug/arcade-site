@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 3;
 
   function create(options) {
     const storage = options.storage;
@@ -10,7 +10,7 @@
     const emptyBoard = options.emptyBoard;
 
     function freshTurnStats() {
-      return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, garbageCleared: 0, scoreGained: 0, clearedThisTurn: false, boardHeight: null, clearedColors: [], colorClearedCount: 0, extraDefense: 0, missionBaseProgress: null };
+      return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, largestGroupColor: 0, garbageCleared: 0, scoreGained: 0, clearedThisTurn: false, boardHeight: null, clearedColors: [], colorClearedCount: 0, extraDefense: 0, missionBaseProgress: null };
     }
 
     function snapshot(state) {
@@ -50,7 +50,17 @@
       };
     }
 
-    return Object.freeze({ freshTurnStats, snapshot, restore });
+    function prepareResume(state, needsResolution) {
+      const queue = Array.isArray(state.queue) ? state.queue.map((colors) => colors.slice()) : [];
+      let pair = state.pair;
+      if (needsResolution && pair) {
+        queue.unshift(pair.colors.slice());
+        pair = null;
+      }
+      return { pair, queue, needsResolution: !!needsResolution };
+    }
+
+    return Object.freeze({ freshTurnStats, snapshot, restore, prepareResume });
   }
 
   global.PuyoSessionState = Object.freeze({ VERSION, create });

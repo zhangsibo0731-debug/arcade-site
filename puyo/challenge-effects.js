@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 4;
 
   function create(options) {
     const challengeRules = options.challengeRules;
@@ -42,26 +42,25 @@
       const occupiedTop = view.board.findIndex((row) => row.some(Boolean));
       view.turnStats.boardHeight = occupiedTop < 0 ? 0 : rows - occupiedTop;
       const modifiers = rogueliteRules.modifiers(view.runBuild);
-      const triggered = [];
-      if (view.turnStats.maxChain >= 2 && modifiers.chainDefense) {
-        view.turnStats.extraDefense += modifiers.chainDefense;
-        triggered.push('chainShield');
-      }
-      if (modifiers.largeGroupThreshold && view.turnStats.largestGroup >= modifiers.largeGroupThreshold) {
-        view.turnStats.extraDefense += modifiers.largeGroupDefense;
-        triggered.push('largeGroup');
-      }
-      const outcome = challengeRules.resolveTurn(view.challengeState, view.turnStats);
+      const upgradeResult = rogueliteRules.resolveTurnUpgrades(view.runBuild, view.turnStats, stageBefore);
+      const triggered = upgradeResult.triggered.slice();
+      view.turnStats.extraDefense = (view.turnStats.extraDefense || 0) + upgradeResult.extraDefense;
+      view.turnStats.scoreGained = (view.turnStats.scoreGained || 0) + upgradeResult.scoreBonus;
+      const outcome = challengeRules.resolveTurn(view.challengeState, view.turnStats, view.random);
       const challengeState = outcome.state;
-      let runBuild = view.runBuild;
-      if (outcome.specialCompleted) runBuild = rogueliteRules.offerSpecial(runBuild, challengeState.completed, view.random);
+      let runBuild = upgradeResult.state;
+      const contractResult = rogueliteRules.resolveContract(runBuild, stageBefore, outcome.completed);
+      runBuild = contractResult.state;
+      if (outcome.specialCompleted) runBuild = rogueliteRules.offerRelic(runBuild, view.random);
       else if (outcome.completed) runBuild = rogueliteRules.offer(runBuild, challengeState.completed, view.random);
+      if (outcome.completed) runBuild = rogueliteRules.offerContract(runBuild, challengeState.stage, !!challengeState.special);
+      runBuild = rogueliteRules.offerBonus(runBuild, challengeState.completed, view.random);
       let removed = [];
-      let scoreBonus = 0;
+      let scoreBonus = upgradeResult.scoreBonus;
       if (outcome.reward) {
         removed = boardRules.garbageCandidates(view.board, new Set(), []).slice(0, outcome.reward);
         challengeState.garbageCleared += removed.length;
-        scoreBonus = outcome.bonus;
+        scoreBonus += outcome.bonus;
       }
       let pressure = outcome.pressure;
       let buffered = 0;
@@ -77,13 +76,13 @@
       let message = null;
       if (outcome.enteredSpecial) message = { text: 'STAGE ' + stageBefore + ' 完成' + clearText + '\n特殊关：' + challengeState.special.title, complete: true, duration: 1650 };
       else if (outcome.specialCompleted) message = { text: '特殊关完成 → STAGE ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus, complete: true, duration: 1650 };
-      else if (outcome.completed) message = { text: 'STAGE ' + stageBefore + ' 完成 → STAGE ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (outcome.canceled ? ' · 抵消 ×' + outcome.canceled : ''), complete: true, duration: 1550 };
+      else if (outcome.completed) message = { text: 'STAGE ' + stageBefore + ' 完成 → STAGE ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (contractResult.rewarded ? ' · 契约强化已获得' : '') + (outcome.canceled ? ' · 抵消 ×' + outcome.canceled : ''), complete: true, duration: 1550 };
       else if (outcome.specialFailed) message = { text: '特殊关失败 · STAGE ' + stageBefore + ' 保持不变\n惩罚干扰 ×' + outcome.specialPenalty, complete: false, duration: 1900 };
       else if (placed.length) message = { text: (outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, complete: false };
       else if (buffered) message = { text: '缓冲层抵消 · × ' + buffered, complete: true };
       else if (outcome.canceled) message = { text: (outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消') + ' · × ' + outcome.canceled, complete: outcome.pressureTriggered };
       else if (outcome.expired) message = { text: '任务失败 · STAGE ' + stageBefore + ' 保持不变\n已更换新任务', complete: false, duration: 1800 };
-      return { challengeState, runBuild, outcome, modifiers, triggered, removed, placed, incomingCount, buffered, scoreBonus, message, defenseFlash: !!(outcome.canceled || buffered), waitsForBoard: removed.length > 0 || placed.length > 0 };
+      return { challengeState, runBuild, outcome, contractRewarded: contractResult.rewarded, modifiers, triggered, removed, placed, incomingCount, buffered, scoreBonus, message, defenseFlash: !!(outcome.canceled || buffered), waitsForBoard: removed.length > 0 || placed.length > 0 };
     }
 
     return Object.freeze({ resolveClear, settleTurn });

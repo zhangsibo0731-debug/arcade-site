@@ -7,7 +7,7 @@
 <title>噗呦噗呦 · 连锁消除</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+<link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
 <main class="app">
@@ -83,6 +83,23 @@
             <div class="upgrade-choices" id="upgradeChoices"></div>
           </div>
         </div>
+        <div class="overlay contract-overlay" id="contractOverlay" role="dialog" aria-modal="true" aria-labelledby="contractTitle" hidden>
+          <div class="ov-card contract-panel">
+            <span class="upgrade-kicker">OPTIONAL CONTRACT</span>
+            <h2 class="ov-title" id="contractTitle">⚠ 超载契约</h2>
+            <p class="ov-sub">仅限当前 Stage</p>
+            <div class="contract-terms">
+              <span><small>风险</small><strong>待落干扰立即 +2</strong></span>
+              <i aria-hidden="true">⇄</i>
+              <span><small>奖励</small><strong>完成后额外选择 1 次强化</strong></span>
+            </div>
+            <p class="contract-note">任务失败不会追加惩罚，但契约会持续到完成本 Stage。</p>
+            <div class="ov-actions">
+              <button class="ov-btn ov-btn--ghost" id="contractSkip" type="button">安全跳过</button>
+              <button class="ov-btn contract-accept" id="contractAccept" type="button">接受超载</button>
+            </div>
+          </div>
+        </div>
         <div class="overlay upgrade-overlay build-overlay" id="buildOverlay" role="dialog" aria-modal="true" aria-labelledby="buildTitle" hidden>
           <div class="upgrade-panel build-panel">
             <span class="upgrade-kicker">CURRENT BUILD</span>
@@ -105,6 +122,7 @@
       <div class="next-panel">
         <span class="next-panel__label">NEXT 1 · 2</span>
         <canvas id="nextCanvas" aria-label="下一组噗呦"></canvas>
+        <button class="next-swap" id="nextSwapButton" type="button" data-a="swap" hidden>交换 NEXT · 0</button>
       </div>
       <div class="challenge-card" id="challengeCard" hidden>
         <span>STAGE <b id="challengeStage">1</b> <em id="specialBadge" hidden>SPECIAL</em></span>
@@ -113,6 +131,7 @@
         <small id="missionProgress">最高 0 / 2 CHAIN</small>
         <i><em id="missionMeter"></em></i>
         <small class="mission-deadline" id="missionDeadline">任务期限：还可放 8 组</small>
+        <small class="contract-status" id="contractStatus" hidden>⚠ 超载契约进行中 · 奖励额外强化</small>
         <div class="garbage-preview" aria-live="polite">
           <span>待落</span>
           <div id="garbageQueue" aria-hidden="true"></div>
@@ -140,19 +159,19 @@
     <button class="ctl ctl--accent" type="button" data-a="drop" aria-label="快速落下">落底</button>
   </section>
 
-  <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · P 暂停</p>
+  <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · C 交换 · P 暂停</p>
 </main>
 <script src="../input-guard.js?v=7"></script>
 <script src="storage.js?v=1"></script>
 <script src="audio.js?v=1"></script>
 <script src="board-rules.js?v=1"></script>
 <script src="renderer.js?v=1"></script>
-<script src="ui.js?v=1"></script>
-<script src="input.js?v=1"></script>
-<script src="session-state.js?v=1"></script>
+<script src="ui.js?v=7"></script>
+<script src="input.js?v=2"></script>
+<script src="session-state.js?v=3"></script>
 <script src="challenge-rules.js?v=6"></script>
-<script src="roguelite-rules.js?v=4"></script>
-<script src="challenge-effects.js?v=1"></script>
-<script src="game.js?v=36"></script>
+<script src="roguelite-rules.js?v=11"></script>
+<script src="challenge-effects.js?v=4"></script>
+<script src="game.js?v=40"></script>
 </body>
 </html>

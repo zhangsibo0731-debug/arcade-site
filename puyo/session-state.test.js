@@ -31,4 +31,16 @@ assert.deepStrictEqual(restored.queue, [[1, 2]]);
 assert.strictEqual(restored.runBuild.completed, 2);
 assert.strictEqual(restored.hiAtStart, 20);
 
+const pendingPair = { ok: true, colors: [2, 3] };
+const pending = session.prepareResume({ pair: pendingPair, queue: [[1, 2]] }, true);
+assert.strictEqual(pending.needsResolution, true);
+assert.strictEqual(pending.pair, null);
+assert.deepStrictEqual(pending.queue, [[2, 3], [1, 2]]);
+assert.notStrictEqual(pending.queue[0], pendingPair.colors);
+
+const clean = session.prepareResume({ pair: pendingPair, queue: [[1, 2]] }, false);
+assert.strictEqual(clean.needsResolution, false);
+assert.strictEqual(clean.pair, pendingPair);
+assert.deepStrictEqual(clean.queue, [[1, 2]]);
+
 console.log('puyo session state tests passed');

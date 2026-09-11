@@ -51,10 +51,15 @@
   const buildClose = $('buildClose');
   const nextPanel = nextCanvas.parentElement;
   const nextLabel = nextPanel.querySelector('.next-panel__label');
+  const nextSwapButton = $('nextSwapButton');
   const upgradeOverlay = $('upgradeOverlay');
   const upgradeChoices = $('upgradeChoices');
   const upgradeKicker = $('upgradeKicker');
   const specialBadge = $('specialBadge');
+  const contractOverlay = $('contractOverlay');
+  const contractSkip = $('contractSkip');
+  const contractAccept = $('contractAccept');
+  const contractStatus = $('contractStatus');
 
   const COLS = 6;
   const ROWS = 12;
@@ -77,6 +82,7 @@
       challengeCard, challengeStage, specialBadge, missionTitle, missionScope,
       missionProgress, missionDeadline, missionMeter, garbageQueue, garbageCount,
       garbageEta, buildSummary, buildCount, buildChips, buildDetails,
+      contractOverlay, contractSkip, contractAccept, contractStatus,
       upgradeKicker, upgradeChoices, chainResult, chainValue, chainLabel,
       chainGain, chainPop, levelPop, btnPause, buildButton, buildClose,
       btnSound, btnResumeContinue, btnResumeNew,
@@ -144,11 +150,11 @@
   }
 
   function hasUpgradeChoice() {
-    return gameType === 'challenge' && runBuild.pendingChoice.length > 0;
+    return gameType === 'challenge' && (runBuild.pendingChoice.length > 0 || runBuild.pendingRelicChoice.length > 0);
   }
 
   function flashUpgrade(id) {
-    if (!runBuild.upgrades[id]) return;
+    if (!runBuild.upgrades[id] && !runBuild.relics.includes(id)) return;
     triggeredUpgrades.add(id);
     clearTimeout(upgradeFlashTimers.get(id));
     updateChallengeHud();
@@ -179,6 +185,7 @@
     btnPause.hidden = true;
     renderBuildDetails();
     buildOverlay.hidden = false;
+    drawNext();
   }
 
   function closeBuildOverlay() {
@@ -187,6 +194,7 @@
     mode = buildReturnMode === 'paused' ? 'paused' : 'playing';
     btnPause.hidden = mode !== 'playing';
     lastT = performance.now();
+    drawNext();
   }
 
   function openUpgradeChoice() {
@@ -195,8 +203,29 @@
     btnPause.hidden = true;
     renderUpgradeChoices();
     upgradeOverlay.hidden = false;
+    drawNext();
     saveState();
     return true;
+  }
+
+  function openContractChoice() {
+    if (gameType !== 'challenge' || !runBuild.contract || runBuild.contract.status !== 'pending') return false;
+    mode = 'contract';
+    btnPause.hidden = true;
+    ui.showContract();
+    drawNext();
+    saveState();
+    return true;
+  }
+
+  function continueAfterReward() {
+    if (openUpgradeChoice() || openContractChoice()) return;
+    mode = 'playing';
+    btnPause.hidden = false;
+    if (!pair) spawnPair();
+    updateChallengeHud();
+    drawNext();
+    saveState();
   }
 
   function selectGameType(type) {
@@ -231,8 +260,32 @@
     return [1 + Math.floor(Math.random() * count), 1 + Math.floor(Math.random() * count)];
   }
 
+  function nextPair() {
+    const generated = randomPair();
+    if (gameType !== 'challenge') return generated;
+    const result = rogueliteRules.applyCohesion(runBuild, generated, randomPair);
+    runBuild = result.state;
+    if (result.applied) flashUpgrade('cohesion');
+    return result.pair;
+  }
+
   function fillQueue() {
-    while (queue.length < 3) queue.push(randomPair());
+    while (queue.length < 3) queue.push(nextPair());
+  }
+
+  function swapNext() {
+    if (mode !== 'playing' || gameType !== 'challenge' || !pair) return false;
+    const result = rogueliteRules.swapNext(runBuild, queue, challengeState.stage);
+    runBuild = result.state;
+    if (!result.swapped) return false;
+    queue = result.queue;
+    flashUpgrade('nextSwap');
+    play('move');
+    haptic(8);
+    drawNext();
+    updateChallengeHud();
+    saveState();
+    return true;
   }
 
   function pairCells(p, x, y, rot) {
@@ -250,6 +303,11 @@
   function spawnPair() {
     fillQueue();
     pair = { x: 2, y: 0, rot: 0, colors: queue.shift() };
+    if (gameType === 'challenge') {
+      const swapLock = rogueliteRules.consumeSwapLock(runBuild);
+      runBuild = swapLock.state;
+      pair.swapLock = swapLock.active;
+    }
     fillQueue();
     gravityAcc = 0;
     lockAcc = 0;
@@ -398,7 +456,7 @@
         setTimeout(() => resolveStep(chain, token, true), fallDuration);
         return;
       }
-      if (openUpgradeChoice()) return;
+      if (openUpgradeChoice() || openContractChoice()) return;
       mode = 'playing';
       btnPause.hidden = false;
       spawnPair();
@@ -430,7 +488,11 @@
       turnStats.maxChain = Math.max(turnStats.maxChain, chain);
       turnStats.cleared += cells.length;
       turnStats.maxColors = Math.max(turnStats.maxColors, colors.size);
-      turnStats.largestGroup = Math.max(turnStats.largestGroup, ...groups.map((group) => group.cells.length));
+      const largest = groups.reduce((best, group) => group.cells.length > best.cells.length ? group : best, { cells: [], color: 0 });
+      if (largest.cells.length > turnStats.largestGroup) {
+        turnStats.largestGroup = largest.cells.length;
+        turnStats.largestGroupColor = largest.color;
+      }
       turnStats.garbageCleared += garbageCells.length;
       turnStats.scoreGained += gained;
       turnStats.clearedThisTurn = true;
@@ -525,10 +587,11 @@
     }
     if (collidesAt(pair.x, pair.y + 1, pair.rot)) {
       lockAcc += dt;
-      const lockMultiplier = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild).lockDelayMultiplier : 1;
+      const buildModifiers = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild) : rogueliteRules.modifiers({});
+      const lockMultiplier = buildModifiers.lockDelayMultiplier * (pair.swapLock ? buildModifiers.nextSwapLockMultiplier : 1);
       if (lockMultiplier > 1 && lockAcc >= 0.48 && !pair.steadyNotified) {
         pair.steadyNotified = true;
-        flashUpgrade('steadyHands');
+        flashUpgrade(pair.swapLock ? 'nextSwap' : 'steadyHands');
       }
       if (lockAcc >= 0.48 * lockMultiplier) lockPair();
     } else {
@@ -565,6 +628,7 @@
     resumeOverlay.hidden = true;
     upgradeOverlay.hidden = true;
     buildOverlay.hidden = true;
+    contractOverlay.hidden = true;
     btnPause.hidden = false;
     modePicker.hidden = true;
     spawnPair();
@@ -594,6 +658,7 @@
       overlayEl.hidden = true;
       btnPause.hidden = false;
     }
+    drawNext();
   }
 
   function showOverlay(kind) {
@@ -634,7 +699,7 @@
   }
 
   function saveState() {
-    if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing' && mode !== 'build') return;
+    if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing' && mode !== 'build' && mode !== 'contract') return;
     storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, hiAtStart, bestChainAtStart, challengeState, runBuild }));
   }
 
@@ -661,11 +726,10 @@
     // leaving an already-complete group underneath an active pair. Preserve the
     // pair by returning it to the queue, then finish that pending resolution when
     // the player chooses to continue.
-    resumeNeedsResolution = findClearGroups().length > 0;
-    if (resumeNeedsResolution && pair) {
-      queue.unshift(pair.colors.slice());
-      pair = null;
-    }
+    const resumePlan = sessionState.prepareResume({ pair, queue }, findClearGroups().length > 0);
+    resumeNeedsResolution = resumePlan.needsResolution;
+    pair = resumePlan.pair;
+    queue = resumePlan.queue;
     if (!resumeNeedsResolution && !hasUpgradeChoice() && (!pair || collidesAt(pair.x, pair.y, pair.rot))) spawnPair();
     updateHud();
     drawNext();
@@ -699,6 +763,10 @@
   function drawNext() {
     const foresight = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild).foresightLevel : 0;
     renderer.drawNext(queue, foresight);
+    const swap = rogueliteRules.swapStatus(runBuild, challengeState.stage);
+    nextSwapButton.hidden = gameType !== 'challenge' || !swap.available;
+    nextSwapButton.disabled = mode !== 'playing' || !pair || swap.remaining <= 0;
+    nextSwapButton.textContent = '交换 NEXT · ' + swap.remaining;
   }
 
   function frame(now) {
@@ -720,10 +788,11 @@
     else if (name === 'cw') rotate(1);
     else if (name === 'ccw') rotate(-1);
     else if (name === 'drop') hardDrop();
+    else if (name === 'swap') swapNext();
   }
 
   input = window.PuyoInput.create({
-    controls: document.querySelectorAll('.ctl'),
+    controls: document.querySelectorAll('.ctl, .next-swap'),
     boardWrap,
     document,
     onAction: action,
@@ -758,7 +827,7 @@
         mode = 'resolving';
         btnPause.hidden = true;
         resolveStep(1, ++resolveToken, true);
-      } else if (!openUpgradeChoice()) {
+      } else if (!openUpgradeChoice() && !openContractChoice()) {
         mode = 'playing';
         btnPause.hidden = false;
       }
@@ -773,19 +842,27 @@
     },
     chooseUpgrade(id) {
       if (mode !== 'choosing') return;
-      const result = rogueliteRules.choose(runBuild, id, challengeState.completed);
+      const result = runBuild.pendingRelicChoice.includes(id)
+        ? rogueliteRules.chooseRelic(runBuild, id)
+        : rogueliteRules.choose(runBuild, id, challengeState.completed);
       if (!result.selected) return;
       runBuild = result.state;
+      runBuild = rogueliteRules.offerBonus(runBuild, challengeState.completed, Math.random);
       upgradeOverlay.hidden = true;
-      mode = 'playing';
-      btnPause.hidden = false;
-      if (!pair) spawnPair();
-      updateChallengeHud();
-      drawNext();
       showChallengeMessage(result.selected.name + ' · 已强化', true);
       play('level', challengeState.stage);
       haptic([14, 30, 20]);
-      saveState();
+      continueAfterReward();
+    },
+    decideContract(accept) {
+      if (mode !== 'contract') return;
+      const result = rogueliteRules.decideContract(runBuild, accept);
+      runBuild = result.state;
+      if (result.accepted) challengeState.pendingGarbage += result.garbage;
+      ui.hideContract();
+      showChallengeMessage(result.accepted ? '超载契约已接受 · 待落干扰 +2' : '已安全跳过超载契约', !result.accepted, 1450);
+      if (result.accepted) haptic([18, 25, 24]);
+      continueAfterReward();
     },
   });
 

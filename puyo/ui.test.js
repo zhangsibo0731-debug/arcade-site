@@ -18,7 +18,7 @@ function element() {
 }
 
 const elements = {};
-['score','highScore','level','runChain','overlay','ovTitle','ovSub','ovBtn','ovBack','challengeCard','challengeStage','specialBadge','missionTitle','missionScope','missionProgress','missionDeadline','missionMeter','garbageQueue','garbageCount','garbageEta','buildSummary','buildCount','buildChips','buildDetails','upgradeKicker','upgradeChoices','chainResult','chainValue','chainLabel','chainGain','chainPop','levelPop'].forEach((key) => { elements[key] = element(); });
+['score','highScore','level','runChain','overlay','ovTitle','ovSub','ovBtn','ovBack','challengeCard','challengeStage','specialBadge','missionTitle','missionScope','missionProgress','missionDeadline','missionMeter','garbageQueue','garbageCount','garbageEta','buildSummary','buildCount','buildChips','buildDetails','upgradeKicker','upgradeChoices','chainResult','chainValue','chainLabel','chainGain','chainPop','levelPop','contractOverlay','contractSkip','contractAccept','contractStatus'].forEach((key) => { elements[key] = element(); });
 const modeButtons = [{ dataset: { mode: 'classic' }, setAttribute(name, value) { this[name] = value; } }, { dataset: { mode: 'challenge' }, setAttribute(name, value) { this[name] = value; } }];
 elements.modePicker = element();
 elements.modePicker.querySelectorAll = () => modeButtons;
@@ -27,10 +27,16 @@ const challengeRules = {
   missionProgress: (mission) => mission.progress,
   missionPresentation: (mission, progress) => ({ scope: '单回合', progress: progress + ' / ' + mission.target }),
 };
-const definitions = [{ id: 'cleaner', name: '清道夫', rarity: 'common', school: '防御', effects: ['清除 1 颗'] }];
+const definitions = [{ id: 'cleaner', name: '清道夫', rarity: 'common', school: 'adversity', synergies: [], effects: ['清除 1 颗'] }];
 const rogueliteRules = {
+  SCHOOLS: { adversity: { id: 'adversity', name: '逆境' } },
   DEFINITIONS: definitions,
-  cardFor: () => ({ id: 'cleaner', name: '清道夫', rarity: 'common', school: '防御', currentLevel: 0, nextLevel: 1, effect: '清除 1 颗' }),
+  BY_ID: { cleaner: definitions[0] },
+  RELIC_BY_ID: { echoBottle: { id: 'echoBottle', name: '回声瓶', effect: '额外抵消', school: 'chain' } },
+  statusFor: () => '',
+  buildProfile: () => ({ primary: null, schools: [{ id: 'adversity', name: '逆境', count: 1, levels: 1 }] }),
+  cardFor: () => ({ id: 'cleaner', name: '清道夫', rarity: 'common', school: 'adversity', schoolName: '逆境', synergies: [], ownedSynergies: [], recommended: true, recommendationReason: '延续逆境构筑', currentLevel: 0, nextLevel: 1, effect: '清除 1 颗' }),
+  relicCardFor: () => ({ id: 'echoBottle', name: '回声瓶', rarity: 'relic', school: 'chain', schoolName: '连锁', synergies: [], ownedSynergies: [], effect: '每 Stage 触发一次' }),
 };
 const ui = global.PuyoUI.create({ elements, challengeRules, rogueliteRules });
 
@@ -48,6 +54,22 @@ assert.ok(elements.buildChips.innerHTML.includes('is-triggered'));
 
 ui.renderUpgradeChoices({ pendingKind: '', pendingChoice: ['cleaner'] });
 assert.ok(elements.upgradeChoices.innerHTML.includes('清道夫'));
+assert.ok(elements.upgradeChoices.innerHTML.includes('逆境'));
+assert.ok(elements.upgradeChoices.innerHTML.includes('延续逆境构筑'));
+ui.renderUpgradeChoices({ pendingKind: 'contract', pendingChoice: ['cleaner'] });
+assert.ok(elements.upgradeKicker.textContent.includes('CONTRACT REWARD'));
+ui.renderUpgradeChoices({ pendingKind: 'specialBonus', pendingChoice: ['cleaner'] });
+assert.ok(elements.upgradeKicker.textContent.includes('遗物集齐补偿'));
+ui.renderUpgradeChoices({ pendingKind: '', pendingChoice: [], pendingRelicChoice: ['echoBottle'] });
+assert.ok(elements.upgradeKicker.textContent.includes('SPECIAL RELIC'));
+assert.ok(elements.upgradeChoices.innerHTML.includes('回声瓶'));
+ui.showContract();
+assert.strictEqual(elements.contractOverlay.hidden, false);
+ui.hideContract();
+assert.strictEqual(elements.contractOverlay.hidden, true);
+ui.renderBuildDetails({ upgrades: { cleaner: 1 } });
+assert.ok(elements.buildDetails.innerHTML.includes('混合构筑'));
+assert.ok(elements.buildDetails.innerHTML.includes('data-school="adversity"'));
 ui.showOverlay('menu', { selectedGameType: 'challenge' });
 assert.strictEqual(elements.ovBtn.textContent, '开始游戏');
 assert.ok(elements.ovSub.textContent.includes('动态任务'));

@@ -20,8 +20,12 @@ const challengeRules = {
 };
 const rogueliteRules = {
   modifiers: () => ({ cleanerClear: 1, colorBurstThreshold: 4, colorBurstClear: 1, chainDefense: 1, largeGroupThreshold: 6, largeGroupDefense: 2, bufferReduction: 0 }),
+  resolveTurnUpgrades: (state) => ({ state, extraDefense: 3, scoreBonus: 0, triggered: ['chainShield', 'largeGroup'] }),
   offer: (state) => Object.assign({}, state, { offered: true }),
-  offerSpecial: (state) => state,
+  offerRelic: (state) => state,
+  offerBonus: (state) => state,
+  offerContract: (state) => state,
+  resolveContract: (state) => ({ state, rewarded: false }),
 };
 const effects = global.PuyoChallengeEffects.create({ challengeRules, rogueliteRules, boardRules, garbage: 6, rows: 4 });
 
