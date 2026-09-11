@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 6;
+  const VERSION = 7;
   const GARBAGE = 6;
   const MISSION_TYPES = Object.freeze(['chain', 'clear', 'colors', 'largeGroup', 'garbageClear', 'clearStreak', 'scoreTurn', 'lowBoard', 'targetColor']);
   const COLOR_NAMES = Object.freeze(['红色', '黄色', '绿色', '蓝色']);
@@ -163,8 +163,11 @@
     state.turnsLeft--;
     state.pressureIn--;
     const defense = defenseForChain(stats && stats.maxChain) + boundedInt(stats && stats.extraDefense, 0, 0, 99);
-    const canceled = Math.min(state.pendingGarbage, defense);
-    state.pendingGarbage -= canceled;
+    const regularCanceled = Math.min(state.pendingGarbage, defense);
+    state.pendingGarbage -= regularCanceled;
+    const allClearCanceled = Math.min(state.pendingGarbage, boundedInt(stats && stats.allClearDefense, 0, 0, 5));
+    state.pendingGarbage -= allClearCanceled;
+    const canceled = regularCanceled + allClearCanceled;
     const completed = state.mission.progress >= state.mission.target;
     const expired = !completed && state.turnsLeft <= 0;
     const activeSpecial = state.special;
@@ -208,7 +211,7 @@
       state.pendingGarbage = garbageForStage(state.stage);
     }
     pressure += specialPenalty;
-    return { state, completed, expired, reward, bonus, pressure, pressureTriggered, canceled, enteredSpecial, entryGarbage, specialCompleted, specialFailed, specialPenalty };
+    return { state, completed, expired, reward, bonus, pressure, pressureTriggered, canceled, regularCanceled, allClearCanceled, enteredSpecial, entryGarbage, specialCompleted, specialFailed, specialPenalty };
   }
 
   function adjacentGarbage(board, cells, garbageValue) {

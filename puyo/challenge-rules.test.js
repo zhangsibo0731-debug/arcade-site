@@ -66,6 +66,13 @@ assert.equal(fullyCanceled.pressureTriggered, true);
 
 const upgradedDefense = rules.resolveTurn({ pendingGarbage: 5, pressureIn: 3 }, { maxChain: 2, extraDefense: 2 }, () => 0);
 assert.equal(upgradedDefense.canceled, 3);
+assert.equal(upgradedDefense.regularCanceled, 3);
+assert.equal(upgradedDefense.allClearCanceled, 0);
+
+const allClearDefense = rules.resolveTurn({ pendingGarbage: 5, pressureIn: 3 }, { maxChain: 2, allClearDefense: 5 }, () => 0);
+assert.equal(allClearDefense.regularCanceled, 1);
+assert.equal(allClearDefense.allClearCanceled, 4);
+assert.equal(allClearDefense.canceled, 5);
 
 assert.equal(rules.missionProgress({ type: 'largeGroup', progress: 0 }, { largestGroup: 7 }), 7);
 assert.equal(rules.missionProgress({ type: 'garbageClear', progress: 2 }, { garbageCleared: 3 }), 5);

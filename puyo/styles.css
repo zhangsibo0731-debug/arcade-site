@@ -277,6 +277,27 @@ body {
 }
 .chain-result { top: 31%; width: 88%; color: #fff; font-size: 15px; line-height: 1.45; white-space: pre-line; animation: result-pop 1.1s ease both; }
 .level-pop { top: 17%; color: var(--cyan); font-size: 25px; letter-spacing: .06em; animation: level-pop .95s ease both; }
+.all-clear-pop {
+  position: absolute;
+  left: 50%;
+  top: 39%;
+  z-index: 8;
+  width: 90%;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 3px 18px rgba(0,0,0,.75), 0 0 18px rgba(246,207,69,.55);
+  transform: translate(-50%, -50%);
+  animation: all-clear-pop 1.4s cubic-bezier(.2,.8,.3,1) both;
+  pointer-events: none;
+}
+.all-clear-pop strong { display: block; color: #f6cf45; font-size: 34px; line-height: 1; letter-spacing: .06em; }
+.all-clear-pop small { display: block; margin-top: 7px; font-size: 14px; font-weight: 800; }
+@keyframes all-clear-pop {
+  0% { opacity: 0; transform: translate(-50%, -42%) scale(.35) rotate(-5deg); }
+  24% { opacity: 1; transform: translate(-50%, -50%) scale(1.18) rotate(2deg); }
+  48%, 72% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -68%) scale(1.08); }
+}
 @keyframes result-pop {
   0% { opacity: 0; transform: translate(-50%, 8px) scale(.75); }
   18%, 72% { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -288,6 +309,10 @@ body {
   100% { opacity: 0; transform: translate(-50%, -10px) scale(1); }
 }
 .board-wrap.is-shaking { animation: board-shake .24s linear; }
+.board-wrap.is-quick-turn-ready { animation: quick-turn-ready .2s ease both; }
+@keyframes quick-turn-ready {
+  45% { box-shadow: 0 0 0 2px rgba(86,220,237,.55), 0 0 18px rgba(86,220,237,.28); }
+}
 @keyframes board-shake {
   0%, 100% { transform: translate(0); }
   20% { transform: translate(var(--shake-neg, -3px), 1px); }

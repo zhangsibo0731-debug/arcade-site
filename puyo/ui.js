@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 7;
+  const VERSION = 9;
 
   function create(options) {
     const elements = options.elements;
@@ -10,6 +10,7 @@
     let chainTimer = null;
     let resultTimer = null;
     let levelTimer = null;
+    let allClearTimer = null;
     const levels = ['', 'Ⅰ', 'Ⅱ', 'Ⅲ'];
 
     function synergyText(card) {
@@ -137,7 +138,7 @@
         const records = [];
         if (view.score > view.hiAtStart && view.score > 0) records.push('最高分新纪录');
         if (view.runMaxChain > view.bestChainAtStart && view.runMaxChain > 0) records.push('连锁新纪录');
-        elements.ovSub.textContent = (view.gameType === 'challenge' ? '挑战模式\n' : '经典模式\n') + 'SCORE  ' + view.score + '\nLEVEL  ' + view.level + '\nMAX CHAIN  ' + view.runMaxChain + '\nBEST CHAIN  ' + view.bestChain + '\n消除  ' + view.clearedTotal + ' 颗' + (view.gameType === 'challenge' ? '\n完成任务  ' + view.challengeState.completed + ' · 清除干扰  ' + view.challengeState.garbageCleared : '') + (records.length ? '\nNEW RECORD! · ' + records.join(' / ') : '');
+        elements.ovSub.textContent = (view.gameType === 'challenge' ? '挑战模式\n' : '经典模式\n') + 'SCORE  ' + view.score + '\nLEVEL  ' + view.level + '\nMAX CHAIN  ' + view.runMaxChain + '\nBEST CHAIN  ' + view.bestChain + '\n消除  ' + view.clearedTotal + ' 颗 · 全消  ' + view.allClearCount + ' 次' + (view.gameType === 'challenge' ? '\n完成任务  ' + view.challengeState.completed + ' · 清除干扰  ' + view.challengeState.garbageCleared : '') + (records.length ? '\nNEW RECORD! · ' + records.join(' / ') : '');
         elements.ovBtn.textContent = '再来一局';
         elements.ovBack.hidden = false;
       }
@@ -189,6 +190,15 @@
       levelTimer = setTimeout(() => { elements.levelPop.hidden = true; }, 980);
     }
 
+    function showAllClear(defense) {
+      clearTimeout(allClearTimer);
+      elements.allClearPop.querySelector('small').textContent = defense > 0 ? '全消 +2100 · 额外防御 +' + defense : '全消 +2100';
+      elements.allClearPop.hidden = true;
+      void elements.allClearPop.offsetWidth;
+      elements.allClearPop.hidden = false;
+      allClearTimer = setTimeout(() => { elements.allClearPop.hidden = true; }, 1450);
+    }
+
     function flashGarbageDefense() {
       elements.challengeCard.classList.remove('is-defending');
       void elements.challengeCard.offsetWidth;
@@ -200,9 +210,11 @@
       clearTimeout(chainTimer);
       clearTimeout(resultTimer);
       clearTimeout(levelTimer);
+      clearTimeout(allClearTimer);
       elements.chainPop.hidden = true;
       elements.chainResult.hidden = true;
       elements.levelPop.hidden = true;
+      elements.allClearPop.hidden = true;
       elements.challengeCard.classList.remove('is-complete', 'is-defending');
       elements.contractOverlay.hidden = true;
     }
@@ -227,7 +239,7 @@
       elements.contractAccept.addEventListener('click', () => actions.decideContract(true));
     }
 
-    return Object.freeze({ selectGameType, renderHud, renderChallenge, renderUpgradeChoices, renderBuildDetails, showContract, hideContract, showOverlay, showChallengeMessage, showChain, showChainResult, showLevel, flashGarbageDefense, resetTransient, bindActions });
+    return Object.freeze({ selectGameType, renderHud, renderChallenge, renderUpgradeChoices, renderBuildDetails, showContract, hideContract, showOverlay, showChallengeMessage, showChain, showChainResult, showLevel, showAllClear, flashGarbageDefense, resetTransient, bindActions });
   }
 
   global.PuyoUI = Object.freeze({ VERSION, create });

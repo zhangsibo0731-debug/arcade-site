@@ -19,6 +19,9 @@ function element() {
 
 const elements = {};
 ['score','highScore','level','runChain','overlay','ovTitle','ovSub','ovBtn','ovBack','challengeCard','challengeStage','specialBadge','missionTitle','missionScope','missionProgress','missionDeadline','missionMeter','garbageQueue','garbageCount','garbageEta','buildSummary','buildCount','buildChips','buildDetails','upgradeKicker','upgradeChoices','chainResult','chainValue','chainLabel','chainGain','chainPop','levelPop','contractOverlay','contractSkip','contractAccept','contractStatus'].forEach((key) => { elements[key] = element(); });
+const allClearDetail = element();
+elements.allClearPop = element();
+elements.allClearPop.querySelector = () => allClearDetail;
 const modeButtons = [{ dataset: { mode: 'classic' }, setAttribute(name, value) { this[name] = value; } }, { dataset: { mode: 'challenge' }, setAttribute(name, value) { this[name] = value; } }];
 elements.modePicker = element();
 elements.modePicker.querySelectorAll = () => modeButtons;
@@ -73,8 +76,12 @@ assert.ok(elements.buildDetails.innerHTML.includes('data-school="adversity"'));
 ui.showOverlay('menu', { selectedGameType: 'challenge' });
 assert.strictEqual(elements.ovBtn.textContent, '开始游戏');
 assert.ok(elements.ovSub.textContent.includes('动态任务'));
+ui.showOverlay('gameover', { gameType: 'classic', score: 2100, level: 1, runMaxChain: 1, bestChain: 1, clearedTotal: 4, allClearCount: 1, hiAtStart: 0, bestChainAtStart: 0, challengeState: { completed: 0, garbageCleared: 0 } });
+assert.ok(elements.ovSub.textContent.includes('全消  1 次'));
 ui.showChain(3, 480);
 assert.strictEqual(elements.chainValue.textContent, 3);
+ui.showAllClear(5);
+assert.strictEqual(allClearDetail.textContent, '全消 +2100 · 额外防御 +5');
 ['btnPause','buildButton','buildClose','btnSound','btnResumeContinue','btnResumeNew'].forEach((key) => { elements[key] = element(); });
 let paused = false;
 ui.bindActions({ pause: () => { paused = true; }, openBuild() {}, closeBuild() {}, toggleSound() {}, selectMode() {}, primary() {}, resume() {}, resumeNew() {}, chooseUpgrade() {} });

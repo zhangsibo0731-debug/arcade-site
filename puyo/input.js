@@ -1,7 +1,8 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 2;
+  const TIMINGS = Object.freeze({ horizontalDas: 170, horizontalArr: 60, downDas: 185, downArr: 42 });
 
   function actionForKey(key) {
     if (key === 'ArrowLeft' || key === 'a' || key === 'A') return 'left';
@@ -28,35 +29,50 @@
     let holdTimer = null;
     let repeatTimer = null;
     let heldButton = null;
+    let heldToken = null;
     let touchStart = null;
+    const host = options.global || global;
+    const timers = options.timers || host;
 
     function stop() {
-      clearTimeout(holdTimer);
-      clearInterval(repeatTimer);
+      timers.clearTimeout(holdTimer);
+      timers.clearInterval(repeatTimer);
       holdTimer = null;
       repeatTimer = null;
       if (heldButton) heldButton.classList.remove('is-pressed');
       heldButton = null;
+      heldToken = null;
+      touchStart = null;
+    }
+
+    function startHold(action, button, token) {
+      stop();
+      heldButton = button || null;
+      heldToken = token;
+      if (heldButton) heldButton.classList.add('is-pressed');
+      options.onAction(action);
+      if (action !== 'left' && action !== 'right' && action !== 'down') return;
+      const delay = action === 'down' ? TIMINGS.downDas : TIMINGS.horizontalDas;
+      const interval = action === 'down' ? TIMINGS.downArr : TIMINGS.horizontalArr;
+      holdTimer = timers.setTimeout(() => {
+        options.onAction(action);
+        repeatTimer = timers.setInterval(() => options.onAction(action), interval);
+      }, delay);
     }
 
     options.controls.forEach((button) => {
       button.addEventListener('pointerdown', (event) => {
         event.preventDefault();
-        stop();
-        heldButton = button;
-        button.classList.add('is-pressed');
         if (button.setPointerCapture) button.setPointerCapture(event.pointerId);
         const action = button.dataset.a;
-        options.onAction(action);
-        if (action === 'left' || action === 'right' || action === 'down') {
-          holdTimer = setTimeout(() => {
-            repeatTimer = setInterval(() => options.onAction(action), action === 'down' ? 42 : 76);
-          }, 185);
-        }
+        startHold(action, button, 'pointer:' + event.pointerId);
       });
-      button.addEventListener('pointerup', stop);
-      button.addEventListener('pointercancel', stop);
-      button.addEventListener('lostpointercapture', stop);
+      const stopPointer = (event) => {
+        if (heldToken === 'pointer:' + event.pointerId) stop();
+      };
+      button.addEventListener('pointerup', stopPointer);
+      button.addEventListener('pointercancel', stopPointer);
+      button.addEventListener('lostpointercapture', stopPointer);
     });
 
     options.document.addEventListener('keydown', (event) => {
@@ -66,12 +82,20 @@
         options.onCloseBuild();
         return;
       }
-      if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X', 'c', 'C'].includes(key)) event.preventDefault();
-      if (event.repeat && !['ArrowLeft', 'ArrowRight', 'ArrowDown'].includes(key)) return;
       const action = actionForKey(key);
-      if (action) options.onAction(action);
+      if (action) event.preventDefault();
+      if (event.repeat) return;
+      if (action === 'left' || action === 'right' || action === 'down') startHold(action, null, 'key:' + key.toLowerCase());
+      else if (action) options.onAction(action);
       else if (key === 'p' || key === 'P' || key === 'Escape') options.onPause();
     });
+    options.document.addEventListener('keyup', (event) => {
+      if (heldToken === 'key:' + String(event.key).toLowerCase()) stop();
+    });
+    options.document.addEventListener('visibilitychange', () => {
+      if (options.document.visibilityState === 'hidden') stop();
+    });
+    if (host.addEventListener) host.addEventListener('blur', stop);
 
     options.boardWrap.addEventListener('pointerdown', (event) => {
       touchStart = { x: event.clientX, y: event.clientY };
@@ -81,9 +105,10 @@
       options.onAction(swipeAction(touchStart, { x: event.clientX, y: event.clientY }));
       touchStart = null;
     });
+    options.boardWrap.addEventListener('pointercancel', () => { touchStart = null; });
 
     return Object.freeze({ stop });
   }
 
-  global.PuyoInput = Object.freeze({ VERSION, create, actionForKey, swipeAction });
+  global.PuyoInput = Object.freeze({ VERSION, TIMINGS, create, actionForKey, swipeAction });
 })(typeof window !== 'undefined' ? window : globalThis);

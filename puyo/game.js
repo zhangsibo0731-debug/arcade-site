@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoBoardRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules) throw new Error('Puyo modules failed to load.');
+  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules) throw new Error('Puyo modules failed to load.');
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('board');
@@ -31,6 +31,7 @@
   const chainGain = $('chainGain');
   const chainResult = $('chainResult');
   const levelPop = $('levelPop');
+  const allClearPop = $('allClearPop');
   const modePicker = $('modePicker');
   const challengeCard = $('challengeCard');
   const challengeStage = $('challengeStage');
@@ -66,7 +67,8 @@
   const COLORS = ['#ff5d8f', '#f6cf45', '#65dc70', '#4fc9e8', '#a979f7'];
   const DARKS = ['#bc2858', '#b98912', '#269b42', '#1686ac', '#6740bc'];
   const ROT = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-  const CHAIN_POWER = [0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512];
+  const scoringRules = window.PuyoScoringRules;
+  const rotationRules = window.PuyoRotationRules;
   const challengeRules = window.PuyoChallengeRules;
   const rogueliteRules = window.PuyoRogueliteRules;
   const GARBAGE = challengeRules.GARBAGE;
@@ -84,7 +86,7 @@
       garbageEta, buildSummary, buildCount, buildChips, buildDetails,
       contractOverlay, contractSkip, contractAccept, contractStatus,
       upgradeKicker, upgradeChoices, chainResult, chainValue, chainLabel,
-      chainGain, chainPop, levelPop, btnPause, buildButton, buildClose,
+      chainGain, chainPop, levelPop, allClearPop, btnPause, buildButton, buildClose,
       btnSound, btnResumeContinue, btnResumeNew,
     },
   });
@@ -125,6 +127,7 @@
   let clearedTotal = 0;
   let bestChain = storage.readBestChain('classic');
   let runMaxChain = 0;
+  let allClearCount = 0;
   let hiAtStart = hi;
   let bestChainAtStart = bestChain;
   let cell = 32;
@@ -138,6 +141,8 @@
   let input = null;
   let lockResets = 0;
   let resumeNeedsResolution = false;
+  let quickTurnPending = null;
+  let quickTurnHintTimer = null;
   let challengeState = challengeRules.normalize({});
   let runBuild = rogueliteRules.normalize({}, 0);
   let turnStats = freshTurnStats();
@@ -180,6 +185,7 @@
 
   function openBuildOverlay() {
     if (gameType !== 'challenge' || !Object.keys(runBuild.upgrades).length || !['playing', 'paused'].includes(mode)) return;
+    if (input) input.stop();
     buildReturnMode = mode;
     mode = 'build';
     btnPause.hidden = true;
@@ -199,6 +205,7 @@
 
   function openUpgradeChoice() {
     if (!hasUpgradeChoice()) return false;
+    if (input) input.stop();
     mode = 'choosing';
     btnPause.hidden = true;
     renderUpgradeChoices();
@@ -210,6 +217,7 @@
 
   function openContractChoice() {
     if (gameType !== 'challenge' || !runBuild.contract || runBuild.contract.status !== 'pending') return false;
+    if (input) input.stop();
     mode = 'contract';
     btnPause.hidden = true;
     ui.showContract();
@@ -300,6 +308,12 @@
     return boardRules.collides(board, pair, x, y, rot);
   }
 
+  function clearQuickTurnHint() {
+    clearTimeout(quickTurnHintTimer);
+    quickTurnHintTimer = null;
+    boardWrap.classList.remove('is-quick-turn-ready');
+  }
+
   function spawnPair() {
     fillQueue();
     pair = { x: 2, y: 0, rot: 0, colors: queue.shift() };
@@ -312,6 +326,8 @@
     gravityAcc = 0;
     lockAcc = 0;
     lockResets = 0;
+    quickTurnPending = null;
+    clearQuickTurnHint();
     drawNext();
     if (collidesAt(pair.x, pair.y, pair.rot)) gameOver();
   }
@@ -321,6 +337,7 @@
     if (collidesAt(pair.x + dx, pair.y + dy, pair.rot)) return false;
     pair.x += dx;
     pair.y += dy;
+    if (dx) quickTurnPending = null;
     if (dx && collidesAt(pair.x, pair.y + 1, pair.rot)) {
       if (lockResets < 12) { lockAcc = 0; lockResets++; }
     } else {
@@ -332,24 +349,27 @@
 
   function rotate(dir) {
     if (mode !== 'playing' || !pair) return false;
-    const next = (pair.rot + dir + 4) % 4;
-    const kicks = [[0, 0], [-1, 0], [1, 0], [0, -1], [-2, 0], [2, 0]];
-    for (const k of kicks) {
-      if (!collidesAt(pair.x + k[0], pair.y + k[1], next)) {
-        pair.x += k[0];
-        pair.y += k[1];
-        pair.rot = next;
-        if (collidesAt(pair.x, pair.y + 1, pair.rot)) {
-          if (lockResets < 12) { lockAcc = 0; lockResets++; }
-        } else {
-          lockAcc = 0;
-        }
-        play('rotate');
-        haptic(7);
-        return true;
-      }
+    const result = rotationRules.resolve({ pair, dir, rotations: ROT, now: performance.now(), pending: quickTurnPending, collides: collidesAt });
+    quickTurnPending = result.pending;
+    if (!result.success) {
+      clearQuickTurnHint();
+      void boardWrap.offsetWidth;
+      boardWrap.classList.add('is-quick-turn-ready');
+      quickTurnHintTimer = setTimeout(() => boardWrap.classList.remove('is-quick-turn-ready'), rotationRules.QUICK_TURN_WINDOW);
+      return false;
     }
-    return false;
+    pair.x = result.pair.x;
+    pair.y = result.pair.y;
+    pair.rot = result.pair.rot;
+    if (collidesAt(pair.x, pair.y + 1, pair.rot)) {
+      if (lockResets < 12) { lockAcc = 0; lockResets++; }
+    } else {
+      lockAcc = 0;
+    }
+    clearQuickTurnHint();
+    play('rotate');
+    haptic(result.quickTurn ? [7, 18, 10] : 7);
+    return true;
   }
 
   function softDrop() {
@@ -365,7 +385,7 @@
     if (mode !== 'playing' || !pair) return;
     let distance = 0;
     while (tryMove(0, 1)) distance++;
-    score += distance * 2;
+    score += scoringRules.dropScore(distance);
     updateHud();
     play('drop');
     haptic(16);
@@ -381,6 +401,8 @@
     }
     for (const p of cells) board[p.y][p.x] = p.color;
     pair = null;
+    quickTurnPending = null;
+    clearQuickTurnHint();
     mode = 'resolving';
     btnPause.hidden = true;
     // 横向组合落在高低不平处时，两颗噗呦应分别沉降到各自的支撑面。
@@ -394,7 +416,6 @@
     return boardRules.findClearGroups(board);
   }
 
-  const groupBonus = boardRules.groupBonus;
 
   function animateStageReward(cells, incomingCount, token) {
     popDuration = 340;
@@ -450,6 +471,26 @@
     if (!groups.length) {
       renderer.clearPop();
       if (chain > 2) showChainResult(chain - 1);
+      if (!taskSettled && chain > 1) {
+        const allClear = scoringRules.allClearResult({
+          board,
+          playerCleared: true,
+          challenge: gameType === 'challenge',
+          pendingGarbage: challengeState.pendingGarbage,
+        });
+        if (allClear.triggered) {
+          score += allClear.score;
+          allClearCount++;
+          if (gameType === 'challenge') {
+            turnStats.scoreGained += allClear.score;
+            turnStats.allClearDefense += allClear.defense;
+          }
+          ui.showAllClear(allClear.defense);
+          play('allclear');
+          haptic([22, 28, 36, 28, 48]);
+          updateHud();
+        }
+      }
       // Reward gravity may form another clear. Finish it before spawning,
       // without spending another turn or crediting the newly issued task.
       if (!taskSettled && finishChallengeTurn(token)) {
@@ -472,13 +513,16 @@
     clearEffects.triggered.forEach(flashUpgrade);
     clearEffects.remoteLinks.forEach((link) => renderer.addRemoteLink(link.from, link.to));
     const clearingCells = cells.concat(garbageCells);
-    const chainPower = CHAIN_POWER[Math.min(chain - 1, CHAIN_POWER.length - 1)];
-    const colorBonus = colors.size <= 1 ? 0 : Math.pow(2, colors.size + 1);
-    const sizeBonus = groups.reduce((sum, g) => sum + groupBonus(g.cells.length), 0);
-    const multiplier = Math.max(1, chainPower + colorBonus + sizeBonus);
     const chainScoreMultiplier = chain >= 3 ? modifiers.chainScoreMultiplier : 1;
     if (chainScoreMultiplier > 1) flashUpgrade('chainEcho');
-    const gained = Math.round(cells.length * 10 * multiplier * chainScoreMultiplier);
+    const scoring = scoringRules.calculate({
+      chain,
+      colorCount: colors.size,
+      groupSizes: groups.map((group) => group.cells.length),
+      clearedCount: cells.length,
+      scoreMultiplier: chainScoreMultiplier,
+    });
+    const gained = scoring.score;
 
     const previousLevel = level;
     score += gained;
@@ -612,6 +656,7 @@
     level = 1;
     clearedTotal = 0;
     runMaxChain = 0;
+    allClearCount = 0;
     hiAtStart = hi;
     bestChainAtStart = bestChain;
     challengeState = challengeRules.normalize({});
@@ -640,6 +685,8 @@
 
   function gameOver() {
     resolveToken++;
+    if (input) input.stop();
+    clearQuickTurnHint();
     pair = null;
     setMode('gameover');
     clearState();
@@ -673,6 +720,7 @@
       hiAtStart,
       bestChainAtStart,
       challengeState,
+      allClearCount,
     });
     selectGameType(kind === 'gameover' ? gameType : selectedGameType);
     updateChallengeHud();
@@ -700,7 +748,7 @@
 
   function saveState() {
     if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing' && mode !== 'build' && mode !== 'contract') return;
-    storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, hiAtStart, bestChainAtStart, challengeState, runBuild }));
+    storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, allClearCount, hiAtStart, bestChainAtStart, challengeState, runBuild }));
   }
 
   function restoreState(s) {
@@ -716,6 +764,7 @@
     level = restored.level;
     clearedTotal = restored.clearedTotal;
     runMaxChain = restored.runMaxChain;
+    allClearCount = restored.allClearCount;
     hiAtStart = restored.hiAtStart;
     bestChainAtStart = restored.bestChainAtStart;
     challengeState = restored.challengeState;
