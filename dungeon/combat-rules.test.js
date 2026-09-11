@@ -1,0 +1,12 @@
+'use strict';
+const assert = require('node:assert/strict');
+require('./combat-rules.js');
+const rules = global.DungeonCombatRules;
+assert.deepEqual(rules.normalize(3, 4), { x: .6, y: .8 });
+assert.equal(rules.nearest({ x: 0, y: 0 }, [{ id: 1, x: 8, y: 0 }, { id: 2, x: 3, y: 0 }], 10).id, 2);
+assert.equal(rules.nearest({ x: 0, y: 0 }, [{ x: 8, y: 0 }], 4), null);
+assert.equal(rules.circleHit({ x: 0, y: 0, r: 4 }, { x: 7, y: 0, r: 4 }), true);
+const actor = { x: 5, y: 5, r: 2 };
+rules.moveInside(actor, -100, 100, 1, { left: 0, top: 0, right: 20, bottom: 20 });
+assert.deepEqual(actor, { x: 2, y: 18, r: 2 });
+console.log('dungeon combat rules tests passed');

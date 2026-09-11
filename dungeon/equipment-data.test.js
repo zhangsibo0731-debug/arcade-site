@@ -1,0 +1,10 @@
+'use strict';
+const assert = require('node:assert/strict');
+require('./equipment-data.js');
+const equipment = global.DungeonEquipment;
+assert.equal(equipment.ITEMS.length, 8);
+assert.equal(equipment.candidates('weapon').length, 3);
+assert.equal(equipment.roll(() => 0, 'weapon', 'moon-blade').id, 'star-bow');
+assert.equal(equipment.rarity(() => .1), 'rare');
+assert.equal(equipment.rarity(() => .9), 'common');
+console.log('dungeon equipment data tests passed');

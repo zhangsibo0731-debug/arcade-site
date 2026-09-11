@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#121127">
+  <title>月夜地牢 · 月夜游戏厅</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a href="../" aria-label="返回游戏厅">←</a>
+      <div><h1>月夜地牢</h1><p>A0 · 战斗手感试验台</p></div>
+      <button id="pauseBtn" type="button" aria-label="暂停">Ⅱ</button>
+    </header>
+    <section class="hud">
+      <div><span>生命</span><strong id="hp">♥♥♥♥♥♥</strong></div>
+      <div class="weapon-slot"><span>武器（点击切换）</span><button id="weaponBtn" type="button">⚔ 月牙剑 · 可切换</button></div>
+      <div><span>击杀</span><strong id="kills">0</strong></div>
+    </section>
+    <section class="arena-frame">
+      <canvas id="arena" width="360" height="520" aria-label="战斗区域"></canvas>
+      <div class="loot-panel" id="lootPanel" hidden>
+        <span class="loot-rarity" id="lootRarity">稀有装备</span>
+        <strong class="loot-name" id="lootName"></strong>
+        <p id="lootDescription"></p>
+        <div class="loot-compare"><span>当前</span><b id="currentEquipment">无</b><i>→</i><b id="newEquipment"></b></div>
+        <div class="loot-actions"><button id="discardLootBtn" type="button">暂不装备</button><button id="equipLootBtn" type="button">立即装备</button></div>
+      </div>
+      <div class="result" id="result" hidden>
+        <strong id="resultTitle">战斗结束</strong>
+        <span id="resultText"></span>
+        <button id="restartBtn" type="button">重新挑战</button>
+      </div>
+    </section>
+    <section class="equipment-bar" aria-label="当前装备">
+      <span><i>武器</i><b id="weaponSlot">月牙剑</b></span>
+      <span><i>护甲</i><b id="armorSlot">无</b></span>
+      <span><i>饰品</i><b id="charmSlot">无</b></span>
+    </section>
+    <p class="message" id="message">移动躲开红色预警，角色会自动攻击最近的敌人。</p>
+    <section class="controls">
+      <div class="stick" id="stick"><span class="stick-knob" id="stickKnob"></span><small>移动</small></div>
+      <div class="actions">
+        <button id="skillBtn" type="button"><strong>月爆</strong><small id="skillCd">就绪</small></button>
+        <button id="dashBtn" type="button"><strong>闪避</strong><small id="dashCd">就绪</small></button>
+      </div>
+    </section>
+    <footer>WASD／方向键移动 · 空格技能 · Shift 闪避</footer>
+  </main>
+  <script src="../input-guard.js"></script>
+  <script src="combat-rules.js"></script>
+  <script src="equipment-data.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
