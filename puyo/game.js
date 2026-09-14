@@ -95,6 +95,7 @@
   const CHAIN_KEY = 'puyo_chain_v1';
   const CHALLENGE_CHAIN_KEY = 'puyo_challenge_chain_v1';
   const SAVE_KEYS = { classic: 'puyo_save_v1', challenge: 'puyo_challenge_save_v1' };
+  const ACTIVE_SAVE_KEY = 'puyo_active_save_v1';
   const MUTE_KEY = 'puyo_muted_v1';
   const storage = window.PuyoStorage.create({
     rows: ROWS,
@@ -106,6 +107,7 @@
       highScore: { classic: HI_KEY, challenge: CHALLENGE_HI_KEY },
       bestChain: { classic: CHAIN_KEY, challenge: CHALLENGE_CHAIN_KEY },
       save: SAVE_KEYS,
+      activeSave: ACTIVE_SAVE_KEY,
       muted: MUTE_KEY,
     },
   });

@@ -20,6 +20,7 @@ const storage = global.PuyoStorage.create({
     highScore: { classic: 'hi', challenge: 'challenge-hi' },
     bestChain: { classic: 'chain', challenge: 'challenge-chain' },
     save: { classic: 'save', challenge: 'challenge-save' },
+    activeSave: 'active-save',
     muted: 'muted',
   },
 });
@@ -44,6 +45,12 @@ storage.save('challenge', { savedAt: 20, board: [[0, 6], [1, 2]] });
 assert.strictEqual(storage.loadLatest().gameType, 'challenge');
 assert.strictEqual(storage.loadLatest().savedAt, 20);
 
+// The active session wins even when another mode has a newer timestamp.
+storage.save('classic', { savedAt: 30, board: [[0, 0], [1, 2]] });
+data.set('active-save', 'challenge');
+assert.strictEqual(storage.loadLatest().gameType, 'challenge');
+assert.strictEqual(storage.loadLatest().savedAt, 20);
+
 data.set('save', JSON.stringify({ savedAt: 30, board: [[0, 6], [1, 2]] }));
 assert.strictEqual(storage.loadLatest().gameType, 'challenge');
 data.set('challenge-save', '{bad json');
@@ -52,5 +59,6 @@ assert.strictEqual(storage.loadLatest(), null);
 storage.save('classic', { savedAt: 40, board: [[0, 0], [1, 2]] });
 storage.clear('classic');
 assert.strictEqual(data.has('save'), false);
+assert.strictEqual(data.has('active-save'), false);
 
 console.log('puyo storage tests passed');

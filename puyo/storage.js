@@ -59,24 +59,45 @@
     }
 
     function save(type, snapshot) {
-      try { global.localStorage.setItem(typeKey('save', type), JSON.stringify(snapshot)); } catch (e) {}
+      try {
+        global.localStorage.setItem(typeKey('save', type), JSON.stringify(snapshot));
+        if (keys.activeSave) global.localStorage.setItem(keys.activeSave, type === 'challenge' ? 'challenge' : 'classic');
+      } catch (e) {}
+    }
+
+    function load(type) {
+      try {
+        const value = JSON.parse(global.localStorage.getItem(typeKey('save', type)));
+        if (!value || !validBoard(value.board)) return null;
+        if (type === 'classic' && value.board.some((row) => row.includes(garbage))) return null;
+        return Object.assign({}, value, { gameType: type });
+      } catch (e) { return null; }
     }
 
     function loadLatest() {
-      return ['classic', 'challenge'].map((type) => {
+      if (keys.activeSave) {
         try {
-          const value = JSON.parse(global.localStorage.getItem(typeKey('save', type)));
-          if (!value || !validBoard(value.board)) return null;
-          if (type === 'classic' && value.board.some((row) => row.includes(garbage))) return null;
-          return Object.assign({}, value, { gameType: type });
-        } catch (e) { return null; }
+          const activeType = global.localStorage.getItem(keys.activeSave);
+          if (activeType === 'classic' || activeType === 'challenge') {
+            const active = load(activeType);
+            if (active) return active;
+          }
+        } catch (e) {}
+      }
+      return ['classic', 'challenge'].map((type) => {
+        return load(type);
       }).filter(Boolean).sort((a, b) =>
         (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0)
       )[0] || null;
     }
 
     function clear(type) {
-      try { global.localStorage.removeItem(typeKey('save', type)); } catch (e) {}
+      try {
+        global.localStorage.removeItem(typeKey('save', type));
+        if (keys.activeSave && global.localStorage.getItem(keys.activeSave) === type) {
+          global.localStorage.removeItem(keys.activeSave);
+        }
+      } catch (e) {}
     }
 
     return Object.freeze({
