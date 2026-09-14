@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules) throw new Error('Puyo modules failed to load.');
+  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoMusic || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules) throw new Error('Puyo modules failed to load.');
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('board');
@@ -112,6 +112,7 @@
     },
   });
   const audio = window.PuyoAudio.create({ storage, button: btnSound, soundOnIcon: icSoundOn, soundOffIcon: icSoundOff });
+  const music = window.PuyoMusic.create({ isMuted: audio.isMuted });
   const sessionState = window.PuyoSessionState.create({ storage, challengeRules, rogueliteRules, emptyBoard: boardRules.emptyBoard });
   const ensureAudio = audio.ensure;
   const play = audio.play;
@@ -699,6 +700,7 @@
     updateChallengeHud();
     saveState();
     play('start');
+    music.start();
   }
 
   function gameOver() {
@@ -709,6 +711,7 @@
     setMode('gameover');
     clearState();
     play('over');
+    music.stop();
     haptic([70, 45, 90]);
     updateHud();
   }
@@ -749,10 +752,12 @@
     if (input) input.stop();
     if (mode === 'playing') {
       setMode('paused');
+      music.pause();
       saveState();
     } else if (mode === 'paused') {
       lastT = performance.now();
       setMode('playing');
+      music.resume();
     }
   }
 
@@ -874,7 +879,11 @@
     pause: togglePause,
     openBuild: openBuildOverlay,
     closeBuild: closeBuildOverlay,
-    toggleSound: audio.toggle,
+    toggleSound() {
+      const muted = audio.toggle();
+      music.setMuted(muted);
+      if (!muted && ['playing', 'resolving', 'choosing', 'build', 'contract'].includes(mode) && !music.isPlaying()) music.start();
+    },
     selectMode(type) {
       selectGameType(type);
       hi = storage.readHighScore(selectedGameType);
@@ -885,7 +894,7 @@
     primary() {
       ensureAudio();
       if (mode === 'menu' || mode === 'gameover') newGame();
-      else if (mode === 'paused') setMode('playing');
+      else if (mode === 'paused') { setMode('playing'); music.resume(); }
     },
     resume() {
       resumeOverlay.hidden = true;
@@ -901,11 +910,13 @@
       }
       updateChallengeHud();
       ensureAudio();
+      music.start();
     },
     resumeNew() {
       resumeOverlay.hidden = true;
       selectedGameType = gameType;
       mode = 'menu';
+      music.stop();
       showOverlay('menu');
     },
     chooseUpgrade(id) {
