@@ -31,6 +31,7 @@
     let nodes = [];
     let loopTimer = null;
     let wanted = false;
+    let intensity = 0;
 
     function ensure() {
       if (context) return context;
@@ -144,7 +145,11 @@
       if (muted) pause();
       else if (wanted) resume();
     }
-    return Object.freeze({ start, pause, resume, stop, setMuted, isPlaying: () => wanted });
+    function setIntensity(level) {
+      intensity = Math.max(0, Math.min(2, Number(level) || 0));
+      if (master && context) master.gain.setTargetAtTime(.17 + intensity * .018, context.currentTime, .08);
+    }
+    return Object.freeze({ start, pause, resume, stop, setMuted, setIntensity, isPlaying: () => wanted });
   }
 
   global.PuyoMusic = Object.freeze({ VERSION, create });

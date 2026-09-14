@@ -478,6 +478,7 @@
     if (token !== resolveToken) return;
     const groups = findClearGroups();
     if (!groups.length) {
+      music.setIntensity(0);
       renderer.clearPop();
       if (chain > 2 && !taskSettled) showChainResult({
         chain: chain - 1,
@@ -538,6 +539,7 @@
       scoreMultiplier: chainScoreMultiplier,
     });
     const gained = scoring.score;
+    music.setIntensity(chain >= 3 ? 2 : chain > 1 ? 1 : 0);
     chainFeedback.score += gained;
     chainFeedback.cleared += cells.length;
     chainFeedback.garbage += garbageCells.length;
