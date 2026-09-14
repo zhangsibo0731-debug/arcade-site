@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 9;
+  const VERSION = 10;
 
   function create(options) {
     const elements = options.elements;
@@ -9,8 +9,11 @@
     const rogueliteRules = options.rogueliteRules;
     let chainTimer = null;
     let resultTimer = null;
+    let allClearDelayTimer = null;
     let levelTimer = null;
     let allClearTimer = null;
+    const resultQueue = [];
+    let resultActive = false;
     const levels = ['', 'Ⅰ', 'Ⅱ', 'Ⅲ'];
 
     function synergyText(card) {
@@ -145,17 +148,31 @@
       elements.overlay.hidden = false;
     }
 
-    function showChallengeMessage(text, complete, duration) {
-      clearTimeout(resultTimer);
-      elements.chainResult.textContent = text;
+    function playNextResult() {
+      if (resultActive || !resultQueue.length) return;
+      resultActive = true;
+      const item = resultQueue.shift();
+      elements.chainResult.textContent = item.text;
+      elements.chainResult.setAttribute('data-kind', item.kind || 'system');
       elements.chainResult.hidden = true;
       void elements.chainResult.offsetWidth;
       elements.chainResult.hidden = false;
-      elements.challengeCard.classList.toggle('is-complete', !!complete);
+      elements.challengeCard.classList.toggle('is-complete', !!item.complete);
       resultTimer = setTimeout(() => {
         elements.chainResult.hidden = true;
         elements.challengeCard.classList.remove('is-complete');
-      }, duration || 1120);
+        resultActive = false;
+        playNextResult();
+      }, item.duration || 1120);
+    }
+
+    function queueResult(item) {
+      resultQueue.push(item);
+      playNextResult();
+    }
+
+    function showChallengeMessage(text, complete, duration) {
+      queueResult({ text, complete, duration: duration || 1120, kind: 'system' });
     }
 
     function showChain(chain, gained) {
@@ -166,19 +183,21 @@
       elements.chainPop.style.setProperty('--chain-size', (chain === 1 ? 36 : Math.min(92, 50 + (chain - 2) * 7)) + 'px');
       elements.chainPop.style.setProperty('--chain-hue', String(Math.max(0, 82 - Math.max(0, chain - 2) * 13)));
       elements.chainPop.style.setProperty('--chain-tilt', (chain <= 1 ? -4 : Math.min(8, chain) * (chain % 2 ? 1 : -1)) + 'deg');
+      elements.chainPop.setAttribute('data-tier', chain >= 5 ? 'climax' : chain >= 3 ? 'impact' : chain >= 2 ? 'chain' : 'clear');
       elements.chainPop.hidden = true;
       void elements.chainPop.offsetWidth;
       elements.chainPop.hidden = false;
       chainTimer = setTimeout(() => { elements.chainPop.hidden = true; }, 760);
     }
 
-    function showChainResult(chain) {
-      clearTimeout(resultTimer);
-      elements.chainResult.textContent = '本次 ' + chain + ' CHAIN!';
-      elements.chainResult.hidden = true;
-      void elements.chainResult.offsetWidth;
-      elements.chainResult.hidden = false;
-      resultTimer = setTimeout(() => { elements.chainResult.hidden = true; }, 1120);
+    function showChainResult(result) {
+      const summary = typeof result === 'number' ? { chain: result } : result;
+      const headline = (summary.isBest ? 'NEW BEST! · ' : '') + summary.chain + ' CHAIN!';
+      const details = [];
+      if (summary.cleared) details.push('消除 ' + summary.cleared + ' 颗');
+      if (summary.score) details.push('得分 +' + summary.score.toLocaleString('zh-CN'));
+      if (summary.garbage) details.push('清除干扰 ×' + summary.garbage);
+      queueResult({ text: headline + (details.length ? '\n' + details.join(' · ') : ''), duration: summary.chain >= 5 ? 1320 : 1080, kind: summary.chain >= 5 ? 'climax' : 'chain' });
     }
 
     function showLevel(level) {
@@ -190,13 +209,16 @@
       levelTimer = setTimeout(() => { elements.levelPop.hidden = true; }, 980);
     }
 
-    function showAllClear(defense) {
+    function showAllClear(defense, delay) {
       clearTimeout(allClearTimer);
+      clearTimeout(allClearDelayTimer);
       elements.allClearPop.querySelector('small').textContent = defense > 0 ? '全消 +2100 · 额外防御 +' + defense : '全消 +2100';
-      elements.allClearPop.hidden = true;
-      void elements.allClearPop.offsetWidth;
-      elements.allClearPop.hidden = false;
-      allClearTimer = setTimeout(() => { elements.allClearPop.hidden = true; }, 1450);
+      allClearDelayTimer = setTimeout(() => {
+        elements.allClearPop.hidden = true;
+        void elements.allClearPop.offsetWidth;
+        elements.allClearPop.hidden = false;
+        allClearTimer = setTimeout(() => { elements.allClearPop.hidden = true; }, 1450);
+      }, delay || 0);
     }
 
     function flashGarbageDefense() {
@@ -209,8 +231,11 @@
     function resetTransient() {
       clearTimeout(chainTimer);
       clearTimeout(resultTimer);
+      clearTimeout(allClearDelayTimer);
       clearTimeout(levelTimer);
       clearTimeout(allClearTimer);
+      resultQueue.length = 0;
+      resultActive = false;
       elements.chainPop.hidden = true;
       elements.chainResult.hidden = true;
       elements.levelPop.hidden = true;

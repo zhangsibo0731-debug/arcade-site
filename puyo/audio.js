@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 2;
+  const VERSION = 3;
 
   function create(options) {
     const storage = options.storage;
@@ -40,6 +40,7 @@
       else if (name === 'clear') { freq = 560; dur = 0.16; type = 'triangle'; vol = 0.1; }
       else if (name === 'allclear') { freq = 660; dur = 0.42; type = 'triangle'; vol = 0.12; }
       else if (name === 'chain') { freq = 520 + Math.min(chain || 1, 10) * 75; dur = 0.22; type = 'triangle'; vol = 0.11; }
+      else if (name === 'chainEnd') { freq = 420 + Math.min(chain || 2, 10) * 42; dur = 0.3; type = 'triangle'; vol = 0.09; }
       else if (name === 'level') { freq = 520 + Math.min(chain || 1, 12) * 24; dur = 0.32; type = 'triangle'; vol = 0.1; }
       else if (name === 'start') { freq = 390; dur = 0.18; type = 'triangle'; vol = 0.09; }
       else if (name === 'over') { freq = 260; dur = 0.6; type = 'sawtooth'; vol = 0.1; }
@@ -50,17 +51,18 @@
       oscillator.frequency.setValueAtTime(freq, now);
       if (name === 'over') oscillator.frequency.exponentialRampToValueAtTime(70, now + dur);
       else if (name === 'chain') oscillator.frequency.exponentialRampToValueAtTime(freq * 1.45, now + dur);
+      else if (name === 'chainEnd') oscillator.frequency.exponentialRampToValueAtTime(freq * 1.2, now + dur);
       gain.gain.setValueAtTime(vol, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
       oscillator.connect(gain);
       gain.connect(audioContext.destination);
       oscillator.start(now);
       oscillator.stop(now + dur + 0.02);
-      if (name === 'chain' || name === 'level' || name === 'allclear') {
+      if (name === 'chain' || name === 'chainEnd' || name === 'level' || name === 'allclear') {
         const upper = audioContext.createOscillator();
         const upperGain = audioContext.createGain();
         upper.type = 'sine';
-        upper.frequency.setValueAtTime(freq * (name === 'chain' ? 1.5 : name === 'allclear' ? 1.6 : 1.25), now + 0.055);
+        upper.frequency.setValueAtTime(freq * (name === 'chain' ? 1.5 : name === 'chainEnd' ? 1.33 : name === 'allclear' ? 1.6 : 1.25), now + 0.055);
         upperGain.gain.setValueAtTime(0.001, now);
         upperGain.gain.exponentialRampToValueAtTime(vol * 0.7, now + 0.06);
         upperGain.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.08);

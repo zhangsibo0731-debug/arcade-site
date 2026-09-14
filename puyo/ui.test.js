@@ -80,6 +80,12 @@ ui.showOverlay('gameover', { gameType: 'classic', score: 2100, level: 1, runMaxC
 assert.ok(elements.ovSub.textContent.includes('全消  1 次'));
 ui.showChain(3, 480);
 assert.strictEqual(elements.chainValue.textContent, 3);
+assert.strictEqual(elements.chainPop['data-tier'], 'impact');
+ui.showChainResult({ chain: 4, score: 2640, cleared: 18, garbage: 3, isBest: true });
+assert.ok(elements.chainResult.textContent.includes('NEW BEST! · 4 CHAIN!'));
+assert.ok(elements.chainResult.textContent.includes('消除 18 颗 · 得分 +2,640 · 清除干扰 ×3'));
+ui.showChallengeMessage('STAGE 2 完成', true, 900);
+assert.ok(elements.chainResult.textContent.includes('4 CHAIN!'), 'stage feedback must wait for the chain summary');
 ui.showAllClear(5);
 assert.strictEqual(allClearDetail.textContent, '全消 +2100 · 额外防御 +5');
 ['btnPause','buildButton','buildClose','btnSound','btnResumeContinue','btnResumeNew'].forEach((key) => { elements[key] = element(); });

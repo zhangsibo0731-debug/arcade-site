@@ -148,12 +148,17 @@
   let challengeState = challengeRules.normalize({});
   let runBuild = rogueliteRules.normalize({}, 0);
   let turnStats = freshTurnStats();
+  let chainFeedback = freshChainFeedback();
   const triggeredUpgrades = new Set();
   const upgradeFlashTimers = new Map();
   let buildReturnMode = 'playing';
 
   function freshTurnStats() {
     return sessionState.freshTurnStats();
+  }
+
+  function freshChainFeedback() {
+    return { score: 0, cleared: 0, garbage: 0, previousBest: bestChain };
   }
 
   function hasUpgradeChoice() {
@@ -406,6 +411,7 @@
     quickTurnPending = null;
     clearQuickTurnHint();
     mode = 'resolving';
+    chainFeedback = freshChainFeedback();
     btnPause.hidden = true;
     // 横向组合落在高低不平处时，两颗噗呦应分别沉降到各自的支撑面。
     applyGravity(true);
@@ -472,7 +478,13 @@
     const groups = findClearGroups();
     if (!groups.length) {
       renderer.clearPop();
-      if (chain > 2) showChainResult(chain - 1);
+      if (chain > 2 && !taskSettled) showChainResult({
+        chain: chain - 1,
+        score: chainFeedback.score,
+        cleared: chainFeedback.cleared,
+        garbage: chainFeedback.garbage,
+        isBest: chain - 1 > chainFeedback.previousBest,
+      });
       if (!taskSettled && chain > 1) {
         const allClear = scoringRules.allClearResult({
           board,
@@ -487,7 +499,7 @@
             turnStats.scoreGained += allClear.score;
             turnStats.allClearDefense += allClear.defense;
           }
-          ui.showAllClear(allClear.defense);
+          ui.showAllClear(allClear.defense, chain > 2 ? 620 : 0);
           play('allclear');
           haptic([22, 28, 36, 28, 48]);
           updateHud();
@@ -525,6 +537,9 @@
       scoreMultiplier: chainScoreMultiplier,
     });
     const gained = scoring.score;
+    chainFeedback.score += gained;
+    chainFeedback.cleared += cells.length;
+    chainFeedback.garbage += garbageCells.length;
 
     const previousLevel = level;
     score += gained;
@@ -597,6 +612,7 @@
 
   function showChainResult(chain) {
     ui.showChainResult(chain);
+    play('chainEnd', chain.chain || chain);
   }
 
   function showLevel(nextLevel) {
@@ -758,6 +774,7 @@
     selectedGameType = gameType;
     hi = storage.readHighScore(gameType);
     bestChain = storage.readBestChain(gameType);
+    chainFeedback = freshChainFeedback();
     const restored = sessionState.restore(s, { highScore: hi, bestChain });
     board = restored.board;
     pair = restored.pair;
