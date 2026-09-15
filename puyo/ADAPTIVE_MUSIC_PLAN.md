@@ -264,9 +264,11 @@ music.stop()
 
 完整曲式：原 12 小节主题重复两遍仅有约 22 秒独立旋律，现扩写为 32 小节、约 58 秒：12 小节 A 段建立并变化主题，8 小节 B 段使用更舒展的新旋律与和声，4 小节桥段主动减层蓄力，最后 8 小节由 A 主题高潮回归并以 G7 衔接循环。
 
-离线交付：`render-music.js` 直接读取 `music.js` 暴露的当前乐谱，可重复生成 44.1 kHz、16-bit、双声道 WAV。首个完整导出为 `assets/puyo-theme-full-v1.wav`，时长约 58.18 秒。
+离线交付：项目级 `tools/music/render.js` 调用通用合成器与噗呦曲谱，可重复生成 44.1 kHz、16-bit、双声道 WAV。执行 `node tools/music/render.js puyo-theme` 即可更新正式音频，时长约 58.18 秒。
 
 句尾连续性：V1 在约 7.3、14.5、50.9 秒处让旋律、琶音和踩镲同时停止一整拍，导致呼吸变成断层。V2 将空白缩短为半拍，保留句尾落点音，并让琶音与踩镲延续到最后半拍；低音支撑不变。
+
+运行时方案：正式游戏已从逐音符实时合成切换为加载 `assets/puyo-theme-full-v2.wav`，通过循环 `AudioBufferSourceNode` 播放。暂停/恢复、静音和连锁增益仍由 Web Audio 控制。可编辑乐谱位于 `tools/music/tracks/puyo-theme.js`，仅供项目级离线工具重新导出；正式页面不会下载曲谱或合成器代码。
 
 ### B2：挑战与压力层
 

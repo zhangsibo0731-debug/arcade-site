@@ -2,13 +2,15 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-require('./music.js');
 
-const score = global.PuyoMusic.SCORE;
-const sampleRate = 44100;
+function renderTrack(score, output, options = {}) {
+const sampleRate = options.sampleRate || 44100;
 const frames = Math.ceil(score.loopSeconds * sampleRate);
 const mix = new Float32Array(frames);
-let seed = 20260915;
+let seed = score.seed || 1;
+const arrangement = score.arrangement || {};
+const cadenceEvery = arrangement.cadenceEvery || 4;
+const inRange = (index, range) => Array.isArray(range) && index >= range[0] && index < range[1];
 
 const midi = (note) => 440 * Math.pow(2, (note - 69) / 12);
 const random = () => {
@@ -66,10 +68,10 @@ function addNoise(start, duration, level, bright) {
 
 score.chords.forEach((chord, barIndex) => {
   const time = barIndex * score.bar;
-  const cadence = barIndex % 4 === 3;
-  const bridge = barIndex >= 20 && barIndex < 24;
-  const breakdown = barIndex >= 20 && barIndex < 22;
-  const climax = barIndex >= 28 && barIndex < 31;
+  const cadence = barIndex % cadenceEvery === cadenceEvery - 1;
+  const bridge = inRange(barIndex, arrangement.bridge);
+  const breakdown = inRange(barIndex, arrangement.breakdown);
+  const climax = inRange(barIndex, arrangement.climax);
   [0,1,2,1,3,2,1,2].forEach((voice, step) => {
     if ((cadence && step >= 7) || (breakdown && step % 2)) return;
     addTone(time + step * score.beat * .5, chord[voice], score.beat * (bridge ? .38 : .28), 'triangle', bridge ? .015 : .019);
@@ -95,8 +97,8 @@ score.chords.forEach((chord, barIndex) => {
 
 score.melody.forEach(([at, note, length]) => {
   const barIndex = Math.floor(at / 4);
-  if (barIndex % 4 === 3 && barIndex !== score.chords.length - 1 && at % 4 >= 3.5) return;
-  addLead(at * score.beat, note, length * score.beat * .92, barIndex >= 28 && barIndex < 31 && at % 1 === 0);
+  if (barIndex % cadenceEvery === cadenceEvery - 1 && barIndex !== score.chords.length - 1 && at % 4 >= 3.5) return;
+  addLead(at * score.beat, note, length * score.beat * .92, inRange(barIndex, arrangement.climax) && at % 1 === 0);
 });
 
 let peak = 0;
@@ -115,6 +117,9 @@ for (let index = 0; index < frames; index += 1) {
   wav.writeInt16LE(pcm, 46 + index * 4);
 }
 
-const output = path.join(__dirname, 'assets', 'puyo-theme-full-v2.wav');
+fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, wav);
-console.log(JSON.stringify({ output, seconds: frames / sampleRate, sampleRate, channels: 2, peak: Number(peak.toFixed(4)), bytes: wav.length }));
+return { output, seconds: frames / sampleRate, sampleRate, channels: 2, peak: Number(peak.toFixed(4)), bytes: wav.length };
+}
+
+module.exports = { renderTrack };
