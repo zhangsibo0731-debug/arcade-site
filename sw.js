@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v142';
+const CACHE = 'arcade-v146';
 const ASSETS = [
   './',
   './index.html',
@@ -32,7 +32,7 @@ const ASSETS = [
   './puyo/styles.css?v=19',
   './puyo/storage.js?v=2',
   './puyo/audio.js?v=3',
-  './puyo/music.js?v=2',
+  './puyo/music.js?v=6',
   './puyo/board-rules.js?v=1',
   './puyo/scoring-rules.js?v=3',
   './puyo/rotation-rules.js?v=1',
