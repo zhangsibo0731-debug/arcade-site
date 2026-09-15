@@ -9,6 +9,8 @@ Object.defineProperty(global, 'navigator', {
 });
 require('./audio.js');
 
+assert.deepStrictEqual(global.PuyoAudio.CHAIN_NOTES, [72, 74, 76, 79, 81, 84, 86, 88, 91, 93]);
+
 function element() {
   return { hidden: false, attrs: {}, setAttribute(name, value) { this.attrs[name] = value; } };
 }
@@ -28,6 +30,8 @@ assert.strictEqual(soundOnIcon.hidden, false);
 assert.strictEqual(soundOffIcon.hidden, true);
 assert.strictEqual(audio.ensure(), null);
 assert.doesNotThrow(() => audio.play('chain', 4));
+assert.doesNotThrow(() => audio.play('chainBest', 4));
+assert.doesNotThrow(() => audio.play('allclear'));
 audio.haptic([10, 20]);
 assert.deepStrictEqual(vibrated, [10, 20]);
 assert.strictEqual(audio.toggle(), true);

@@ -260,6 +260,10 @@
     });
   }
 
+  function musicSituation() {
+    return { mode: gameType, stage: challengeState.stage, special: challengeState.special };
+  }
+
   function showChallengeMessage(text, complete, duration) {
     ui.showChallengeMessage(text, complete, duration);
   }
@@ -460,6 +464,7 @@
       random: Math.random,
     });
     challengeState = result.challengeState;
+    music.setSituation(musicSituation());
     runBuild = result.runBuild;
     result.triggered.forEach(flashUpgrade);
     score += result.scoreBonus;
@@ -502,6 +507,7 @@
             turnStats.allClearDefense += allClear.defense;
           }
           ui.showAllClear(allClear.defense, chain > 2 ? 620 : 0);
+          music.onAllClear();
           play('allclear');
           haptic([22, 28, 36, 28, 48]);
           updateHud();
@@ -539,7 +545,7 @@
       scoreMultiplier: chainScoreMultiplier,
     });
     const gained = scoring.score;
-    music.setIntensity(chain >= 3 ? 2 : chain > 1 ? 1 : 0);
+    music.onChain(chain);
     chainFeedback.score += gained;
     chainFeedback.cleared += cells.length;
     chainFeedback.garbage += garbageCells.length;
@@ -615,7 +621,8 @@
 
   function showChainResult(chain) {
     ui.showChainResult(chain);
-    play('chainEnd', chain.chain || chain);
+    music.onChainEnd(chain);
+    play(chain.isBest ? 'chainBest' : 'chainEnd', chain.chain || chain);
   }
 
   function showLevel(nextLevel) {
@@ -702,7 +709,7 @@
     updateChallengeHud();
     saveState();
     play('start');
-    music.start();
+    music.start(musicSituation());
   }
 
   function gameOver() {
@@ -884,7 +891,7 @@
     toggleSound() {
       const muted = audio.toggle();
       music.setMuted(muted);
-      if (!muted && ['playing', 'resolving', 'choosing', 'build', 'contract'].includes(mode) && !music.isPlaying()) music.start();
+      if (!muted && ['playing', 'resolving', 'choosing', 'build', 'contract'].includes(mode) && !music.isPlaying()) music.start(musicSituation());
     },
     selectMode(type) {
       selectGameType(type);
@@ -912,7 +919,7 @@
       }
       updateChallengeHud();
       ensureAudio();
-      music.start();
+      music.start(musicSituation());
     },
     resumeNew() {
       resumeOverlay.hidden = true;

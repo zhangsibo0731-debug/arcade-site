@@ -5,6 +5,7 @@ const { renderTrack } = require('./synth-renderer.js');
 
 const tracks = {
   'puyo-theme': () => require('./tracks/puyo-theme.js'),
+  'puyo-theme-pressure': () => require('./tracks/puyo-theme-pressure.js'),
 };
 
 function usage() {

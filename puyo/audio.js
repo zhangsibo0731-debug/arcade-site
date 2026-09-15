@@ -1,7 +1,9 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 3;
+  const VERSION = 4;
+  const CHAIN_NOTES = [72, 74, 76, 79, 81, 84, 86, 88, 91, 93];
+  const midi = (note) => 440 * Math.pow(2, (note - 69) / 12);
 
   function create(options) {
     const storage = options.storage;
@@ -33,14 +35,28 @@
       if (!audioContext) return;
       if (audioContext.state === 'suspended') audioContext.resume();
       const now = audioContext.currentTime;
+      const addNote = (note, delay, length, volume, wave) => {
+        const voice = audioContext.createOscillator();
+        const voiceGain = audioContext.createGain();
+        voice.type = wave || 'triangle';
+        voice.frequency.setValueAtTime(midi(note), now + delay);
+        voiceGain.gain.setValueAtTime(0.001, now + delay);
+        voiceGain.gain.exponentialRampToValueAtTime(volume, now + delay + .012);
+        voiceGain.gain.exponentialRampToValueAtTime(.001, now + delay + length);
+        voice.connect(voiceGain);
+        voiceGain.connect(audioContext.destination);
+        voice.start(now + delay);
+        voice.stop(now + delay + length + .02);
+      };
       let freq = 240, dur = 0.06, type = 'sine', vol = 0.07;
       if (name === 'rotate') { freq = 430; dur = 0.07; type = 'triangle'; }
       else if (name === 'land') { freq = 120; dur = 0.06; type = 'square'; vol = 0.04; }
       else if (name === 'drop') { freq = 190; dur = 0.12; type = 'sawtooth'; }
       else if (name === 'clear') { freq = 560; dur = 0.16; type = 'triangle'; vol = 0.1; }
-      else if (name === 'allclear') { freq = 660; dur = 0.42; type = 'triangle'; vol = 0.12; }
-      else if (name === 'chain') { freq = 520 + Math.min(chain || 1, 10) * 75; dur = 0.22; type = 'triangle'; vol = 0.11; }
-      else if (name === 'chainEnd') { freq = 420 + Math.min(chain || 2, 10) * 42; dur = 0.3; type = 'triangle'; vol = 0.09; }
+      else if (name === 'allclear') { freq = midi(76); dur = 0.42; type = 'triangle'; vol = 0.1; }
+      else if (name === 'chain') { freq = midi(CHAIN_NOTES[Math.min(Math.max(1, chain || 1), 10) - 1]); dur = 0.22; type = 'triangle'; vol = 0.11; }
+      else if (name === 'chainEnd') { freq = midi(Math.min(chain || 2, 4) >= 4 ? 79 : 67); dur = 0.3; type = 'triangle'; vol = 0.085; }
+      else if (name === 'chainBest') { freq = midi(79); dur = 0.48; type = 'triangle'; vol = 0.105; }
       else if (name === 'level') { freq = 520 + Math.min(chain || 1, 12) * 24; dur = 0.32; type = 'triangle'; vol = 0.1; }
       else if (name === 'start') { freq = 390; dur = 0.18; type = 'triangle'; vol = 0.09; }
       else if (name === 'over') { freq = 260; dur = 0.6; type = 'sawtooth'; vol = 0.1; }
@@ -58,11 +74,11 @@
       gain.connect(audioContext.destination);
       oscillator.start(now);
       oscillator.stop(now + dur + 0.02);
-      if (name === 'chain' || name === 'chainEnd' || name === 'level' || name === 'allclear') {
+      if (name === 'chain' || name === 'chainEnd' || name === 'chainBest' || name === 'level' || name === 'allclear') {
         const upper = audioContext.createOscillator();
         const upperGain = audioContext.createGain();
         upper.type = 'sine';
-        upper.frequency.setValueAtTime(freq * (name === 'chain' ? 1.5 : name === 'chainEnd' ? 1.33 : name === 'allclear' ? 1.6 : 1.25), now + 0.055);
+        upper.frequency.setValueAtTime(freq * (name === 'chain' ? 1.5 : name === 'chainEnd' || name === 'chainBest' ? 1.5 : name === 'allclear' ? 1.5 : 1.25), now + 0.055);
         upperGain.gain.setValueAtTime(0.001, now);
         upperGain.gain.exponentialRampToValueAtTime(vol * 0.7, now + 0.06);
         upperGain.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.08);
@@ -70,6 +86,15 @@
         upperGain.connect(audioContext.destination);
         upper.start(now + 0.05);
         upper.stop(now + dur + 0.1);
+      }
+      if (name === 'allclear') {
+        addNote(79, .1, .2, .07);
+        addNote(84, .2, .25, .08);
+        addNote(88, .33, .34, .065, 'sine');
+      } else if (name === 'chainBest') {
+        addNote(84, .11, .22, .075);
+        addNote(88, .23, .25, .07);
+        addNote(91, .36, .38, .06, 'sine');
       }
     }
 
@@ -89,5 +114,5 @@
     return Object.freeze({ ensure, play, haptic, toggle, isMuted: () => muted });
   }
 
-  global.PuyoAudio = Object.freeze({ VERSION, create });
+  global.PuyoAudio = Object.freeze({ VERSION, CHAIN_NOTES, create });
 })(typeof window !== 'undefined' ? window : globalThis);

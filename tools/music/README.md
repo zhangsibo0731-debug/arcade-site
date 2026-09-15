@@ -8,6 +8,12 @@
 node tools/music/render.js puyo-theme
 ```
 
+噗呦高压状态变奏的试听文件可以这样生成：
+
+```bash
+node tools/music/render.js puyo-theme-pressure
+```
+
 也可以临时指定输出位置：
 
 ```bash

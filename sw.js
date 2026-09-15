@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v148';
+const CACHE = 'arcade-v152';
 const ASSETS = [
   './',
   './index.html',
@@ -31,9 +31,10 @@ const ASSETS = [
   './puyo/index.html',
   './puyo/styles.css?v=19',
   './puyo/storage.js?v=2',
-  './puyo/audio.js?v=3',
-  './puyo/music.js?v=8',
-  './puyo/assets/puyo-theme-full-v2.wav',
+  './puyo/audio.js?v=4',
+  './puyo/music.js?v=10',
+  './puyo/assets/puyo-theme-full-v2.wav?v=3',
+  './puyo/assets/puyo-theme-pressure.wav?v=1',
   './puyo/board-rules.js?v=1',
   './puyo/scoring-rules.js?v=3',
   './puyo/rotation-rules.js?v=1',
@@ -44,7 +45,7 @@ const ASSETS = [
   './puyo/challenge-rules.js?v=7',
   './puyo/roguelite-rules.js?v=11',
   './puyo/challenge-effects.js?v=4',
-  './puyo/game.js?v=49',
+  './puyo/game.js?v=52',
   './fishing/index.html',
   './fishing/styles.css?v=27',
   './fishing/fish-metadata.js?v=1',
