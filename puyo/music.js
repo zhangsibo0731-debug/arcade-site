@@ -1,24 +1,31 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 4;
-  const BPM = 132;
+  const VERSION = 6;
+  const BPM = 108;
   const BAR_SECONDS = 60 / BPM * 4;
   const CROSSFADE_SECONDS = .38;
   const MODULE_URL = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : '';
 
   function selectTrack(situation) {
-    const state = situation || {};
-    return state.mode === 'challenge' && ((Number(state.stage) || 1) >= 4 || !!state.special) ? 'pressure' : 'base';
+    return 'base';
   }
 
   function create(options) {
     const settings = options || {};
     const isMuted = settings.isMuted || (() => false);
     const baseUrl = MODULE_URL || (global.location && global.location.href) || 'http://localhost/';
+    function supportedAudioType() {
+      if (typeof document === 'undefined') return 'mp3';
+      const probe = document.createElement('audio');
+      if (probe.canPlayType('audio/ogg; codecs="vorbis"')) return 'ogg';
+      if (probe.canPlayType('audio/mpeg')) return 'mp3';
+      return 'wav';
+    }
+    const format = settings.format || supportedAudioType();
     const urls = Object.assign({
-      base: new URL('assets/puyo-theme-full-v2.wav?v=3', baseUrl).href,
-      pressure: new URL('assets/puyo-theme-pressure.wav?v=1', baseUrl).href,
+      base: new URL('assets/puyo-garden-108-loop-v1.mp3?v=2', baseUrl).href,
+      pressure: new URL('assets/puyo-theme-pressure.' + format + '?v=1', baseUrl).href,
     }, settings.urls || {});
     let context = null;
     let master = null;
@@ -117,13 +124,13 @@
     }
 
     async function start(situation) {
+      const state = situation || {};
       wanted = true;
-      desiredTrack = selectTrack(situation);
+      desiredTrack = selectTrack(state);
       const token = ++requestToken;
       switchToken++;
       if (isMuted() || !ensure()) return;
       if (context.state === 'suspended') await context.resume();
-      load(desiredTrack === 'base' ? 'pressure' : 'base').catch(() => {});
       try {
         const decoded = await load(desiredTrack);
         if (!wanted || isMuted() || token !== requestToken) return;

@@ -8,8 +8,8 @@ assert.strictEqual(selectTrack(), 'base');
 assert.strictEqual(selectTrack({ mode: 'classic', stage: 99 }), 'base');
 assert.strictEqual(selectTrack({ mode: 'challenge', stage: 1 }), 'base');
 assert.strictEqual(selectTrack({ mode: 'challenge', stage: 3 }), 'base');
-assert.strictEqual(selectTrack({ mode: 'challenge', stage: 4 }), 'pressure');
-assert.strictEqual(selectTrack({ mode: 'challenge', stage: 2, special: { id: 'rush' } }), 'pressure');
+assert.strictEqual(selectTrack({ mode: 'challenge', stage: 4 }), 'base');
+assert.strictEqual(selectTrack({ mode: 'challenge', stage: 2, special: { id: 'rush' } }), 'base');
 
 const sources = [];
 class AudioParam {
@@ -34,18 +34,30 @@ class AudioContext {
 }
 
 global.AudioContext = AudioContext;
-global.fetch = () => Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) });
+const requests = [];
+global.fetch = (url) => {
+  requests.push(url);
+  return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) });
+};
 
 (async () => {
+  const classicMusic = global.PuyoMusic.create({ urls: { base: '/classic-base.wav', pressure: '/classic-pressure.wav' } });
+  await classicMusic.start({ mode: 'classic', stage: 1 });
+  assert.deepStrictEqual(requests, ['/classic-base.wav']);
+  classicMusic.stop();
+
   const music = global.PuyoMusic.create({ urls: { base: '/base.wav', pressure: '/pressure.wav' } });
   await music.start({ mode: 'challenge', stage: 1 });
+  assert.ok(requests.includes('/base.wav'));
+  assert.ok(!requests.includes('/pressure.wav'));
   assert.strictEqual(music.currentTrack(), 'base');
-  assert.strictEqual(sources.length, 1);
-  await music.setSituation({ mode: 'challenge', stage: 4 });
-  assert.strictEqual(music.currentTrack(), 'pressure');
   assert.strictEqual(sources.length, 2);
-  assert.deepStrictEqual(sources[1].started, [.04, 0]);
-  assert.ok(sources[0].stopped > sources[1].started[0]);
+  assert.strictEqual(sources[1].loop, true);
+  assert.strictEqual(sources[1].loopStart, 0);
+  assert.strictEqual(sources[1].loopEnd, 58.1818367347);
+  await music.setSituation({ mode: 'challenge', stage: 4 });
+  assert.strictEqual(music.currentTrack(), 'base');
+  assert.strictEqual(sources.length, 2);
   assert.doesNotThrow(() => music.onChain(4));
   assert.doesNotThrow(() => music.onChainEnd({ chain: 4 }));
   assert.doesNotThrow(() => music.onAllClear());
