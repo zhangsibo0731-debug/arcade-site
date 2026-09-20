@@ -12,6 +12,15 @@ let seed = score.seed || 1;
 const arrangement = score.arrangement || {};
 const cadenceEvery = arrangement.cadenceEvery || 4;
 const pressure = score.profile === 'pressure';
+const toyArcade = score.profile === 'toy-arcade';
+const leadGain = Number(score.leadGain) > 0 ? Number(score.leadGain) : 1;
+const backingGain = Number(score.backingGain) > 0 ? Number(score.backingGain) : 1;
+const leadDurationScale = Number(score.leadDurationScale) > 0
+  ? Number(score.leadDurationScale)
+  : (toyArcade ? .54 : .66);
+const leadSineDurationScale = Number(score.leadDurationScale) > 0
+  ? Math.min(.72, leadDurationScale)
+  : .55;
 const inRange = (index, range) => Array.isArray(range) && index >= range[0] && index < range[1];
 
 const midi = (note) => 440 * Math.pow(2, (note - 69) / 12);
@@ -46,10 +55,10 @@ function addTone(start, note, duration, type, level, pan = 0) {
 }
 
 function addLead(start, note, duration, harmony) {
-  addTone(start, note, duration * .66, 'triangle', pressure ? .092 : .1);
-  addTone(start, note + 12, duration * .42, 'square', pressure ? .024 : .008, .08);
-  addTone(start + .008, note, duration * .55, 'sine', pressure ? .027 : .022, -.06);
-  if (harmony) addTone(start, note - ([0,2,5,7,9].includes(note % 12) ? 3 : 4), duration * .55, 'sine', .028, .14);
+  addTone(start, note, duration * leadDurationScale, 'triangle', (pressure ? .092 : (toyArcade ? .088 : .1)) * leadGain);
+  addTone(start, note + 12, duration * (toyArcade ? .3 : .42), 'square', (pressure ? .024 : (toyArcade ? .022 : .008)) * leadGain, .08);
+  addTone(start + .008, note, duration * leadSineDurationScale, 'sine', (pressure ? .027 : .022) * leadGain, -.06);
+  if (harmony) addTone(start, note - ([0,2,5,7,9].includes(note % 12) ? 3 : 4), duration * .55, 'sine', .028 * leadGain, .14);
 }
 
 function addKick(start) {
@@ -60,7 +69,7 @@ function addKick(start) {
     const time = index / sampleRate;
     const frequency = 48 + 77 * Math.exp(-time * 27);
     phase += Math.PI * 2 * frequency / sampleRate;
-    addSample(from + index, Math.sin(phase) * Math.exp(-time * 25) * .11);
+    addSample(from + index, Math.sin(phase) * Math.exp(-time * 25) * .11 * backingGain);
   }
 }
 
@@ -72,7 +81,7 @@ function addNoise(start, duration, level, bright, pan = 0) {
     const raw = random() * 2 - 1;
     const filtered = bright ? raw - previous * .78 : raw * .55 + previous * .45;
     previous = raw;
-    addSample(from + index, filtered * Math.exp(-index / count * 5) * level, pan);
+    addSample(from + index, filtered * Math.exp(-index / count * 5) * level * backingGain, pan);
   }
 }
 
@@ -85,10 +94,14 @@ score.chords.forEach((chord, barIndex) => {
   [0,1,2,1,3,2,1,2].forEach((voice, step) => {
     if ((cadence && step >= 7) || (breakdown && step % 2)) return;
     const pan = step % 2 ? .2 : -.2;
-    addTone(time + step * score.beat * .5, chord[voice], score.beat * (bridge ? .38 : .28), 'triangle', bridge ? .015 : (pressure ? .022 : .019), pan);
+    addTone(time + step * score.beat * .5, chord[voice], score.beat * (bridge ? .38 : .28), 'triangle', (bridge ? .015 : (pressure ? .022 : .019)) * backingGain, pan);
   });
-  addTone(time, score.bass[barIndex], score.beat * .65, 'triangle', climax ? .075 : .065);
-  if (!breakdown) addTone(time + score.beat * 2, score.bass[barIndex] + 7, score.beat * .58, 'triangle', .038);
+  addTone(time, score.bass[barIndex], score.beat * .65, 'triangle', (climax ? .075 : .065) * backingGain);
+  if (!breakdown) addTone(time + score.beat * 2, score.bass[barIndex] + 7, score.beat * .58, 'triangle', .038 * backingGain);
+  if (toyArcade && !breakdown) {
+    addTone(time + score.beat * 1.5, score.bass[barIndex] + 12, score.beat * .24, 'triangle', .03 * backingGain, -.08);
+    if (!cadence) addTone(time + score.beat * 3.5, score.bass[barIndex] + 12, score.beat * .2, 'triangle', .026 * backingGain, .08);
+  }
   if (pressure && !breakdown) {
     addTone(time + score.beat, score.bass[barIndex] + 12, score.beat * .32, 'triangle', .026, -.08);
     addTone(time + score.beat * 3, score.bass[barIndex] + 12, score.beat * .32, 'triangle', .023, .08);
@@ -118,7 +131,7 @@ score.chords.forEach((chord, barIndex) => {
 score.melody.forEach(([at, note, length]) => {
   const barIndex = Math.floor(at / 4);
   if (barIndex % cadenceEvery === cadenceEvery - 1 && barIndex !== score.chords.length - 1 && at % 4 >= 3.5) return;
-  const harmony = (inRange(barIndex, arrangement.climax) && at % 1 === 0) || (pressure && at % 4 === 0);
+  const harmony = score.autoHarmony !== false && ((inRange(barIndex, arrangement.climax) && at % 1 === 0) || (pressure && at % 4 === 0));
   addLead(at * score.beat, note, length * score.beat * .92, harmony);
 });
 

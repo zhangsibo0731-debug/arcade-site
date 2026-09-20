@@ -193,7 +193,7 @@ audioSettings = {
 
 ## 7. 技术方案
 
-正式版采用“离线生成 WAV + Web Audio 播放”的结构。曲谱和合成器只在开发期运行，浏览器不下载生成代码。
+正式版采用“离线生成 WAV 母带、压缩为 OGG/MP3、再由 Web Audio 播放”的结构。曲谱和合成器只在开发期运行，浏览器不下载生成代码或 WAV 母带。
 
 当前结构：
 
@@ -209,10 +209,12 @@ puyo/
 ├── music.js                          # 运行时播放器与状态切换
 └── assets/
     ├── puyo-theme-full-v2.wav        # 正式普通主题
-    └── puyo-theme-pressure.wav       # 正式高压变奏（B2 接入时落位）
+    ├── puyo-theme-pressure.wav       # 本地母带
+    ├── puyo-theme-full-v2.ogg/.mp3  # 网页压缩格式
+    └── puyo-theme-pressure.ogg/.mp3 # 网页压缩格式
 ```
 
-现有 `audio.js` 继续负责即时音效和震动；`music.js` 负责 WAV 的加载、循环、同步切换和生命周期。两条音乐轨道必须共用一个 `AudioContext` 与总线。
+现有 `audio.js` 继续负责即时音效和震动；`music.js` 负责压缩音轨的加载、循环、同步切换和生命周期。两条音乐轨道必须共用一个 `AudioContext` 与总线。
 
 接口建议：
 
@@ -231,7 +233,9 @@ music.stop()
 
 - 音乐模块不直接读取棋盘、DOM 或 localStorage。
 - 游戏协调层只传递已经计算好的状态。
-- 两条 WAV 解码后复用 `AudioBuffer`，不可随 Stage 重复请求或解码。
+- 已加载的音轨解码后复用 `AudioBuffer`，不可随 Stage 重复请求或解码。
+- 音乐不进入 Service Worker 安装期静态缓存；经典模式只加载普通音轨，挑战模式才在后台预载同格式的配对音轨。
+- 成功加载的音乐由 Service Worker 通用联网优先策略动态缓存，供再次进入和断网回退使用。
 - 切换时从相同播放偏移启动目标音轨，并在小节边界交叉淡化。
 - 页面隐藏、新游戏和 Game Over 时必须取消旧加载/切换 token。
 - 不在 `requestAnimationFrame` 中持续创建音频节点。
@@ -270,11 +274,11 @@ music.stop()
 
 完整曲式：原 12 小节主题重复两遍仅有约 22 秒独立旋律，现扩写为 32 小节、约 58 秒：12 小节 A 段建立并变化主题，8 小节 B 段使用更舒展的新旋律与和声，4 小节桥段主动减层蓄力，最后 8 小节由 A 主题高潮回归并以 G7 衔接循环。
 
-离线交付：项目级 `tools/music/render.js` 调用通用合成器与噗呦曲谱，可重复生成 44.1 kHz、16-bit、双声道 WAV。执行 `node tools/music/render.js puyo-theme` 即可更新正式音频，时长约 58.18 秒。
+离线交付：项目级 `tools/music/render.js` 调用通用合成器与噗呦曲谱，可重复生成 44.1 kHz、16-bit、双声道 WAV；再执行 `node tools/music/encode.js ...` 生成 OGG/MP3 网页格式。母带约 9.8 MB，单条网页音轨约 0.8～1.0 MB，时长约 58.18 秒。
 
 句尾连续性：V1 在约 7.3、14.5、50.9 秒处让旋律、琶音和踩镲同时停止一整拍，导致呼吸变成断层。V2 将空白缩短为半拍，保留句尾落点音，并让琶音与踩镲延续到最后半拍；低音支撑不变。
 
-运行时方案：正式游戏已从逐音符实时合成切换为加载 `assets/puyo-theme-full-v2.wav`，通过循环 `AudioBufferSourceNode` 播放。暂停/恢复、静音和连锁增益仍由 Web Audio 控制。可编辑乐谱位于 `tools/music/tracks/puyo-theme.js`，仅供项目级离线工具重新导出；正式页面不会下载曲谱或合成器代码。
+运行时方案：正式游戏已从逐音符实时合成切换为加载 OGG（支持时）或 MP3 回退，通过循环 `AudioBufferSourceNode` 播放。暂停/恢复、静音和连锁增益仍由 Web Audio 控制；WAV 只作为母带保留，不加入 Service Worker 预缓存。可编辑乐谱位于 `tools/music/tracks/puyo-theme.js`，仅供项目级离线工具重新导出。
 
 母带修正：正式 V2 已加入 6ms 首尾边界修整，循环边界采样跳变归零；琶音、踩镲和部分打击乐做轻微立体声展开，主旋律、低音与底鼓保持居中。整体响度维持约 `-15.7 dB RMS / -1.1 dB Peak`。
 
@@ -283,7 +287,7 @@ music.stop()
 **状态：✅ 已实现，等待手机实机试听确认**
 
 - 高压变奏已完成试听确认，开发曲目为 `tools/music/tracks/puyo-theme-pressure.js`。
-- 试听产物已定稿为 `puyo/assets/puyo-theme-pressure.wav` 并纳入缓存。
+- 试听产物已定稿为 WAV 母带，并生成 OGG/MP3 网页格式；音乐不参与 Service Worker 安装期预缓存，运行时仅按设备能力加载 OGG 或 MP3，并动态写入缓存。
 - 经典模式与挑战 Stage 1～3播放普通主题；挑战 Stage 4 起及特殊 Stage 播放高压变奏。
 - 两条等长音轨按相同播放偏移切换，并在小节边界短交叉淡化。
 - 暂停、继续、切后台和读档后恢复正确的音乐状态。
