@@ -47,7 +47,7 @@
       view.turnStats.extraDefense = (view.turnStats.extraDefense || 0) + upgradeResult.extraDefense;
       view.turnStats.scoreGained = (view.turnStats.scoreGained || 0) + upgradeResult.scoreBonus;
       const outcome = challengeRules.resolveTurn(view.challengeState, view.turnStats, view.random);
-      const challengeState = outcome.state;
+      let challengeState = outcome.state;
       let runBuild = upgradeResult.state;
       const contractResult = rogueliteRules.resolveContract(runBuild, stageBefore, outcome.completed);
       runBuild = contractResult.state;
@@ -62,27 +62,68 @@
         challengeState.garbageCleared += removed.length;
         scoreBonus += outcome.bonus;
       }
-      let pressure = outcome.pressure;
+      const occupancy = challengeRules.boardOccupancy(view.board);
+      let release = { state: challengeState, source: '', requested: 0, released: 0, carried: 0, cap: challengeRules.garbageCapForOccupancy(occupancy) };
+      let deferredByReward = { source: '', deferred: 0 };
+      if (removed.length) {
+        deferredByReward = challengeRules.deferDueGarbage(challengeState, 1);
+        challengeState = deferredByReward.state;
+      } else {
+        release = challengeRules.releaseGarbage(challengeState, occupancy);
+        challengeState = release.state;
+      }
+
+      let pressure = release.released;
       let buffered = 0;
       if (pressure && modifiers.bufferReduction && runBuild.bufferedStage !== challengeState.stage) {
         pressure = Math.max(0, pressure - modifiers.bufferReduction);
-        buffered = outcome.pressure - pressure;
+        buffered = release.released - pressure;
         runBuild.bufferedStage = challengeState.stage;
         if (buffered) triggered.push('buffer');
       }
-      const incomingCount = pressure + (outcome.entryGarbage || 0);
-      const placed = removed.length ? [] : (incomingCount ? challengeRules.placeGarbage(view.board, incomingCount, view.random, garbage) : []);
-      const clearText = removed.length ? ' · 清障 ×' + removed.length : '';
+      const incomingCount = pressure;
+      const placed = incomingCount ? challengeRules.placeGarbage(view.board, incomingCount, view.random, garbage) : [];
+
+      const specialDebt = (outcome.specialPenalty || 0) + (outcome.entryGarbage || 0);
+      if (specialDebt) challengeState = challengeRules.enqueueDeferred(challengeState, specialDebt, 2);
+      if (outcome.regularGarbage) {
+        challengeState.pendingGarbage = Math.min(challengeRules.MAX_GARBAGE_DEBT, challengeState.pendingGarbage + outcome.regularGarbage);
+      }
+
+      const occupancyTier = release.cap === 2 ? 'critical' : (release.cap === 3 ? 'crowded' : 'normal');
+      const pressurePrefix = occupancyTier === 'critical' ? '临界空间 · ' : (occupancyTier === 'crowded' ? '棋盘拥挤 · ' : '');
+      const clearText = removed.length ? ' · 清障 ×' + removed.length + (deferredByReward.deferred ? ' · 到期干扰延后 1 组' : '') : '';
       let message = null;
       if (outcome.enteredSpecial) message = { text: 'STAGE ' + stageBefore + ' 完成' + clearText + '\n特殊关：' + challengeState.special.title, complete: true, duration: 1650 };
       else if (outcome.specialCompleted) message = { text: '特殊关完成 → STAGE ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus, complete: true, duration: 1650 };
       else if (outcome.completed) message = { text: 'STAGE ' + stageBefore + ' 完成 → STAGE ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (contractResult.rewarded ? ' · 契约强化已获得' : '') + (outcome.canceled ? ' · 抵消 ×' + outcome.canceled : ''), complete: true, duration: 1550 };
-      else if (outcome.specialFailed) message = { text: '特殊关失败 · STAGE ' + stageBefore + ' 保持不变\n惩罚干扰 ×' + outcome.specialPenalty, complete: false, duration: 1900 };
-      else if (placed.length) message = { text: (outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, complete: false };
+      else if (outcome.specialFailed) message = { text: '特殊关失败 · STAGE ' + stageBefore + ' 保持不变\n惩罚干扰 ×' + outcome.specialPenalty + ' · 2组后落下', complete: false, duration: 1900 };
+      else if (placed.length) message = { text: pressurePrefix + (outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, complete: false };
       else if (buffered) message = { text: '缓冲层抵消 · × ' + buffered, complete: true };
-      else if (outcome.canceled) message = { text: (outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消') + ' · × ' + outcome.canceled, complete: outcome.pressureTriggered };
+      else if (outcome.canceled) message = { text: (outcome.deferredCanceled ? '近期干扰抵消' : (outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消')) + ' · × ' + outcome.canceled, complete: outcome.pressureTriggered };
       else if (outcome.expired) message = { text: '任务失败 · STAGE ' + stageBefore + ' 保持不变\n已更换新任务', complete: false, duration: 1800 };
-      return { challengeState, runBuild, outcome, contractRewarded: contractResult.rewarded, modifiers, triggered, removed, placed, incomingCount, buffered, scoreBonus, message, defenseFlash: !!(outcome.canceled || buffered), waitsForBoard: removed.length > 0 || placed.length > 0 };
+      return {
+        challengeState,
+        runBuild,
+        outcome,
+        contractRewarded: contractResult.rewarded,
+        modifiers,
+        triggered,
+        removed,
+        placed,
+        incomingCount,
+        requestedGarbage: release.released,
+        carriedGarbage: release.carried,
+        releaseSource: release.source,
+        deferredByReward: deferredByReward.deferred,
+        occupancy,
+        occupancyTier,
+        buffered,
+        scoreBonus,
+        message,
+        defenseFlash: !!(outcome.canceled || buffered),
+        waitsForBoard: removed.length > 0 || placed.length > 0,
+      };
     }
 
     return Object.freeze({ resolveClear, settleTurn });

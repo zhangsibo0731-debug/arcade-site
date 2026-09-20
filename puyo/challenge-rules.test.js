@@ -16,6 +16,91 @@ assert.equal(rules.defenseForChain(2), 1);
 assert.equal(rules.defenseForChain(3), 3);
 assert.equal(rules.defenseForChain(4), 6);
 assert.equal(rules.defenseForChain(5), 8);
+
+// Garbage-pressure V1 P0 characterization: preserve the current Stage 1-15
+// generation and countdown curve before changing how individual batches land.
+assert.deepEqual(
+  Array.from({ length: 15 }, (_, index) => rules.garbageForStage(index + 1)),
+  [1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5]
+);
+assert.deepEqual(
+  Array.from({ length: 15 }, (_, index) => rules.normalize({ completed: index }, () => 0).pressureIn),
+  [10, 9, 9, 8, 8, 7, 7, 6, 6, 6, 6, 6, 6, 6, 6]
+);
+const occupancyBoard = Array.from({ length: 12 }, () => Array(6).fill(0));
+occupancyBoard[11][0] = 1;
+occupancyBoard[10][0] = rules.GARBAGE;
+assert.equal(rules.boardOccupancy(occupancyBoard), 2);
+assert.equal(rules.boardOccupancy(null), 0);
+assert.deepEqual([43, 44, 51, 52, 72].map(rules.garbageCapForOccupancy), [5, 3, 3, 2, 2]);
+
+const migratedPressure = rules.normalize({ pendingGarbage: 150, deferredGarbage: 4 }, () => 0);
+assert.equal(migratedPressure.pendingGarbage, 150);
+assert.equal(migratedPressure.deferredGarbage, 4);
+assert.equal(migratedPressure.deferredIn, 2);
+const cleanMigration = rules.normalize({ pendingGarbage: 5, deferredGarbage: 0, deferredIn: 8 }, () => 0);
+assert.equal(cleanMigration.deferredGarbage, 0);
+assert.equal(cleanMigration.deferredIn, 0);
+assert.equal(rules.normalize({ pendingGarbage: 5000 }, () => 0).pendingGarbage, rules.MAX_GARBAGE_DEBT);
+
+const queuedEarlier = rules.enqueueDeferred({ deferredGarbage: 2, deferredIn: 1 }, 3, 2);
+assert.equal(queuedEarlier.deferredGarbage, 5);
+assert.equal(queuedEarlier.deferredIn, 1);
+
+const canceledNearest = rules.cancelGarbage({ pendingGarbage: 5, deferredGarbage: 3, deferredIn: 2 }, 4);
+assert.equal(canceledNearest.canceled, 4);
+assert.equal(canceledNearest.deferredCanceled, 3);
+assert.equal(canceledNearest.pendingCanceled, 1);
+assert.equal(canceledNearest.state.deferredGarbage, 0);
+assert.equal(canceledNearest.state.deferredIn, 0);
+assert.equal(canceledNearest.state.pendingGarbage, 4);
+
+const bothAdvanced = rules.advancePressure({ pendingGarbage: 5, pressureIn: 1, deferredGarbage: 4, deferredIn: 1 });
+assert.equal(bothAdvanced.deferredDue, true);
+assert.equal(bothAdvanced.pendingDue, true);
+assert.equal(bothAdvanced.state.deferredIn, 0);
+assert.equal(bothAdvanced.state.pressureIn, 0);
+
+const deferredFirst = rules.releaseGarbage(Object.assign({ stage: 8 }, bothAdvanced.state), 44);
+assert.equal(deferredFirst.source, 'deferred');
+assert.equal(deferredFirst.requested, 4);
+assert.equal(deferredFirst.released, 3);
+assert.equal(deferredFirst.carried, 1);
+assert.equal(deferredFirst.state.deferredGarbage, 1);
+assert.equal(deferredFirst.state.deferredIn, 2);
+assert.equal(deferredFirst.state.pendingGarbage, 5);
+assert.equal(deferredFirst.state.pressureIn, 1);
+assert.equal(deferredFirst.requested, deferredFirst.released + deferredFirst.carried);
+
+const splitRegular = rules.releaseGarbage({ stage: 8, pendingGarbage: 5, pressureIn: 0, deferredGarbage: 0 }, 52);
+assert.equal(splitRegular.source, 'pending');
+assert.equal(splitRegular.released, 2);
+assert.equal(splitRegular.carried, 3);
+assert.equal(splitRegular.state.deferredGarbage, 3);
+assert.equal(splitRegular.state.deferredIn, 2);
+assert.equal(splitRegular.state.pendingGarbage, rules.garbageForStage(8));
+assert.equal(splitRegular.state.pressureIn, 6);
+assert.equal(splitRegular.requested, splitRegular.released + splitRegular.carried);
+
+const regularJoinsDeferred = rules.releaseGarbage({
+  stage: 8,
+  pendingGarbage: 5,
+  pressureIn: 0,
+  deferredGarbage: 2,
+  deferredIn: 1,
+}, 44);
+assert.equal(regularJoinsDeferred.source, 'pending');
+assert.equal(regularJoinsDeferred.released, 3);
+assert.equal(regularJoinsDeferred.carried, 2);
+assert.equal(regularJoinsDeferred.state.deferredGarbage, 4);
+assert.equal(regularJoinsDeferred.state.deferredIn, 1);
+
+const nothingDue = rules.releaseGarbage({ pendingGarbage: 5, pressureIn: 2, deferredGarbage: 3, deferredIn: 1 }, 60);
+assert.equal(nothingDue.source, '');
+assert.equal(nothingDue.released, 0);
+assert.equal(nothingDue.state.pendingGarbage, 5);
+assert.equal(nothingDue.state.deferredGarbage, 3);
+
 assert.ok(rules.MISSION_TYPES.includes('largeGroup'));
 assert.ok(rules.MISSION_TYPES.includes('targetColor'));
 const generatedTypes = new Set(Array.from({ length: 9 }, (_, index) => rules.missionFor(10, () => (index + 0.1) / 9).type));
@@ -51,8 +136,10 @@ const pressured = rules.resolveTurn({
 }, { maxChain: 3 }, () => 0);
 assert.equal(pressured.canceled, 3);
 assert.equal(pressured.pressureTriggered, true);
-assert.equal(pressured.pressure, 2);
-assert.equal(pressured.state.pendingGarbage, rules.garbageForStage(5));
+assert.equal(pressured.pressure, 0);
+const pressuredRelease = rules.releaseGarbage(pressured.state, 0);
+assert.equal(pressuredRelease.released, 2);
+assert.equal(pressuredRelease.state.pendingGarbage, rules.garbageForStage(5));
 
 const fullyCanceled = rules.resolveTurn({
   completed: 0,
@@ -68,6 +155,19 @@ const upgradedDefense = rules.resolveTurn({ pendingGarbage: 5, pressureIn: 3 }, 
 assert.equal(upgradedDefense.canceled, 3);
 assert.equal(upgradedDefense.regularCanceled, 3);
 assert.equal(upgradedDefense.allClearCanceled, 0);
+
+const deferredDefense = rules.resolveTurn({
+  pendingGarbage: 5,
+  pressureIn: 3,
+  deferredGarbage: 3,
+  deferredIn: 2,
+}, { maxChain: 2, extraDefense: 3 }, () => 0);
+assert.equal(deferredDefense.canceled, 4);
+assert.equal(deferredDefense.deferredCanceled, 3);
+assert.equal(deferredDefense.pendingCanceled, 1);
+assert.equal(deferredDefense.state.deferredGarbage, 0);
+assert.equal(deferredDefense.state.deferredIn, 0);
+assert.equal(deferredDefense.state.pendingGarbage, 4);
 
 const allClearDefense = rules.resolveTurn({ pendingGarbage: 5, pressureIn: 3 }, { maxChain: 2, allClearDefense: 5 }, () => 0);
 assert.equal(allClearDefense.regularCanceled, 1);
@@ -132,6 +232,26 @@ assert.equal(failSpecial.state.stage, 5);
 const afterFailedNormal = rules.resolveTurn(Object.assign({}, failSpecial.state, { turnsLeft: 1 }), { clearedThisTurn: false }, () => 0);
 assert.equal(afterFailedNormal.state.special, null);
 
+// P2 source isolation: a due Stage 5 batch remains separate from the newly
+// generated three-garbage special failure penalty.
+const combinedPressure = rules.resolveTurn({
+  completed: 4,
+  turnsLeft: 1,
+  pressureIn: 1,
+  pendingGarbage: 5,
+  special: { type: 'storm', title: '干扰风暴' },
+  mission: { type: 'garbageClear', target: 9, title: '测试', progress: 0 },
+}, { clearedThisTurn: false, maxChain: 1 }, () => 0.4);
+assert.equal(combinedPressure.specialFailed, true);
+assert.equal(combinedPressure.specialPenalty, 3);
+assert.equal(combinedPressure.pressureTriggered, true);
+assert.equal(combinedPressure.pressure, 0);
+const combinedRelease = rules.releaseGarbage(combinedPressure.state, 0);
+assert.equal(combinedRelease.released, 5);
+const combinedQueued = rules.enqueueDeferred(combinedRelease.state, combinedPressure.specialPenalty, 2);
+assert.equal(combinedQueued.deferredGarbage, 3);
+assert.equal(combinedQueued.deferredIn, 2);
+
 const towerEntry = rules.resolveTurn({
   completed: 3,
   mission: { type: 'clear', target: 4, title: '测试', progress: 0 },
@@ -154,6 +274,7 @@ assert.equal(board.flat().filter((cell) => cell === rules.GARBAGE).length, 1);
 const empty = Array.from({ length: 6 }, () => Array(4).fill(0));
 const placed = rules.placeGarbage(empty, 3, () => 0, rules.GARBAGE);
 assert.equal(placed.length, 3);
+assert.deepEqual(placed, [[0, 5], [0, 4], [1, 5]]);
 assert.equal(empty.flat().filter((cell) => cell === rules.GARBAGE).length, 3);
 
 console.log('challenge-rules tests passed');

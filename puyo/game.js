@@ -430,11 +430,10 @@
   }
 
 
-  function animateStageReward(cells, incomingCount, token) {
+  function animateStageReward(cells, token) {
     popDuration = 340;
     renderer.startPop(cells, popDuration);
-    const incomingDuration = incomingCount ? 590 + Math.max(0, incomingCount - 1) * 55 : 0;
-    fallDuration = popDuration + 220 + incomingDuration;
+    fallDuration = popDuration + 220;
     setTimeout(() => {
       if (token !== resolveToken || mode !== 'resolving') return;
       cells.forEach((p) => {
@@ -445,12 +444,6 @@
       renderer.clearPop();
       play('clear', 2);
       applyGravity(true);
-      setTimeout(() => {
-        if (token !== resolveToken || mode !== 'resolving') return;
-        if (!incomingCount) return;
-        const placed = challengeRules.placeGarbage(board, incomingCount, Math.random, GARBAGE);
-        if (placed.length) startGarbageFall(placed);
-      }, 210);
     }, popDuration);
   }
 
@@ -468,7 +461,7 @@
     runBuild = result.runBuild;
     result.triggered.forEach(flashUpgrade);
     score += result.scoreBonus;
-    if (result.removed.length) animateStageReward(result.removed, result.incomingCount, token);
+    if (result.removed.length) animateStageReward(result.removed, token);
     else if (result.placed.length) startGarbageFall(result.placed);
     if (result.defenseFlash) flashGarbageDefense();
     if (result.message) showChallengeMessage(result.message.text, result.message.complete, result.message.duration);

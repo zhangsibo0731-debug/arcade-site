@@ -22,8 +22,9 @@ for (let stage = 1; stage <= 15; stage++) {
       specialAttemptedStage: stage,
     }, { maxChain: chain }, () => 0.5);
     assert.ok(outcome.state.pendingGarbage >= 0);
-    assert.ok(outcome.pressure >= 0);
-    return outcome.pressure;
+    const release = challenge.releaseGarbage(outcome.state, 0);
+    assert.ok(release.released >= 0);
+    return release.released;
   });
   assert.ok(results[2] <= results[1], '3-chain should defend at least as well as 2-chain');
   assert.equal(results[3], 0, '4-chain should fully defend capped pressure');

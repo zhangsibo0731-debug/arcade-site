@@ -52,8 +52,23 @@ const challengeState = { stage: 3, special: null, turnsLeft: 2, pendingGarbage: 
 ui.renderChallenge({ active: true, challengeState, mode: 'playing', turnStats: { missionBaseProgress: null }, runBuild: { upgrades: { cleaner: 1 } }, triggeredUpgrades: new Set(['cleaner']) });
 assert.strictEqual(elements.challengeStage.textContent, 3);
 assert.strictEqual(elements.missionDeadline.classList.contains('is-urgent'), true);
+assert.strictEqual(elements.garbageCount.textContent, '×4');
+assert.strictEqual(elements.garbageEta.textContent, '1 组后落下');
 assert.strictEqual(elements.buildCount.textContent, 1);
 assert.ok(elements.buildChips.innerHTML.includes('is-triggered'));
+
+challengeState.deferredGarbage = 3;
+challengeState.deferredIn = 2;
+challengeState.pendingGarbage = 150;
+challengeState.pressureIn = 6;
+ui.renderChallenge({ active: true, challengeState, mode: 'paused', turnStats: { missionBaseProgress: null }, runBuild: { upgrades: {} }, triggeredUpgrades: new Set() });
+assert.strictEqual(elements.garbageCount.textContent, '×3');
+assert.ok(elements.garbageEta.textContent.includes('近期 2组后'));
+assert.ok(elements.garbageEta.textContent.includes('后续 ×99+ / 6组'));
+assert.strictEqual(elements.challengeCard.classList.contains('is-imminent'), true);
+challengeState.deferredGarbage = 120;
+ui.renderChallenge({ active: true, challengeState, mode: 'playing', turnStats: { missionBaseProgress: null }, runBuild: { upgrades: {} }, triggeredUpgrades: new Set() });
+assert.strictEqual(elements.garbageCount.textContent, '×99+');
 
 ui.renderUpgradeChoices({ pendingKind: '', pendingChoice: ['cleaner'] });
 assert.ok(elements.upgradeChoices.innerHTML.includes('清道夫'));

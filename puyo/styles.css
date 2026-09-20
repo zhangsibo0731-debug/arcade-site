@@ -402,7 +402,7 @@ body {
 .garbage-preview > div { display: flex; min-width: 0; gap: 2px; overflow: hidden; }
 .garbage-preview > div i { width: 7px; height: 7px; flex: 0 0 7px; border: 1px solid #514b60; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f0edf6 0 14%, #bdb7ca 38%, #716b80 100%); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 .garbage-preview > b { min-width: 0; color: #e5e0ed; font-size: 8px; text-align: right; white-space: nowrap; }
-.garbage-preview > small { grid-column: 1 / -1; margin: 1px 0 0; color: var(--soft); font-size: 7px; text-align: right; white-space: nowrap; }
+.garbage-preview > small { grid-column: 1 / -1; min-width: 0; margin: 1px 0 0; color: var(--soft); font-size: 7px; line-height: 1.35; text-align: right; overflow-wrap: anywhere; }
 .build-summary { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.08); color: var(--soft); font-size: 7px; line-height: 1.45; }
 .build-summary b { color: var(--cyan); font-weight: 700; }
 .build-button { display: flex; width: 100%; align-items: center; gap: 4px; padding: 4px 5px; color: var(--text); border: 1px solid rgba(86,220,237,.25); border-radius: 7px; background: rgba(86,220,237,.07); cursor: pointer; font: inherit; }

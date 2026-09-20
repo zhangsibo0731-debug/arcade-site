@@ -1,8 +1,12 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 7;
+  const VERSION = 8;
   const GARBAGE = 6;
+  const MAX_GARBAGE_DEBT = 999;
+  const DEFERRED_DELAY = 2;
+  const OCCUPANCY_MEDIUM = 44;
+  const OCCUPANCY_HIGH = 52;
   const MISSION_TYPES = Object.freeze(['chain', 'clear', 'colors', 'largeGroup', 'garbageClear', 'clearStreak', 'scoreTurn', 'lowBoard', 'targetColor']);
   const COLOR_NAMES = Object.freeze(['红色', '黄色', '绿色', '蓝色']);
   const SPECIAL_TYPES = Object.freeze(['storm', 'chainTrial', 'limitedClear', 'tower']);
@@ -76,6 +80,118 @@
     return 6 + Math.max(0, value - 4) * 2;
   }
 
+  function boardOccupancy(board) {
+    if (!Array.isArray(board)) return 0;
+    return board.reduce((total, row) => total + (Array.isArray(row) ? row.filter(Boolean).length : 0), 0);
+  }
+
+  function garbageCapForOccupancy(occupiedCells) {
+    const occupied = boundedInt(occupiedCells, 0, 0, 72);
+    if (occupied >= OCCUPANCY_HIGH) return 2;
+    if (occupied >= OCCUPANCY_MEDIUM) return 3;
+    return 5;
+  }
+
+  function pressureFields(source) {
+    const state = Object.assign({}, source && typeof source === 'object' ? source : {});
+    state.pendingGarbage = boundedInt(state.pendingGarbage, 0, 0, MAX_GARBAGE_DEBT);
+    state.pressureIn = boundedInt(state.pressureIn, 1, 0, 12);
+    state.deferredGarbage = boundedInt(state.deferredGarbage, 0, 0, MAX_GARBAGE_DEBT);
+    state.deferredIn = state.deferredGarbage
+      ? boundedInt(state.deferredIn, DEFERRED_DELAY, 0, 12)
+      : 0;
+    return state;
+  }
+
+  function enqueueDeferred(source, amount, turns) {
+    const state = pressureFields(source);
+    const added = boundedInt(amount, 0, 0, MAX_GARBAGE_DEBT);
+    if (!added) return state;
+    const nextTurns = boundedInt(turns, DEFERRED_DELAY, 1, 12);
+    state.deferredGarbage = Math.min(MAX_GARBAGE_DEBT, state.deferredGarbage + added);
+    state.deferredIn = state.deferredIn > 0 ? Math.min(state.deferredIn, nextTurns) : nextTurns;
+    return state;
+  }
+
+  function cancelGarbage(source, defense) {
+    const state = pressureFields(source);
+    let remaining = boundedInt(defense, 0, 0, MAX_GARBAGE_DEBT);
+    const deferredCanceled = Math.min(state.deferredGarbage, remaining);
+    state.deferredGarbage -= deferredCanceled;
+    remaining -= deferredCanceled;
+    if (!state.deferredGarbage) state.deferredIn = 0;
+    const pendingCanceled = Math.min(state.pendingGarbage, remaining);
+    state.pendingGarbage -= pendingCanceled;
+    return {
+      state,
+      canceled: deferredCanceled + pendingCanceled,
+      deferredCanceled,
+      pendingCanceled,
+    };
+  }
+
+  function advancePressure(source) {
+    const state = pressureFields(source);
+    state.pressureIn = Math.max(0, state.pressureIn - 1);
+    if (state.deferredGarbage) state.deferredIn = Math.max(0, state.deferredIn - 1);
+    return {
+      state,
+      deferredDue: state.deferredGarbage > 0 && state.deferredIn === 0,
+      pendingDue: state.pressureIn === 0,
+    };
+  }
+
+  function releaseGarbage(source, occupiedCells) {
+    const state = pressureFields(source);
+    const cap = garbageCapForOccupancy(occupiedCells);
+    let releaseSource = '';
+    let requested = 0;
+    if (state.deferredGarbage > 0 && state.deferredIn === 0) {
+      releaseSource = 'deferred';
+      requested = state.deferredGarbage;
+    } else if (state.pressureIn === 0) {
+      releaseSource = 'pending';
+      requested = state.pendingGarbage;
+    }
+    if (!releaseSource) return { state, source: '', requested: 0, released: 0, carried: 0, cap };
+
+    const released = Math.min(requested, cap);
+    const carried = requested - released;
+    if (releaseSource === 'deferred') {
+      state.deferredGarbage = carried;
+      state.deferredIn = carried ? DEFERRED_DELAY : 0;
+      if (state.pressureIn === 0) state.pressureIn = 1;
+    } else {
+      state.pendingGarbage = garbageForStage(state.stage || 1);
+      state.pressureIn = Math.max(6, 10 - Math.floor((state.stage || 1) / 2));
+      if (carried) {
+        const queued = enqueueDeferred(state, carried, DEFERRED_DELAY);
+        state.deferredGarbage = queued.deferredGarbage;
+        state.deferredIn = queued.deferredIn;
+      }
+    }
+    return { state, source: releaseSource, requested, released, carried, cap };
+  }
+
+  function deferDueGarbage(source, turns) {
+    const state = pressureFields(source);
+    const delay = boundedInt(turns, 1, 1, 12);
+    if (state.deferredGarbage > 0 && state.deferredIn === 0) {
+      state.deferredIn = delay;
+      return { state, source: 'deferred', deferred: state.deferredGarbage };
+    }
+    if (state.pressureIn === 0) {
+      const amount = state.pendingGarbage;
+      state.pendingGarbage = garbageForStage(state.stage || 1);
+      state.pressureIn = Math.max(6, 10 - Math.floor((state.stage || 1) / 2));
+      const queued = enqueueDeferred(state, amount, delay);
+      state.deferredGarbage = queued.deferredGarbage;
+      state.deferredIn = queued.deferredIn;
+      return { state, source: 'pending', deferred: amount };
+    }
+    return { state, source: '', deferred: 0 };
+  }
+
   function normalize(source, random) {
     const saved = source && typeof source === 'object' ? source : {};
     const completed = boundedInt(saved.completed, 0, 0, 999999);
@@ -97,7 +213,11 @@
       garbageCleared: boundedInt(saved.garbageCleared, 0, 0, 999999),
       turnsLeft: boundedInt(saved.turnsLeft, 8, 1, 12),
       pressureIn: boundedInt(saved.pressureIn, Math.max(6, 10 - Math.floor(stage / 2)), 1, 12),
-      pendingGarbage: boundedInt(saved.pendingGarbage, garbageForStage(stage), 0, 99),
+      pendingGarbage: boundedInt(saved.pendingGarbage, garbageForStage(stage), 0, MAX_GARBAGE_DEBT),
+      deferredGarbage: boundedInt(saved.deferredGarbage, 0, 0, MAX_GARBAGE_DEBT),
+      deferredIn: boundedInt(saved.deferredGarbage, 0, 0, MAX_GARBAGE_DEBT)
+        ? boundedInt(saved.deferredIn, DEFERRED_DELAY, 1, 12)
+        : 0,
       clearStreak: boundedInt(saved.clearStreak, 0, 0, 99),
       lastMissionType: MISSION_TYPES.includes(saved.lastMissionType) ? saved.lastMissionType : '',
       sameMissionCount: boundedInt(saved.sameMissionCount, 0, 0, 2),
@@ -146,13 +266,12 @@
       state.turnsLeft = special.turns;
       if (special.type === 'storm') {
         state.pressureIn = Math.min(state.pressureIn, 4);
-        state.pendingGarbage += 2;
       }
-      return { enteredSpecial: true, entryGarbage: special.type === 'tower' ? 5 : 0 };
+      return { enteredSpecial: true, entryGarbage: special.type === 'tower' ? 5 : 0, regularGarbage: special.type === 'storm' ? 2 : 0 };
     }
     state.special = null;
     state.mission = missionFor(state.stage, random, state.sameMissionCount >= 2 ? previous : '');
-    return { enteredSpecial: false, entryGarbage: 0 };
+    return { enteredSpecial: false, entryGarbage: 0, regularGarbage: 0 };
   }
 
   function resolveTurn(source, stats, random) {
@@ -161,13 +280,18 @@
     if (stats) stats.clearStreak = state.clearStreak;
     state.mission.progress = missionProgress(state.mission, stats || {});
     state.turnsLeft--;
-    state.pressureIn--;
     const defense = defenseForChain(stats && stats.maxChain) + boundedInt(stats && stats.extraDefense, 0, 0, 99);
-    const regularCanceled = Math.min(state.pendingGarbage, defense);
-    state.pendingGarbage -= regularCanceled;
-    const allClearCanceled = Math.min(state.pendingGarbage, boundedInt(stats && stats.allClearDefense, 0, 0, 5));
-    state.pendingGarbage -= allClearCanceled;
+    const regularResult = cancelGarbage(state, defense);
+    Object.assign(state, regularResult.state);
+    const allClearResult = cancelGarbage(state, boundedInt(stats && stats.allClearDefense, 0, 0, 5));
+    Object.assign(state, allClearResult.state);
+    const regularCanceled = regularResult.canceled;
+    const allClearCanceled = allClearResult.canceled;
+    const deferredCanceled = regularResult.deferredCanceled + allClearResult.deferredCanceled;
+    const pendingCanceled = regularResult.pendingCanceled + allClearResult.pendingCanceled;
     const canceled = regularCanceled + allClearCanceled;
+    const advanced = advancePressure(state);
+    Object.assign(state, advanced.state);
     const completed = state.mission.progress >= state.mission.target;
     const expired = !completed && state.turnsLeft <= 0;
     const activeSpecial = state.special;
@@ -175,6 +299,7 @@
     let bonus = 0;
     let enteredSpecial = false;
     let entryGarbage = 0;
+    let regularGarbage = 0;
     let specialCompleted = false;
     let specialFailed = false;
     let specialPenalty = 0;
@@ -190,6 +315,7 @@
       const next = advanceMission(state, random);
       enteredSpecial = next.enteredSpecial;
       entryGarbage = next.entryGarbage;
+      regularGarbage = next.regularGarbage;
     } else if (expired) {
       state.turnsLeft = Math.max(6, 9 - Math.floor(state.stage / 3));
       if (activeSpecial) {
@@ -202,16 +328,8 @@
         advanceMission(state, random);
       }
     }
-    let pressure = 0;
-    let pressureTriggered = false;
-    if (state.pressureIn <= 0) {
-      pressureTriggered = true;
-      pressure = state.pendingGarbage;
-      state.pressureIn = Math.max(6, 10 - Math.floor(state.stage / 2));
-      state.pendingGarbage = garbageForStage(state.stage);
-    }
-    pressure += specialPenalty;
-    return { state, completed, expired, reward, bonus, pressure, pressureTriggered, canceled, regularCanceled, allClearCanceled, enteredSpecial, entryGarbage, specialCompleted, specialFailed, specialPenalty };
+    const pressureTriggered = advanced.deferredDue || advanced.pendingDue;
+    return { state, completed, expired, reward, bonus, pressure: 0, pressureTriggered, deferredDue: advanced.deferredDue, pendingDue: advanced.pendingDue, canceled, regularCanceled, allClearCanceled, deferredCanceled, pendingCanceled, enteredSpecial, entryGarbage, regularGarbage, specialCompleted, specialFailed, specialPenalty };
   }
 
   function adjacentGarbage(board, cells, garbageValue) {
@@ -257,5 +375,5 @@
     return placed;
   }
 
-  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, defenseForChain, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
+  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MAX_GARBAGE_DEBT, DEFERRED_DELAY, OCCUPANCY_MEDIUM, OCCUPANCY_HIGH, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, defenseForChain, boardOccupancy, garbageCapForOccupancy, enqueueDeferred, cancelGarbage, advancePressure, releaseGarbage, deferDueGarbage, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
 })(window);

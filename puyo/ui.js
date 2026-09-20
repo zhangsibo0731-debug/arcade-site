@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 10;
+  const VERSION = 11;
 
   function create(options) {
     const elements = options.elements;
@@ -15,6 +15,11 @@
     const resultQueue = [];
     let resultActive = false;
     const levels = ['', 'Ⅰ', 'Ⅱ', 'Ⅲ'];
+
+    function garbageAmount(value) {
+      const amount = Math.max(0, Math.floor(Number(value) || 0));
+      return amount > 99 ? '99+' : String(amount);
+    }
 
     function synergyText(card) {
       if (card.ownedSynergies && card.ownedSynergies.length) return '已联动 · ' + card.ownedSynergies.join(' / ');
@@ -55,12 +60,21 @@
       const activeContract = view.runBuild.contract && view.runBuild.contract.status === 'active' && view.runBuild.contract.stage === state.stage;
       elements.contractStatus.hidden = !activeContract;
       elements.missionMeter.style.width = Math.min(100, progress / mission.target * 100) + '%';
+      const deferred = state.deferredGarbage || 0;
       const pending = state.pendingGarbage || 0;
-      elements.garbageQueue.innerHTML = Array.from({ length: Math.min(6, pending) }, () => '<i></i>').join('');
-      elements.garbageCount.textContent = '×' + pending;
-      elements.garbageEta.textContent = state.pressureIn + ' 组后落下';
-      elements.challengeCard.classList.toggle('is-imminent', pending > 0 && state.pressureIn <= 2);
-      elements.challengeCard.classList.toggle('is-safe', pending === 0);
+      const nearest = deferred || pending;
+      const nearestIn = deferred ? state.deferredIn : state.pressureIn;
+      elements.garbageQueue.innerHTML = Array.from({ length: Math.min(6, nearest) }, () => '<i></i>').join('');
+      elements.garbageCount.textContent = '×' + garbageAmount(nearest);
+      if (deferred && pending) {
+        elements.garbageEta.textContent = '近期 ' + nearestIn + '组后 · 后续 ×' + garbageAmount(pending) + ' / ' + state.pressureIn + '组';
+      } else if (deferred) {
+        elements.garbageEta.textContent = '近期干扰 · ' + nearestIn + ' 组后落下';
+      } else {
+        elements.garbageEta.textContent = state.pressureIn + ' 组后落下';
+      }
+      elements.challengeCard.classList.toggle('is-imminent', nearest > 0 && nearestIn <= 2);
+      elements.challengeCard.classList.toggle('is-safe', nearest === 0);
       const active = rogueliteRules.DEFINITIONS.filter((item) => view.runBuild.upgrades[item.id]);
       const relics = (view.runBuild.relics || []).map((id) => rogueliteRules.RELIC_BY_ID[id]).filter(Boolean);
       const profile = rogueliteRules.buildProfile(view.runBuild);
