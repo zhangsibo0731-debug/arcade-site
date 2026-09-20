@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 6;
+  const VERSION = 7;
   const BPM = 108;
   const BAR_SECONDS = 60 / BPM * 4;
   const CROSSFADE_SECONDS = .38;
@@ -24,7 +24,7 @@
     }
     const format = settings.format || supportedAudioType();
     const urls = Object.assign({
-      base: new URL('assets/puyo-garden-108-loop-v1.mp3?v=2', baseUrl).href,
+      base: new URL('assets/puyo-garden-108-loop-v2.mp3?v=1', baseUrl).href,
       pressure: new URL('assets/puyo-theme-pressure.' + format + '?v=1', baseUrl).href,
     }, settings.urls || {});
     let context = null;
