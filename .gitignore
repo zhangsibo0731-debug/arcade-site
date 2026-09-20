@@ -12,3 +12,8 @@ sudoku/manifest.json
 sudoku/sw.js
 sudoku/icons/
 sudoku/sudoku-offline.html
+
+# puyo 音乐素材：游戏运行时只加载 puyo-garden-108-loop-v2.mp3
+# 其余 wav/mp3/ogg 都是 tools/music 的渲染产物、试听稿或历史版本，本地保留不入库
+puyo/assets/*
+!puyo/assets/puyo-garden-108-loop-v2.mp3
