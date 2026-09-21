@@ -14,6 +14,11 @@ const session = global.PuyoSessionState.create({
   emptyBoard,
   challengeRules: { normalize: (state) => Object.assign({ completed: 0 }, state || {}) },
   rogueliteRules: { normalize: (state, completed) => Object.assign({ completed }, state || {}) },
+  activeItemRules: {
+    normalize: (state) => Object.assign({ inventory: { mixBottle: 0 }, armedItem: '' }, state || {}),
+    initialState: () => ({ inventory: { mixBottle: 1 }, armedItem: '' }),
+    emptyState: () => ({ inventory: { mixBottle: 0 }, armedItem: '' }),
+  },
 });
 
 assert.strictEqual(session.freshTurnStats().cleared, 0);
@@ -37,6 +42,7 @@ assert.strictEqual(restored.challengeState.pendingGarbage, 5);
 assert.strictEqual(restored.challengeState.pressureIn, 4);
 assert.strictEqual(restored.challengeState.deferredGarbage, 3);
 assert.strictEqual(restored.challengeState.deferredIn, 2);
+assert.strictEqual(restored.itemState.inventory.mixBottle, 1, 'legacy challenge saves receive the initial bottle');
 
 const pressureSnapshot = session.snapshot({
   gameType: 'challenge',
@@ -52,9 +58,12 @@ const pressureSnapshot = session.snapshot({
   bestChainAtStart: 0,
   challengeState: restored.challengeState,
   runBuild: restored.runBuild,
+  itemState: { inventory: { mixBottle: 2 }, armedItem: 'mixBottle' },
 });
 assert.strictEqual(pressureSnapshot.challengeState.deferredGarbage, 3);
 assert.strictEqual(pressureSnapshot.challengeState.deferredIn, 2);
+assert.strictEqual(pressureSnapshot.itemState.inventory.mixBottle, 2);
+assert.strictEqual(pressureSnapshot.itemState.armedItem, 'mixBottle');
 
 const pendingPair = { ok: true, colors: [2, 3] };
 const pending = session.prepareResume({ pair: pendingPair, queue: [[1, 2]] }, true);

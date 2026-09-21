@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 2;
+  const VERSION = 3;
   const TIMINGS = Object.freeze({ horizontalDas: 170, horizontalArr: 60, downDas: 185, downArr: 42 });
 
   function actionForKey(key) {
@@ -12,6 +12,7 @@
     if (key === 'z' || key === 'Z') return 'ccw';
     if (key === ' ') return 'drop';
     if (key === 'c' || key === 'C') return 'swap';
+    if (key === 'b' || key === 'B') return 'bottle';
     return null;
   }
 

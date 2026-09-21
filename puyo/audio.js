@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 4;
+  const VERSION = 5;
   const CHAIN_NOTES = [72, 74, 76, 79, 81, 84, 86, 88, 91, 93];
   const midi = (note) => 440 * Math.pow(2, (note - 69) / 12);
 
@@ -61,6 +61,7 @@
       else if (name === 'start') { freq = 390; dur = 0.18; type = 'triangle'; vol = 0.09; }
       else if (name === 'over') { freq = 260; dur = 0.6; type = 'sawtooth'; vol = 0.1; }
       else if (name === 'move') { freq = 190; dur = 0.025; vol = 0.025; }
+      else if (name === 'potion') { freq = midi(72); dur = 0.34; type = 'sine'; vol = 0.085; }
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
       oscillator.type = type;
@@ -74,11 +75,11 @@
       gain.connect(audioContext.destination);
       oscillator.start(now);
       oscillator.stop(now + dur + 0.02);
-      if (name === 'chain' || name === 'chainEnd' || name === 'chainBest' || name === 'level' || name === 'allclear') {
+      if (name === 'chain' || name === 'chainEnd' || name === 'chainBest' || name === 'level' || name === 'allclear' || name === 'potion') {
         const upper = audioContext.createOscillator();
         const upperGain = audioContext.createGain();
         upper.type = 'sine';
-        upper.frequency.setValueAtTime(freq * (name === 'chain' ? 1.5 : name === 'chainEnd' || name === 'chainBest' ? 1.5 : name === 'allclear' ? 1.5 : 1.25), now + 0.055);
+        upper.frequency.setValueAtTime(freq * (name === 'chain' ? 1.5 : name === 'chainEnd' || name === 'chainBest' ? 1.5 : name === 'allclear' || name === 'potion' ? 1.5 : 1.25), now + 0.055);
         upperGain.gain.setValueAtTime(0.001, now);
         upperGain.gain.exponentialRampToValueAtTime(vol * 0.7, now + 0.06);
         upperGain.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.08);
@@ -95,6 +96,9 @@
         addNote(84, .11, .22, .075);
         addNote(88, .23, .25, .07);
         addNote(91, .36, .38, .06, 'sine');
+      } else if (name === 'potion') {
+        addNote(76, .08, .18, .06, 'triangle');
+        addNote(79, .17, .24, .055, 'sine');
       }
     }
 

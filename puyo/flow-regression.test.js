@@ -15,6 +15,7 @@ require('./roguelite-rules.js');
 require('./board-rules.js');
 require('./storage.js');
 require('./session-state.js');
+require('./active-item-rules.js');
 require('./challenge-effects.js');
 
 const rows = 12;
@@ -33,6 +34,7 @@ const session = global.PuyoSessionState.create({
   storage,
   challengeRules: global.PuyoChallengeRules,
   rogueliteRules: global.PuyoRogueliteRules,
+  activeItemRules: global.PuyoActiveItemRules,
   emptyBoard: boardRules.emptyBoard,
 });
 

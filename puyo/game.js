@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoMusic || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules) throw new Error('Puyo modules failed to load.');
+  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoMusic || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules || !window.PuyoActiveItemRules) throw new Error('Puyo modules failed to load.');
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('board');
@@ -32,6 +32,8 @@
   const chainResult = $('chainResult');
   const levelPop = $('levelPop');
   const allClearPop = $('allClearPop');
+  const bottlePop = $('bottlePop');
+  const bottleTransform = $('bottleTransform');
   const modePicker = $('modePicker');
   const challengeCard = $('challengeCard');
   const challengeStage = $('challengeStage');
@@ -61,6 +63,7 @@
   const contractSkip = $('contractSkip');
   const contractAccept = $('contractAccept');
   const contractStatus = $('contractStatus');
+  const mixBottleButton = $('mixBottleButton');
 
   const COLS = 6;
   const ROWS = 12;
@@ -71,13 +74,15 @@
   const rotationRules = window.PuyoRotationRules;
   const challengeRules = window.PuyoChallengeRules;
   const rogueliteRules = window.PuyoRogueliteRules;
+  const activeItemRules = window.PuyoActiveItemRules;
   const GARBAGE = challengeRules.GARBAGE;
   const boardRules = window.PuyoBoardRules.create({ rows: ROWS, cols: COLS, garbage: GARBAGE, rotations: ROT });
-  const challengeEffects = window.PuyoChallengeEffects.create({ challengeRules, rogueliteRules, boardRules, garbage: GARBAGE, rows: ROWS });
+  const challengeEffects = window.PuyoChallengeEffects.create({ challengeRules, rogueliteRules, activeItemRules, boardRules, garbage: GARBAGE, rows: ROWS });
   const renderer = window.PuyoRenderer.create({ canvas, nextCanvas, boardWrap, boardArea, nextPanel, nextLabel, colors: COLORS, darks: DARKS, rows: ROWS, cols: COLS, garbage: GARBAGE });
   const ui = window.PuyoUI.create({
     challengeRules,
     rogueliteRules,
+    activeItemRules,
     elements: {
       score: scoreEl, highScore: hiEl, level: levelEl, runChain: runChainEl,
       overlay: overlayEl, ovTitle, ovSub, ovBtn, ovBack, modePicker,
@@ -88,6 +93,7 @@
       upgradeKicker, upgradeChoices, chainResult, chainValue, chainLabel,
       chainGain, chainPop, levelPop, allClearPop, btnPause, buildButton, buildClose,
       btnSound, btnResumeContinue, btnResumeNew,
+      mixBottleButton, bottlePop, bottleTransform,
     },
   });
   const HI_KEY = 'puyo_hi_v1';
@@ -113,7 +119,7 @@
   });
   const audio = window.PuyoAudio.create({ storage, button: btnSound, soundOnIcon: icSoundOn, soundOffIcon: icSoundOff });
   const music = window.PuyoMusic.create({ isMuted: audio.isMuted });
-  const sessionState = window.PuyoSessionState.create({ storage, challengeRules, rogueliteRules, emptyBoard: boardRules.emptyBoard });
+  const sessionState = window.PuyoSessionState.create({ storage, challengeRules, rogueliteRules, activeItemRules, emptyBoard: boardRules.emptyBoard });
   const ensureAudio = audio.ensure;
   const play = audio.play;
   const haptic = audio.haptic;
@@ -148,6 +154,7 @@
   let quickTurnHintTimer = null;
   let challengeState = challengeRules.normalize({});
   let runBuild = rogueliteRules.normalize({}, 0);
+  let itemState = activeItemRules.emptyState();
   let turnStats = freshTurnStats();
   let chainFeedback = freshChainFeedback();
   const triggeredUpgrades = new Set();
@@ -256,6 +263,8 @@
       mode,
       turnStats,
       runBuild,
+      itemState,
+      hasPair: !!pair,
       triggeredUpgrades,
     });
   }
@@ -303,6 +312,18 @@
     play('move');
     haptic(8);
     drawNext();
+    updateChallengeHud();
+    saveState();
+    return true;
+  }
+
+  function toggleMixBottle() {
+    if (gameType !== 'challenge' || mode !== 'playing' || !pair) return false;
+    const result = activeItemRules.toggleMixBottle(itemState, true);
+    itemState = result.state;
+    if (!result.changed) return false;
+    play('move');
+    haptic(result.armed ? [8, 20, 8] : 6);
     updateChallengeHud();
     saveState();
     return true;
@@ -422,7 +443,22 @@
     applyGravity(true);
     play('land');
     haptic(9);
-    resolveStep(1, ++resolveToken);
+    const token = ++resolveToken;
+    if (gameType === 'challenge' && itemState.armedItem === activeItemRules.MIX_BOTTLE) {
+      const bottle = activeItemRules.applyMixBottle(itemState, board, colorCount(), Math.random);
+      itemState = bottle.state;
+      board = bottle.board;
+      updateChallengeHud();
+      if (bottle.applied) {
+        renderer.startRecolor(bottle.changedCells, 420);
+        ui.showBottleTransform(bottle.sourceColor, bottle.targetColor);
+        play('potion');
+        haptic([10, 22, 14]);
+        setTimeout(() => resolveStep(1, token), 420);
+        return;
+      }
+    }
+    resolveStep(1, token);
   }
 
   function findClearGroups() {
@@ -452,6 +488,7 @@
     const result = challengeEffects.settleTurn({
       challengeState,
       runBuild,
+      itemState,
       turnStats,
       board,
       random: Math.random,
@@ -459,6 +496,7 @@
     challengeState = result.challengeState;
     music.setSituation(musicSituation());
     runBuild = result.runBuild;
+    itemState = result.itemState;
     result.triggered.forEach(flashUpgrade);
     score += result.scoreBonus;
     if (result.removed.length) animateStageReward(result.removed, token);
@@ -682,6 +720,7 @@
     bestChainAtStart = bestChain;
     challengeState = challengeRules.normalize({});
     runBuild = rogueliteRules.normalize({}, 0);
+    itemState = gameType === 'challenge' ? activeItemRules.initialState() : activeItemRules.emptyState();
     turnStats = freshTurnStats();
     renderer.resetEffects();
     triggeredUpgrades.clear();
@@ -773,7 +812,7 @@
 
   function saveState() {
     if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing' && mode !== 'build' && mode !== 'contract') return;
-    storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, allClearCount, hiAtStart, bestChainAtStart, challengeState, runBuild }));
+    storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, allClearCount, hiAtStart, bestChainAtStart, challengeState, runBuild, itemState }));
   }
 
   function restoreState(s) {
@@ -795,6 +834,7 @@
     bestChainAtStart = restored.bestChainAtStart;
     challengeState = restored.challengeState;
     runBuild = restored.runBuild;
+    itemState = restored.itemState;
     turnStats = freshTurnStats();
     fillQueue();
     // Older builds could save a board after a delayed Stage reward changed it,
@@ -805,6 +845,7 @@
     resumeNeedsResolution = resumePlan.needsResolution;
     pair = resumePlan.pair;
     queue = resumePlan.queue;
+    if (resumeNeedsResolution) itemState = activeItemRules.disarm(itemState);
     if (!resumeNeedsResolution && !hasUpgradeChoice() && (!pair || collidesAt(pair.x, pair.y, pair.rot))) spawnPair();
     updateHud();
     drawNext();
@@ -864,10 +905,11 @@
     else if (name === 'ccw') rotate(-1);
     else if (name === 'drop') hardDrop();
     else if (name === 'swap') swapNext();
+    else if (name === 'bottle') toggleMixBottle();
   }
 
   input = window.PuyoInput.create({
-    controls: document.querySelectorAll('.ctl, .next-swap'),
+    controls: document.querySelectorAll('.ctl, .next-swap, .active-item-button'),
     boardWrap,
     document,
     onAction: action,
@@ -981,7 +1023,7 @@
 
   if (window.__DSH_TEST__ || new URLSearchParams(location.search).has('test')) {
     window.__puyoTest = {
-      getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, gameType, runMaxChain, bestChain, clearedTotal, challengeState: JSON.parse(JSON.stringify(challengeState)), runBuild: JSON.parse(JSON.stringify(runBuild)) }),
+      getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, gameType, runMaxChain, bestChain, clearedTotal, challengeState: JSON.parse(JSON.stringify(challengeState)), runBuild: JSON.parse(JSON.stringify(runBuild)), itemState: JSON.parse(JSON.stringify(itemState)) }),
       setBoard: (next) => { if (storage.validBoard(next)) board = next.map((r) => r.slice()); },
       setPair: (next) => {
         if (storage.validPair(next)) pair = JSON.parse(JSON.stringify(next));

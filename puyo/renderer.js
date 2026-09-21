@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 2;
 
   function create(options) {
     const canvas = options.canvas;
@@ -28,6 +28,9 @@
     let fallDuration = 210;
     let garbageFalls = new Map();
     let garbageFallStartedAt = 0;
+    let recolorCells = new Set();
+    let recolorStartedAt = 0;
+    let recolorDuration = 420;
 
     function drawBlob(target, x, y, radius, color, alpha, eyes) {
       const base = colors[color - 1];
@@ -199,12 +202,19 @@
       fallDuration = duration;
     }
 
+    function startRecolor(cells, duration) {
+      recolorCells = new Set(cells.map((position) => position[0] + ',' + position[1]));
+      recolorStartedAt = performance.now();
+      recolorDuration = duration || 420;
+    }
+
     function resetEffects() {
       particles = [];
       popCells.clear();
       remoteClearLinks = [];
       fallOffsets.clear();
       garbageFalls.clear();
+      recolorCells.clear();
     }
 
     function drawBridge(x, y, color, nextX, nextY) {
@@ -219,6 +229,7 @@
       const width = cell * cols;
       const height = cell * rows;
       const now = performance.now();
+      const recolorProgress = recolorCells.size ? Math.min(1, (now - recolorStartedAt) / recolorDuration) : 1;
       const fallProgress = Math.min(1, Math.max(0, (now - fallStartedAt) / fallDuration));
       const fallEase = 1 - Math.pow(1 - fallProgress, 3);
       context.clearRect(0, 0, width, height);
@@ -308,6 +319,13 @@
             context.arc((x + 0.5) * cell, drawY * cell, cell * 0.42 * scale, 0, Math.PI * 2);
             context.fill();
           }
+          if (recolorCells.has(x + ',' + y) && recolorProgress < 1) {
+            const pulse = Math.sin(recolorProgress * Math.PI) * 0.72;
+            context.fillStyle = 'rgba(255,255,255,' + pulse.toFixed(3) + ')';
+            context.beginPath();
+            context.arc((x + 0.5) * cell, drawY * cell, cell * (0.32 + pulse * 0.16), 0, Math.PI * 2);
+            context.fill();
+          }
         }
       }
 
@@ -327,9 +345,10 @@
       context.globalAlpha = 1;
       if (fallProgress >= 1 && fallOffsets.size) fallOffsets.clear();
       if (garbageFalls.size && now - garbageFallStartedAt >= fallDuration) garbageFalls.clear();
+      if (recolorCells.size && recolorProgress >= 1) recolorCells.clear();
     }
 
-    return Object.freeze({ resize, drawNext, bounceOut, burst, update, startPop, clearPop, addRemoteLink, clearRemoteLinks, startFall, startGarbageFall, resetEffects, drawBoard });
+    return Object.freeze({ resize, drawNext, bounceOut, burst, update, startPop, clearPop, addRemoteLink, clearRemoteLinks, startFall, startGarbageFall, startRecolor, resetEffects, drawBoard });
   }
 
   global.PuyoRenderer = Object.freeze({ VERSION, create });

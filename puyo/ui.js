@@ -1,17 +1,19 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 11;
+  const VERSION = 12;
 
   function create(options) {
     const elements = options.elements;
     const challengeRules = options.challengeRules;
     const rogueliteRules = options.rogueliteRules;
+    const activeItemRules = options.activeItemRules;
     let chainTimer = null;
     let resultTimer = null;
     let allClearDelayTimer = null;
     let levelTimer = null;
     let allClearTimer = null;
+    let bottleTimer = null;
     const resultQueue = [];
     let resultActive = false;
     const levels = ['', 'Ⅰ', 'Ⅱ', 'Ⅲ'];
@@ -75,6 +77,12 @@
       }
       elements.challengeCard.classList.toggle('is-imminent', nearest > 0 && nearestIn <= 2);
       elements.challengeCard.classList.toggle('is-safe', nearest === 0);
+      const bottleCount = activeItemRules.count(view.itemState, activeItemRules.MIX_BOTTLE);
+      const bottleArmed = view.itemState && view.itemState.armedItem === activeItemRules.MIX_BOTTLE;
+      elements.mixBottleButton.hidden = false;
+      elements.mixBottleButton.disabled = view.mode !== 'playing' || !view.hasPair || bottleCount <= 0;
+      elements.mixBottleButton.classList.toggle('is-armed', bottleArmed);
+      elements.mixBottleButton.textContent = bottleArmed ? '🧪 落地时生效 · 再点取消' : '🧪 混色瓶 ×' + bottleCount;
       const active = rogueliteRules.DEFINITIONS.filter((item) => view.runBuild.upgrades[item.id]);
       const relics = (view.runBuild.relics || []).map((id) => rogueliteRules.RELIC_BY_ID[id]).filter(Boolean);
       const profile = rogueliteRules.buildProfile(view.runBuild);
@@ -242,18 +250,31 @@
       setTimeout(() => elements.challengeCard.classList.remove('is-defending'), 520);
     }
 
+    function showBottleTransform(sourceColor, targetColor) {
+      const names = ['', '粉', '黄', '绿', '蓝', '紫'];
+      const dots = ['', '🔴', '🟡', '🟢', '🔵', '🟣'];
+      clearTimeout(bottleTimer);
+      elements.bottleTransform.textContent = dots[sourceColor] + ' ' + names[sourceColor] + ' → ' + dots[targetColor] + ' ' + names[targetColor];
+      elements.bottlePop.hidden = true;
+      void elements.bottlePop.offsetWidth;
+      elements.bottlePop.hidden = false;
+      bottleTimer = setTimeout(() => { elements.bottlePop.hidden = true; }, 430);
+    }
+
     function resetTransient() {
       clearTimeout(chainTimer);
       clearTimeout(resultTimer);
       clearTimeout(allClearDelayTimer);
       clearTimeout(levelTimer);
       clearTimeout(allClearTimer);
+      clearTimeout(bottleTimer);
       resultQueue.length = 0;
       resultActive = false;
       elements.chainPop.hidden = true;
       elements.chainResult.hidden = true;
       elements.levelPop.hidden = true;
       elements.allClearPop.hidden = true;
+      elements.bottlePop.hidden = true;
       elements.challengeCard.classList.remove('is-complete', 'is-defending');
       elements.contractOverlay.hidden = true;
     }
@@ -278,7 +299,7 @@
       elements.contractAccept.addEventListener('click', () => actions.decideContract(true));
     }
 
-    return Object.freeze({ selectGameType, renderHud, renderChallenge, renderUpgradeChoices, renderBuildDetails, showContract, hideContract, showOverlay, showChallengeMessage, showChain, showChainResult, showLevel, showAllClear, flashGarbageDefense, resetTransient, bindActions });
+    return Object.freeze({ selectGameType, renderHud, renderChallenge, renderUpgradeChoices, renderBuildDetails, showContract, hideContract, showOverlay, showChallengeMessage, showChain, showChainResult, showLevel, showAllClear, showBottleTransform, flashGarbageDefense, resetTransient, bindActions });
   }
 
   global.PuyoUI = Object.freeze({ VERSION, create });

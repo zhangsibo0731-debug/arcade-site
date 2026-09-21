@@ -37,7 +37,16 @@ const rogueliteRules = {
   offerContract: (state) => state,
   resolveContract: (state) => ({ state, rewarded: false }),
 };
-const effects = global.PuyoChallengeEffects.create({ challengeRules, rogueliteRules, boardRules, garbage: 6, rows: 4 });
+const activeItemRules = {
+  MIX_BOTTLE: 'mixBottle',
+  normalize: (state) => state || { inventory: { mixBottle: 0 }, armedItem: '' },
+  grant: (state) => {
+    const before = state.inventory.mixBottle;
+    const next = Math.min(2, before + 1);
+    return { state: { inventory: { mixBottle: next }, armedItem: state.armedItem || '' }, granted: next - before, full: next === 2 };
+  },
+};
+const effects = global.PuyoChallengeEffects.create({ challengeRules, rogueliteRules, activeItemRules, boardRules, garbage: 6, rows: 4 });
 
 const clearBoard = boardRules.emptyBoard();
 clearBoard[3] = [1, 1, 1, 1];
@@ -58,6 +67,7 @@ turnBoard[3][2] = 6;
 const result = effects.settleTurn({
   challengeState: { stage: 1 },
   runBuild: { bufferedStage: 0 },
+  itemState: { inventory: { mixBottle: 1 }, armedItem: '' },
   turnStats: { maxChain: 2, largestGroup: 6, extraDefense: 0 },
   board: turnBoard,
   random: () => 0,
@@ -74,6 +84,44 @@ assert.strictEqual(result.runBuild.offered, true);
 assert.strictEqual(result.waitsForBoard, true);
 assert.ok(result.message.text.includes('STAGE 1 完成'));
 
+const specialRules = Object.assign({}, challengeRules, {
+  resolveTurn: () => ({
+    state: { stage: 6, completed: 5, garbageCleared: 0, pendingGarbage: 0, pressureIn: 4, deferredGarbage: 0, deferredIn: 0, special: null },
+    completed: true,
+    specialCompleted: true,
+    reward: 0,
+    bonus: 1200,
+    pressureTriggered: false,
+    entryGarbage: 0,
+    regularGarbage: 0,
+    canceled: 0,
+  }),
+});
+const specialEffects = global.PuyoChallengeEffects.create({ challengeRules: specialRules, rogueliteRules, activeItemRules, boardRules, garbage: 6, rows: 4 });
+const specialResult = specialEffects.settleTurn({
+  challengeState: { stage: 5 },
+  runBuild: { bufferedStage: 0 },
+  itemState: { inventory: { mixBottle: 1 }, armedItem: '' },
+  turnStats: { maxChain: 2, extraDefense: 0 },
+  board: boardRules.emptyBoard(),
+  random: () => 0,
+});
+assert.strictEqual(specialResult.itemState.inventory.mixBottle, 2);
+assert.strictEqual(specialResult.itemReward.granted, 1);
+assert.ok(specialResult.message.text.includes('混色瓶 +1'));
+
+const fullSpecialResult = specialEffects.settleTurn({
+  challengeState: { stage: 5 },
+  runBuild: { bufferedStage: 0 },
+  itemState: { inventory: { mixBottle: 2 }, armedItem: '' },
+  turnStats: { maxChain: 2, extraDefense: 0 },
+  board: boardRules.emptyBoard(),
+  random: () => 0,
+});
+assert.strictEqual(fullSpecialResult.itemState.inventory.mixBottle, 2);
+assert.strictEqual(fullSpecialResult.itemReward.granted, 0);
+assert.ok(fullSpecialResult.message.text.includes('混色瓶已满'));
+
 const largeBoardRules = global.PuyoBoardRules.create({ rows: 12, cols: 6, garbage: 6, rotations: [[0, -1], [1, 0], [0, 1], [-1, 0]] });
 const pressureRules = Object.assign({}, global.PuyoChallengeRules, {
   resolveTurn: () => ({
@@ -88,7 +136,7 @@ const pressureRules = Object.assign({}, global.PuyoChallengeRules, {
     canceled: 0,
   }),
 });
-const pressureEffects = global.PuyoChallengeEffects.create({ challengeRules: pressureRules, rogueliteRules, boardRules: largeBoardRules, garbage: 6, rows: 12 });
+const pressureEffects = global.PuyoChallengeEffects.create({ challengeRules: pressureRules, rogueliteRules, activeItemRules, boardRules: largeBoardRules, garbage: 6, rows: 12 });
 const crowdedBoard = largeBoardRules.emptyBoard();
 let crowdedCells = 0;
 for (let y = 11; y >= 0 && crowdedCells < 52; y--) {
@@ -100,6 +148,7 @@ for (let y = 11; y >= 0 && crowdedCells < 52; y--) {
 const pressureResult = pressureEffects.settleTurn({
   challengeState: { stage: 8 },
   runBuild: { bufferedStage: 0 },
+  itemState: { inventory: { mixBottle: 1 }, armedItem: '' },
   turnStats: { maxChain: 1, extraDefense: 0 },
   board: crowdedBoard,
   random: () => 0,
@@ -118,12 +167,13 @@ const bufferedRogueliteRules = Object.assign({}, rogueliteRules, {
   modifiers: () => ({ cleanerClear: 0, colorBurstThreshold: 0, colorBurstClear: 0, bufferReduction: 3 }),
   resolveTurnUpgrades: (state) => ({ state, extraDefense: 0, scoreBonus: 0, triggered: [] }),
 });
-const bufferedEffects = global.PuyoChallengeEffects.create({ challengeRules: pressureRules, rogueliteRules: bufferedRogueliteRules, boardRules: largeBoardRules, garbage: 6, rows: 12 });
+const bufferedEffects = global.PuyoChallengeEffects.create({ challengeRules: pressureRules, rogueliteRules: bufferedRogueliteRules, activeItemRules, boardRules: largeBoardRules, garbage: 6, rows: 12 });
 const bufferBoard = largeBoardRules.emptyBoard();
 for (let index = 0; index < 52; index++) bufferBoard[11 - Math.floor(index / 6)][index % 6] = 1;
 const bufferedResult = bufferedEffects.settleTurn({
   challengeState: { stage: 8 },
   runBuild: { bufferedStage: 0 },
+  itemState: { inventory: { mixBottle: 1 }, armedItem: '' },
   turnStats: { maxChain: 1, extraDefense: 0 },
   board: bufferBoard,
   random: () => 0,

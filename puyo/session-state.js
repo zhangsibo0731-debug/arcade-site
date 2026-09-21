@@ -1,12 +1,13 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 5;
+  const VERSION = 6;
 
   function create(options) {
     const storage = options.storage;
     const challengeRules = options.challengeRules;
     const rogueliteRules = options.rogueliteRules;
+    const activeItemRules = options.activeItemRules;
     const emptyBoard = options.emptyBoard;
 
     function freshTurnStats() {
@@ -29,6 +30,7 @@
         bestChainAtStart: state.bestChainAtStart,
         challengeState: state.gameType === 'challenge' ? state.challengeState : null,
         runBuild: state.gameType === 'challenge' ? state.runBuild : null,
+        itemState: state.gameType === 'challenge' ? state.itemState : null,
       };
     }
 
@@ -49,6 +51,9 @@
         bestChainAtStart: Number.isFinite(saved.bestChainAtStart) ? Math.max(0, saved.bestChainAtStart) : records.bestChain,
         challengeState,
         runBuild: rogueliteRules.normalize(gameType === 'challenge' ? saved.runBuild : null, challengeState.completed),
+        itemState: gameType === 'challenge'
+          ? (saved.itemState ? activeItemRules.normalize(saved.itemState) : activeItemRules.initialState())
+          : activeItemRules.emptyState(),
       };
     }
 

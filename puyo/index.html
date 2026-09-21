@@ -7,7 +7,7 @@
 <title>噗呦噗呦 · 连锁消除</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=20" />
+<link rel="stylesheet" href="styles.css?v=21" />
 </head>
 <body>
 <main class="app">
@@ -53,6 +53,7 @@
         <div class="chain-result" id="chainResult" hidden>本次 2 CHAIN!</div>
         <div class="level-pop" id="levelPop" hidden>LEVEL UP! · 2</div>
         <div class="all-clear-pop" id="allClearPop" hidden><strong>ALL CLEAR!</strong><small>全消 +2100</small></div>
+        <div class="bottle-pop" id="bottlePop" hidden><small>🧪 MIX</small><strong id="bottleTransform">🔵 → 🔴</strong></div>
         <div class="overlay" id="overlay" hidden>
           <div class="ov-card">
             <div class="ov-orbit" aria-hidden="true"><i></i><i></i></div>
@@ -139,6 +140,7 @@
           <b id="garbageCount">×1</b>
           <small id="garbageEta">10 组后落下</small>
         </div>
+        <button class="active-item-button" id="mixBottleButton" type="button" data-a="bottle" hidden>🧪 混色瓶 ×1</button>
         <div class="build-summary" id="buildSummary" hidden>
           <button class="build-button" id="buildButton" type="button"><span>本局强化</span><b id="buildCount">0</b><small>查看效果 ›</small></button>
           <div class="build-chips" id="buildChips"></div>
@@ -160,22 +162,23 @@
     <button class="ctl ctl--accent" type="button" data-a="drop" aria-label="快速落下">落底</button>
   </section>
 
-  <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · C 交换 · P 暂停</p>
+  <p class="hint">← → 移动 · Z / X 旋转 · ↓ 加速 · 空格落底 · C 交换 · B 混色瓶 · P 暂停</p>
 </main>
 <script src="../input-guard.js?v=7"></script>
 <script src="storage.js?v=2"></script>
-<script src="audio.js?v=4"></script>
+<script src="audio.js?v=5"></script>
 <script src="music.js?v=14"></script>
 <script src="board-rules.js?v=1"></script>
 <script src="scoring-rules.js?v=3"></script>
 <script src="rotation-rules.js?v=1"></script>
-<script src="renderer.js?v=1"></script>
-<script src="ui.js?v=11"></script>
-<script src="input.js?v=3"></script>
-<script src="session-state.js?v=5"></script>
+<script src="renderer.js?v=2"></script>
+<script src="ui.js?v=12"></script>
+<script src="input.js?v=4"></script>
+<script src="session-state.js?v=6"></script>
 <script src="challenge-rules.js?v=8"></script>
 <script src="roguelite-rules.js?v=11"></script>
-<script src="challenge-effects.js?v=5"></script>
-<script src="game.js?v=53"></script>
+<script src="active-item-rules.js?v=1"></script>
+<script src="challenge-effects.js?v=6"></script>
+<script src="game.js?v=54"></script>
 </body>
 </html>

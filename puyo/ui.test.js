@@ -18,7 +18,7 @@ function element() {
 }
 
 const elements = {};
-['score','highScore','level','runChain','overlay','ovTitle','ovSub','ovBtn','ovBack','challengeCard','challengeStage','specialBadge','missionTitle','missionScope','missionProgress','missionDeadline','missionMeter','garbageQueue','garbageCount','garbageEta','buildSummary','buildCount','buildChips','buildDetails','upgradeKicker','upgradeChoices','chainResult','chainValue','chainLabel','chainGain','chainPop','levelPop','contractOverlay','contractSkip','contractAccept','contractStatus'].forEach((key) => { elements[key] = element(); });
+['score','highScore','level','runChain','overlay','ovTitle','ovSub','ovBtn','ovBack','challengeCard','challengeStage','specialBadge','missionTitle','missionScope','missionProgress','missionDeadline','missionMeter','garbageQueue','garbageCount','garbageEta','buildSummary','buildCount','buildChips','buildDetails','upgradeKicker','upgradeChoices','chainResult','chainValue','chainLabel','chainGain','chainPop','levelPop','contractOverlay','contractSkip','contractAccept','contractStatus','mixBottleButton','bottlePop','bottleTransform'].forEach((key) => { elements[key] = element(); });
 const allClearDetail = element();
 elements.allClearPop = element();
 elements.allClearPop.querySelector = () => allClearDetail;
@@ -41,7 +41,8 @@ const rogueliteRules = {
   cardFor: () => ({ id: 'cleaner', name: '清道夫', rarity: 'common', school: 'adversity', schoolName: '逆境', synergies: [], ownedSynergies: [], recommended: true, recommendationReason: '延续逆境构筑', currentLevel: 0, nextLevel: 1, effect: '清除 1 颗' }),
   relicCardFor: () => ({ id: 'echoBottle', name: '回声瓶', rarity: 'relic', school: 'chain', schoolName: '连锁', synergies: [], ownedSynergies: [], effect: '每 Stage 触发一次' }),
 };
-const ui = global.PuyoUI.create({ elements, challengeRules, rogueliteRules });
+const activeItemRules = { MIX_BOTTLE: 'mixBottle', count: (state) => state.inventory.mixBottle };
+const ui = global.PuyoUI.create({ elements, challengeRules, rogueliteRules, activeItemRules });
 
 ui.renderHud({ score: 120, highScore: 300, level: 2, runChain: 4 });
 assert.deepStrictEqual([elements.score.textContent, elements.highScore.textContent, elements.level.textContent, elements.runChain.textContent], [120, 300, 2, 4]);
@@ -49,25 +50,28 @@ ui.selectGameType('challenge');
 assert.strictEqual(modeButtons[1]['aria-pressed'], 'true');
 
 const challengeState = { stage: 3, special: null, turnsLeft: 2, pendingGarbage: 4, pressureIn: 1, mission: { title: '完成 2 CHAIN', target: 2, progress: 1 } };
-ui.renderChallenge({ active: true, challengeState, mode: 'playing', turnStats: { missionBaseProgress: null }, runBuild: { upgrades: { cleaner: 1 } }, triggeredUpgrades: new Set(['cleaner']) });
+ui.renderChallenge({ active: true, challengeState, mode: 'playing', hasPair: true, turnStats: { missionBaseProgress: null }, runBuild: { upgrades: { cleaner: 1 } }, itemState: { inventory: { mixBottle: 1 }, armedItem: '' }, triggeredUpgrades: new Set(['cleaner']) });
 assert.strictEqual(elements.challengeStage.textContent, 3);
 assert.strictEqual(elements.missionDeadline.classList.contains('is-urgent'), true);
 assert.strictEqual(elements.garbageCount.textContent, '×4');
 assert.strictEqual(elements.garbageEta.textContent, '1 组后落下');
 assert.strictEqual(elements.buildCount.textContent, 1);
 assert.ok(elements.buildChips.innerHTML.includes('is-triggered'));
+assert.strictEqual(elements.mixBottleButton.textContent, '🧪 混色瓶 ×1');
 
 challengeState.deferredGarbage = 3;
 challengeState.deferredIn = 2;
 challengeState.pendingGarbage = 150;
 challengeState.pressureIn = 6;
-ui.renderChallenge({ active: true, challengeState, mode: 'paused', turnStats: { missionBaseProgress: null }, runBuild: { upgrades: {} }, triggeredUpgrades: new Set() });
+ui.renderChallenge({ active: true, challengeState, mode: 'paused', hasPair: true, turnStats: { missionBaseProgress: null }, runBuild: { upgrades: {} }, itemState: { inventory: { mixBottle: 1 }, armedItem: 'mixBottle' }, triggeredUpgrades: new Set() });
 assert.strictEqual(elements.garbageCount.textContent, '×3');
 assert.ok(elements.garbageEta.textContent.includes('近期 2组后'));
 assert.ok(elements.garbageEta.textContent.includes('后续 ×99+ / 6组'));
 assert.strictEqual(elements.challengeCard.classList.contains('is-imminent'), true);
+assert.ok(elements.mixBottleButton.textContent.includes('落地时生效'));
+assert.strictEqual(elements.mixBottleButton.disabled, true);
 challengeState.deferredGarbage = 120;
-ui.renderChallenge({ active: true, challengeState, mode: 'playing', turnStats: { missionBaseProgress: null }, runBuild: { upgrades: {} }, triggeredUpgrades: new Set() });
+ui.renderChallenge({ active: true, challengeState, mode: 'playing', hasPair: true, turnStats: { missionBaseProgress: null }, runBuild: { upgrades: {} }, itemState: { inventory: { mixBottle: 0 }, armedItem: '' }, triggeredUpgrades: new Set() });
 assert.strictEqual(elements.garbageCount.textContent, '×99+');
 
 ui.renderUpgradeChoices({ pendingKind: '', pendingChoice: ['cleaner'] });
@@ -103,6 +107,8 @@ ui.showChallengeMessage('STAGE 2 完成', true, 900);
 assert.ok(elements.chainResult.textContent.includes('4 CHAIN!'), 'stage feedback must wait for the chain summary');
 ui.showAllClear(5);
 assert.strictEqual(allClearDetail.textContent, '全消 +2100 · 额外防御 +5');
+ui.showBottleTransform(4, 1);
+assert.ok(elements.bottleTransform.textContent.includes('蓝 →'));
 ['btnPause','buildButton','buildClose','btnSound','btnResumeContinue','btnResumeNew'].forEach((key) => { elements[key] = element(); });
 let paused = false;
 ui.bindActions({ pause: () => { paused = true; }, openBuild() {}, closeBuild() {}, toggleSound() {}, selectMode() {}, primary() {}, resume() {}, resumeNew() {}, chooseUpgrade() {} });
