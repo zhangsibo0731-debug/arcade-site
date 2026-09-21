@@ -85,12 +85,15 @@
       const placed = incomingCount ? challengeRules.placeGarbage(view.board, incomingCount, view.random, garbage) : [];
 
       const specialDebt = (outcome.specialPenalty || 0) + (outcome.entryGarbage || 0);
-      if (specialDebt) challengeState = challengeRules.enqueueDeferred(challengeState, specialDebt, 2);
+      if (specialDebt) {
+        const specialDelay = occupancy >= challengeRules.OCCUPANCY_HIGH ? challengeRules.CRITICAL_DEFERRED_DELAY : challengeRules.DEFERRED_DELAY;
+        challengeState = challengeRules.enqueueDeferred(challengeState, specialDebt, specialDelay);
+      }
       if (outcome.regularGarbage) {
         challengeState.pendingGarbage = Math.min(challengeRules.MAX_GARBAGE_DEBT, challengeState.pendingGarbage + outcome.regularGarbage);
       }
 
-      const occupancyTier = release.cap === 2 ? 'critical' : (release.cap === 3 ? 'crowded' : 'normal');
+      const occupancyTier = release.cap === 1 ? 'critical' : (release.cap === 2 ? 'crowded' : 'normal');
       const pressurePrefix = occupancyTier === 'critical' ? '临界空间 · ' : (occupancyTier === 'crowded' ? '棋盘拥挤 · ' : '');
       const clearText = removed.length ? ' · 清障 ×' + removed.length + (deferredByReward.deferred ? ' · 到期干扰延后 1 组' : '') : '';
       let message = null;

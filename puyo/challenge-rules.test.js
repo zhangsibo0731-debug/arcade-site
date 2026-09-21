@@ -32,7 +32,8 @@ occupancyBoard[11][0] = 1;
 occupancyBoard[10][0] = rules.GARBAGE;
 assert.equal(rules.boardOccupancy(occupancyBoard), 2);
 assert.equal(rules.boardOccupancy(null), 0);
-assert.deepEqual([43, 44, 51, 52, 72].map(rules.garbageCapForOccupancy), [5, 3, 3, 2, 2]);
+assert.deepEqual([43, 44, 51, 52, 72].map(rules.garbageCapForOccupancy), [4, 2, 2, 1, 1]);
+assert.deepEqual([43, 44, 51, 52, 72].map(rules.deferredDelayForOccupancy), [2, 2, 2, 3, 3]);
 
 const migratedPressure = rules.normalize({ pendingGarbage: 150, deferredGarbage: 4 }, () => 0);
 assert.equal(migratedPressure.pendingGarbage, 150);
@@ -64,9 +65,9 @@ assert.equal(bothAdvanced.state.pressureIn, 0);
 const deferredFirst = rules.releaseGarbage(Object.assign({ stage: 8 }, bothAdvanced.state), 44);
 assert.equal(deferredFirst.source, 'deferred');
 assert.equal(deferredFirst.requested, 4);
-assert.equal(deferredFirst.released, 3);
-assert.equal(deferredFirst.carried, 1);
-assert.equal(deferredFirst.state.deferredGarbage, 1);
+assert.equal(deferredFirst.released, 2);
+assert.equal(deferredFirst.carried, 2);
+assert.equal(deferredFirst.state.deferredGarbage, 2);
 assert.equal(deferredFirst.state.deferredIn, 2);
 assert.equal(deferredFirst.state.pendingGarbage, 5);
 assert.equal(deferredFirst.state.pressureIn, 1);
@@ -74,10 +75,10 @@ assert.equal(deferredFirst.requested, deferredFirst.released + deferredFirst.car
 
 const splitRegular = rules.releaseGarbage({ stage: 8, pendingGarbage: 5, pressureIn: 0, deferredGarbage: 0 }, 52);
 assert.equal(splitRegular.source, 'pending');
-assert.equal(splitRegular.released, 2);
-assert.equal(splitRegular.carried, 3);
-assert.equal(splitRegular.state.deferredGarbage, 3);
-assert.equal(splitRegular.state.deferredIn, 2);
+assert.equal(splitRegular.released, 1);
+assert.equal(splitRegular.carried, 4);
+assert.equal(splitRegular.state.deferredGarbage, 4);
+assert.equal(splitRegular.state.deferredIn, 3);
 assert.equal(splitRegular.state.pendingGarbage, rules.garbageForStage(8));
 assert.equal(splitRegular.state.pressureIn, 6);
 assert.equal(splitRegular.requested, splitRegular.released + splitRegular.carried);
@@ -90,9 +91,9 @@ const regularJoinsDeferred = rules.releaseGarbage({
   deferredIn: 1,
 }, 44);
 assert.equal(regularJoinsDeferred.source, 'pending');
-assert.equal(regularJoinsDeferred.released, 3);
-assert.equal(regularJoinsDeferred.carried, 2);
-assert.equal(regularJoinsDeferred.state.deferredGarbage, 4);
+assert.equal(regularJoinsDeferred.released, 2);
+assert.equal(regularJoinsDeferred.carried, 3);
+assert.equal(regularJoinsDeferred.state.deferredGarbage, 5);
 assert.equal(regularJoinsDeferred.state.deferredIn, 1);
 
 const nothingDue = rules.releaseGarbage({ pendingGarbage: 5, pressureIn: 2, deferredGarbage: 3, deferredIn: 1 }, 60);
@@ -247,9 +248,9 @@ assert.equal(combinedPressure.specialPenalty, 3);
 assert.equal(combinedPressure.pressureTriggered, true);
 assert.equal(combinedPressure.pressure, 0);
 const combinedRelease = rules.releaseGarbage(combinedPressure.state, 0);
-assert.equal(combinedRelease.released, 5);
+assert.equal(combinedRelease.released, 4);
 const combinedQueued = rules.enqueueDeferred(combinedRelease.state, combinedPressure.specialPenalty, 2);
-assert.equal(combinedQueued.deferredGarbage, 3);
+assert.equal(combinedQueued.deferredGarbage, 4);
 assert.equal(combinedQueued.deferredIn, 2);
 
 const towerEntry = rules.resolveTurn({

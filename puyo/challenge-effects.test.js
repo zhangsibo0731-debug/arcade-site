@@ -106,13 +106,13 @@ const pressureResult = pressureEffects.settleTurn({
 });
 assert.strictEqual(pressureResult.occupancy, 52);
 assert.strictEqual(pressureResult.occupancyTier, 'critical');
-assert.strictEqual(pressureResult.requestedGarbage, 2);
-assert.strictEqual(pressureResult.placed.length, 2);
-assert.strictEqual(pressureResult.carriedGarbage, 3);
+assert.strictEqual(pressureResult.requestedGarbage, 1);
+assert.strictEqual(pressureResult.placed.length, 1);
+assert.strictEqual(pressureResult.carriedGarbage, 4);
 assert.strictEqual(pressureResult.releaseSource, 'pending');
-assert.strictEqual(pressureResult.challengeState.deferredGarbage, 6);
-assert.strictEqual(pressureResult.challengeState.deferredIn, 2);
-assert.ok(pressureResult.message.text.includes('干扰落下 × 2'));
+assert.strictEqual(pressureResult.challengeState.deferredGarbage, 7);
+assert.strictEqual(pressureResult.challengeState.deferredIn, 3);
+assert.ok(pressureResult.message.text.includes('干扰落下 × 1'));
 
 const bufferedRogueliteRules = Object.assign({}, rogueliteRules, {
   modifiers: () => ({ cleanerClear: 0, colorBurstThreshold: 0, colorBurstClear: 0, bufferReduction: 3 }),
@@ -128,11 +128,11 @@ const bufferedResult = bufferedEffects.settleTurn({
   board: bufferBoard,
   random: () => 0,
 });
-assert.strictEqual(bufferedResult.requestedGarbage, 2);
-assert.strictEqual(bufferedResult.buffered, 2);
+assert.strictEqual(bufferedResult.requestedGarbage, 1);
+assert.strictEqual(bufferedResult.buffered, 1);
 assert.strictEqual(bufferedResult.incomingCount, 0);
 assert.strictEqual(bufferedResult.placed.length, 0);
-assert.strictEqual(bufferedResult.challengeState.deferredGarbage, 6);
+assert.strictEqual(bufferedResult.challengeState.deferredGarbage, 7);
 assert.strictEqual(bufferedResult.runBuild.bufferedStage, 8);
 
 console.log('puyo challenge effects tests passed');

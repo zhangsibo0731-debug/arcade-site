@@ -5,6 +5,7 @@
   const GARBAGE = 6;
   const MAX_GARBAGE_DEBT = 999;
   const DEFERRED_DELAY = 2;
+  const CRITICAL_DEFERRED_DELAY = 3;
   const OCCUPANCY_MEDIUM = 44;
   const OCCUPANCY_HIGH = 52;
   const MISSION_TYPES = Object.freeze(['chain', 'clear', 'colors', 'largeGroup', 'garbageClear', 'clearStreak', 'scoreTurn', 'lowBoard', 'targetColor']);
@@ -87,9 +88,13 @@
 
   function garbageCapForOccupancy(occupiedCells) {
     const occupied = boundedInt(occupiedCells, 0, 0, 72);
-    if (occupied >= OCCUPANCY_HIGH) return 2;
-    if (occupied >= OCCUPANCY_MEDIUM) return 3;
-    return 5;
+    if (occupied >= OCCUPANCY_HIGH) return 1;
+    if (occupied >= OCCUPANCY_MEDIUM) return 2;
+    return 4;
+  }
+
+  function deferredDelayForOccupancy(occupiedCells) {
+    return boundedInt(occupiedCells, 0, 0, 72) >= OCCUPANCY_HIGH ? CRITICAL_DEFERRED_DELAY : DEFERRED_DELAY;
   }
 
   function pressureFields(source) {
@@ -157,15 +162,16 @@
 
     const released = Math.min(requested, cap);
     const carried = requested - released;
+    const deferredDelay = deferredDelayForOccupancy(occupiedCells);
     if (releaseSource === 'deferred') {
       state.deferredGarbage = carried;
-      state.deferredIn = carried ? DEFERRED_DELAY : 0;
+      state.deferredIn = carried ? deferredDelay : 0;
       if (state.pressureIn === 0) state.pressureIn = 1;
     } else {
       state.pendingGarbage = garbageForStage(state.stage || 1);
       state.pressureIn = Math.max(6, 10 - Math.floor((state.stage || 1) / 2));
       if (carried) {
-        const queued = enqueueDeferred(state, carried, DEFERRED_DELAY);
+        const queued = enqueueDeferred(state, carried, deferredDelay);
         state.deferredGarbage = queued.deferredGarbage;
         state.deferredIn = queued.deferredIn;
       }
@@ -375,5 +381,5 @@
     return placed;
   }
 
-  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MAX_GARBAGE_DEBT, DEFERRED_DELAY, OCCUPANCY_MEDIUM, OCCUPANCY_HIGH, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, defenseForChain, boardOccupancy, garbageCapForOccupancy, enqueueDeferred, cancelGarbage, advancePressure, releaseGarbage, deferDueGarbage, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
+  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MAX_GARBAGE_DEBT, DEFERRED_DELAY, CRITICAL_DEFERRED_DELAY, OCCUPANCY_MEDIUM, OCCUPANCY_HIGH, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, defenseForChain, boardOccupancy, garbageCapForOccupancy, deferredDelayForOccupancy, enqueueDeferred, cancelGarbage, advancePressure, releaseGarbage, deferDueGarbage, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
 })(window);
