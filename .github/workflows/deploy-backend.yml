@@ -1,0 +1,124 @@
+name: 部署服务端
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backend
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: 测试服务端
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: cloudflare/arcade-api/package-lock.json
+
+      - name: 安装 Worker 依赖
+        run: npm ci
+        working-directory: cloudflare/arcade-api
+
+      - name: 测试 Cloudflare Worker
+        run: npm test
+        working-directory: cloudflare/arcade-api
+
+      - name: 测试 CloudBase 网关
+        run: npm test
+        working-directory: cloudbase/arcade-gateway
+
+  deploy:
+    name: 部署并验收
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
+      TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
+      TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+      WORKER_URL: https://arcade-api.zhangsibo0731.workers.dev
+      CLOUDBASE_URL: https://prod-d9gxcy8cc6ef71935-1325136572.ap-shanghai.app.tcloudbase.com
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: cloudflare/arcade-api/package-lock.json
+
+      - name: 检查部署凭证
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "缺少 CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "缺少 CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$TCB_SECRET_ID" || { echo "缺少 TCB_SECRET_ID"; exit 1; }
+          test -n "$TCB_SECRET_KEY" || { echo "缺少 TCB_SECRET_KEY"; exit 1; }
+          test -n "$TCB_ENV_ID" || { echo "缺少 TCB_ENV_ID"; exit 1; }
+
+      - name: 安装 Worker 依赖
+        run: npm ci
+        working-directory: cloudflare/arcade-api
+
+      - name: 部署 Cloudflare Worker
+        run: npm run deploy
+        working-directory: cloudflare/arcade-api
+
+      - name: 验收 Cloudflare Worker
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 20 \
+            "$WORKER_URL/api/v1/health"
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 20 \
+            "$WORKER_URL/api/v1/leaderboard?game=puyo&mode=challenge&limit=1"
+
+      - name: 登录并部署 CloudBase 网关
+        shell: bash
+        working-directory: cloudbase/arcade-gateway
+        run: |
+          npx --yes --package @cloudbase/cli@3.8.3 tcb login \
+            --apiKeyId "$TCB_SECRET_ID" \
+            --apiKey "$TCB_SECRET_KEY"
+          npx --yes --package @cloudbase/cli@3.8.3 tcb -e "$TCB_ENV_ID" \
+            fn deploy arcadeGateway \
+            --dir . \
+            --httpFn \
+            --force \
+            --install-dependency false \
+            --json
+
+      - name: 验收 CloudBase 网关
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 20 \
+            "$CLOUDBASE_URL/api/v1/health"
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 20 \
+            "$CLOUDBASE_URL/api/v1/leaderboard?game=puyo&mode=challenge&limit=1"
+
+      - name: 写入部署摘要
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## 服务端部署"
+            echo
+            echo "- Git 提交：\`${GITHUB_SHA}\`"
+            echo "- Cloudflare Worker：\`$WORKER_URL\`"
+            echo "- CloudBase 网关：\`$CLOUDBASE_URL\`"
+          } >> "$GITHUB_STEP_SUMMARY"
