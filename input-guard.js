@@ -13,6 +13,8 @@
     '.board-wrap *',
     '.stage',
     '.stage *',
+    '.hint',
+    '.hint *',
   ].join(',');
 
   const style = document.createElement('style');

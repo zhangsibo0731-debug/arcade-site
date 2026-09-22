@@ -153,6 +153,7 @@ body {
   background: var(--pink);
   box-shadow: inset 4px 5px 0 rgba(255,255,255,.22), 0 0 16px rgba(255,111,174,.25);
 }
+.challenge-card:not([hidden]) ~ .recipe { display: none; }
 
 .icon-btn {
   position: absolute;
@@ -411,7 +412,7 @@ body {
 .ctl--accent:hover { color: #171329; background: #caff65; }
 .back-btn:focus-visible, .icon-btn:focus-visible, .ctl:focus-visible, .ov-btn:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
 
-.hint { overflow: hidden; color: var(--soft); font-size: 10px; text-align: center; white-space: nowrap; text-overflow: ellipsis; }
+.hint { overflow: hidden; color: var(--soft); font-size: 10px; text-align: center; white-space: nowrap; text-overflow: ellipsis; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .challenge-card { padding: 9px; border: 1px solid rgba(255,111,174,.3); border-radius: 14px; background: linear-gradient(145deg, rgba(255,111,174,.11), rgba(86,220,237,.06)); }
 .challenge-card > span { display: block; color: var(--pink); font-size: 8px; font-weight: 700; letter-spacing: .12em; }
 .challenge-card > span b { color: var(--text); }

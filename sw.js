@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v164';
+const CACHE = 'arcade-v165';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,7 @@ const ASSETS = [
   './icons/moon-arcade-512-v2.png',
   './icons/moon-arcade-maskable-v2.png',
   './icons/moon-arcade-apple-v2.png',
-  './input-guard.js?v=8',
+  './input-guard.js?v=9',
   './sudoku/index.html',
   './sudoku/styles.css',
   './sudoku/game.js',
@@ -29,7 +29,7 @@ const ASSETS = [
   './pacman/styles.css',
   './pacman/game.js?v=7',
   './puyo/index.html',
-  './puyo/styles.css?v=24',
+  './puyo/styles.css?v=25',
   './puyo/storage.js?v=3',
   './puyo/audio.js?v=5',
   './puyo/music.js?v=14',
