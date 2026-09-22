@@ -391,6 +391,7 @@
     quickTurnPending = null;
     clearQuickTurnHint();
     drawNext();
+    updateChallengeHud();
     if (collidesAt(pair.x, pair.y, pair.rot)) gameOver();
   }
 
@@ -801,6 +802,7 @@
       btnPause.hidden = false;
     }
     drawNext();
+    updateChallengeHud();
   }
 
   function showOverlay(kind) {
