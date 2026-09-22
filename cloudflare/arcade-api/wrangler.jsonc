@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "arcade-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-21",
+  "vars": {
+    "ALLOWED_ORIGINS": "https://zhangsibo0731-debug.github.io,http://127.0.0.1:8417,http://localhost:8417"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "arcade-db",
+      "database_id": "9fc94a41-8c69-4691-ab72-bc9cf890c308",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

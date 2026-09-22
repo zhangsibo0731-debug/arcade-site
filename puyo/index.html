@@ -63,8 +63,36 @@
               <button type="button" data-mode="classic">经典<small>纯粹连锁</small></button>
               <button type="button" data-mode="challenge" aria-pressed="true">挑战<small>任务与干扰</small></button>
             </div>
+            <div class="cloud-score" id="cloudScore" hidden>
+              <p id="cloudStatus" aria-live="polite">本周挑战榜 · 每周一重置</p>
+              <div class="cloud-consent" id="cloudConsent" hidden>
+                <input id="cloudNickname" type="text" maxlength="12" autocomplete="nickname" placeholder="输入排行榜昵称" aria-label="排行榜昵称" />
+                <button id="cloudEnable" type="button">启用并上传</button>
+              </div>
+              <div class="cloud-actions">
+                <button id="cloudRetry" type="button" hidden>重试上传</button>
+                <button id="leaderboardOpen" type="button">查看挑战周榜</button>
+              </div>
+            </div>
             <button class="ov-btn" id="ovBtn" type="button">开始游戏</button>
             <a class="ov-back" id="ovBack" href="../" hidden>返回游戏厅</a>
+          </div>
+        </div>
+        <div class="overlay leaderboard-overlay" id="leaderboardOverlay" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle" hidden>
+          <div class="ov-card leaderboard-panel">
+            <span class="upgrade-kicker">WEEKLY CHALLENGE</span>
+            <h2 class="ov-title" id="leaderboardTitle">本周挑战榜</h2>
+            <p class="ov-sub" id="leaderboardMeta" aria-live="polite">北京时间每周一重置</p>
+            <div class="leaderboard-profile" id="leaderboardProfile" hidden>
+              <input id="leaderboardNickname" type="text" maxlength="12" autocomplete="nickname" aria-label="修改排行榜昵称" />
+              <button id="leaderboardSaveName" type="button">保存昵称</button>
+              <button id="leaderboardDisable" type="button">停止自动上传</button>
+            </div>
+            <div class="leaderboard-list" id="leaderboardList" aria-live="polite"><p>正在连接云排行榜…</p></div>
+            <div class="ov-actions">
+              <button class="ov-btn ov-btn--ghost" id="leaderboardRefresh" type="button">刷新</button>
+              <button class="ov-btn" id="leaderboardClose" type="button">返回</button>
+            </div>
           </div>
         </div>
         <div class="overlay" id="resumeOverlay" hidden>
@@ -174,11 +202,12 @@
 <script src="renderer.js?v=2"></script>
 <script src="ui.js?v=12"></script>
 <script src="input.js?v=4"></script>
-<script src="session-state.js?v=6"></script>
+<script src="session-state.js?v=7"></script>
 <script src="challenge-rules.js?v=8"></script>
 <script src="roguelite-rules.js?v=11"></script>
 <script src="active-item-rules.js?v=1"></script>
 <script src="challenge-effects.js?v=6"></script>
-<script src="game.js?v=54"></script>
+<script src="leaderboard.js?v=2"></script>
+<script src="game.js?v=56"></script>
 </body>
 </html>

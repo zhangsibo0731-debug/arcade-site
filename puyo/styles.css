@@ -239,6 +239,28 @@ body {
 }
 .ov-back:hover { color: var(--text); }
 
+.cloud-score { position: relative; margin: -7px 0 10px; padding: 8px; border: 1px solid rgba(86,220,237,.22); border-radius: 12px; background: rgba(86,220,237,.055); }
+.cloud-score > p { color: var(--soft); font-size: 8px; line-height: 1.4; }
+.cloud-consent, .leaderboard-profile { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 5px; margin-top: 7px; }
+.cloud-consent input, .leaderboard-profile input { min-width: 0; padding: 6px 8px; color: var(--text); border: 1px solid var(--line); border-radius: 8px; outline: none; background: rgba(0,0,0,.18); font: 16px var(--font); }
+.cloud-consent input:focus, .leaderboard-profile input:focus { border-color: var(--cyan); }
+.cloud-consent button, .cloud-actions button, .leaderboard-profile button { padding: 7px 8px; color: var(--cyan); border: 1px solid rgba(86,220,237,.3); border-radius: 8px; background: rgba(86,220,237,.08); font: 700 8px var(--font); cursor: pointer; touch-action: manipulation; }
+.cloud-actions { display: flex; justify-content: center; gap: 6px; margin-top: 7px; }
+.cloud-actions button:first-child { color: var(--pink); border-color: rgba(255,111,174,.3); background: rgba(255,111,174,.07); }
+.leaderboard-overlay { z-index: 14; padding: 10px; background: rgba(12,9,25,.88); }
+.leaderboard-panel { max-width: 280px; max-height: 100%; padding: 16px 12px 13px; overflow-y: auto; }
+.leaderboard-panel .ov-sub { margin-bottom: 9px; font-size: 9px; }
+.leaderboard-profile { margin: 0 0 8px; }
+.leaderboard-profile #leaderboardDisable { grid-column: 1 / -1; color: var(--soft); border-color: var(--line); background: transparent; }
+.leaderboard-list { display: grid; gap: 4px; min-height: 90px; max-height: 290px; margin-bottom: 10px; overflow-y: auto; }
+.leaderboard-empty { align-self: center; padding: 20px 6px; color: var(--soft); font-size: 10px; line-height: 1.6; }
+.leaderboard-row { display: grid; grid-template-columns: 22px minmax(0,1fr) auto; align-items: center; gap: 7px; padding: 7px 8px; text-align: left; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; background: rgba(255,255,255,.035); }
+.leaderboard-row > b { color: var(--lime); font-size: 11px; text-align: center; }
+.leaderboard-row > span { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard-row small { display: block; margin-top: 2px; color: var(--soft); font-size: 7px; font-weight: 500; }
+.leaderboard-row > strong { color: var(--text); font-size: 11px; font-variant-numeric: tabular-nums; }
+.leaderboard-panel button:disabled { opacity: .55; }
+
 .chain-pop {
   position: absolute;
   left: 50%;

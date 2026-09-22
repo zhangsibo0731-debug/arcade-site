@@ -2,6 +2,10 @@
 arcade-site.zip
 arcade-site/
 
+# Cloudflare Worker 本地依赖与模拟数据库
+cloudflare/arcade-api/node_modules/
+cloudflare/arcade-api/.wrangler/
+
 # 本地冒烟测试（不进仓库）
 breakout/_smoke.js
 tetris/_smoke.js

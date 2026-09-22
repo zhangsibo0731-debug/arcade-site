@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 6;
+  const VERSION = 7;
 
   function create(options) {
     const storage = options.storage;
@@ -26,6 +26,7 @@
         clearedTotal: state.clearedTotal,
         runMaxChain: state.runMaxChain,
         allClearCount: state.allClearCount,
+        activeDurationMs: state.activeDurationMs,
         hiAtStart: state.hiAtStart,
         bestChainAtStart: state.bestChainAtStart,
         challengeState: state.gameType === 'challenge' ? state.challengeState : null,
@@ -47,6 +48,7 @@
         clearedTotal: Number.isFinite(saved.clearedTotal) ? Math.max(0, saved.clearedTotal) : 0,
         runMaxChain: Number.isFinite(saved.runMaxChain) ? Math.max(0, saved.runMaxChain) : 0,
         allClearCount: Number.isFinite(saved.allClearCount) ? Math.max(0, Math.floor(saved.allClearCount)) : 0,
+        activeDurationMs: Number.isFinite(saved.activeDurationMs) ? Math.max(0, Math.min(86400000, saved.activeDurationMs)) : 0,
         hiAtStart: Number.isFinite(saved.hiAtStart) ? Math.max(0, saved.hiAtStart) : records.highScore,
         bestChainAtStart: Number.isFinite(saved.bestChainAtStart) ? Math.max(0, saved.bestChainAtStart) : records.bestChain,
         challengeState,

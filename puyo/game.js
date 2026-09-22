@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoMusic || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules || !window.PuyoActiveItemRules) throw new Error('Puyo modules failed to load.');
+  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoMusic || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules || !window.PuyoActiveItemRules || !window.PuyoLeaderboard) throw new Error('Puyo modules failed to load.');
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('board');
@@ -64,6 +64,22 @@
   const contractAccept = $('contractAccept');
   const contractStatus = $('contractStatus');
   const mixBottleButton = $('mixBottleButton');
+  const cloudScore = $('cloudScore');
+  const cloudStatus = $('cloudStatus');
+  const cloudConsent = $('cloudConsent');
+  const cloudNickname = $('cloudNickname');
+  const cloudEnable = $('cloudEnable');
+  const cloudRetry = $('cloudRetry');
+  const leaderboardOpen = $('leaderboardOpen');
+  const leaderboardOverlay = $('leaderboardOverlay');
+  const leaderboardMeta = $('leaderboardMeta');
+  const leaderboardList = $('leaderboardList');
+  const leaderboardProfile = $('leaderboardProfile');
+  const leaderboardNickname = $('leaderboardNickname');
+  const leaderboardSaveName = $('leaderboardSaveName');
+  const leaderboardDisable = $('leaderboardDisable');
+  const leaderboardRefresh = $('leaderboardRefresh');
+  const leaderboardClose = $('leaderboardClose');
 
   const COLS = 6;
   const ROWS = 12;
@@ -120,6 +136,13 @@
   const audio = window.PuyoAudio.create({ storage, button: btnSound, soundOnIcon: icSoundOn, soundOffIcon: icSoundOff });
   const music = window.PuyoMusic.create({ isMuted: audio.isMuted });
   const sessionState = window.PuyoSessionState.create({ storage, challengeRules, rogueliteRules, activeItemRules, emptyBoard: boardRules.emptyBoard });
+  const leaderboard = window.PuyoLeaderboard.create({
+    apiBases: [
+      'https://prod-d9gxcy8cc6ef71935-1325136572.ap-shanghai.app.tcloudbase.com',
+      'https://arcade-api.zhangsibo0731.workers.dev',
+    ],
+    timeoutMs: 4000,
+  });
   const ensureAudio = audio.ensure;
   const play = audio.play;
   const haptic = audio.haptic;
@@ -137,6 +160,7 @@
   let bestChain = storage.readBestChain('classic');
   let runMaxChain = 0;
   let allClearCount = 0;
+  let activeDurationMs = 0;
   let hiAtStart = hi;
   let bestChainAtStart = bestChain;
   let cell = 32;
@@ -160,6 +184,8 @@
   const triggeredUpgrades = new Set();
   const upgradeFlashTimers = new Map();
   let buildReturnMode = 'playing';
+  let lastCloudResult = null;
+  let cloudUploadToken = 0;
 
   function freshTurnStats() {
     return sessionState.freshTurnStats();
@@ -716,6 +742,8 @@
     clearedTotal = 0;
     runMaxChain = 0;
     allClearCount = 0;
+    activeDurationMs = 0;
+    lastCloudResult = null;
     hiAtStart = hi;
     bestChainAtStart = bestChain;
     challengeState = challengeRules.normalize({});
@@ -749,12 +777,14 @@
     if (input) input.stop();
     clearQuickTurnHint();
     pair = null;
+    lastCloudResult = gameType === 'challenge' ? cloudResult() : null;
     setMode('gameover');
     clearState();
     play('over');
     music.stop();
     haptic([70, 45, 90]);
     updateHud();
+    if (lastCloudResult && leaderboard.readProfile().optedIn) submitCloudResult(lastCloudResult);
   }
 
   function setMode(next) {
@@ -785,7 +815,99 @@
       allClearCount,
     });
     selectGameType(kind === 'gameover' ? gameType : selectedGameType);
+    renderCloudScore(kind);
     updateChallengeHud();
+  }
+
+  function cloudResult() {
+    return {
+      score,
+      stage: challengeState.stage,
+      maxChain: runMaxChain,
+      durationMs: Math.max(1000, Math.round(activeDurationMs)),
+      gameVersion: '55',
+    };
+  }
+
+  function renderCloudScore(kind) {
+    const challengeVisible = kind === 'gameover' ? gameType === 'challenge' : kind === 'menu' && selectedGameType === 'challenge';
+    cloudScore.hidden = !challengeVisible;
+    if (!challengeVisible) return;
+    const profile = leaderboard.readProfile();
+    cloudConsent.hidden = kind !== 'gameover' || profile.optedIn;
+    cloudRetry.hidden = true;
+    if (kind === 'menu') cloudStatus.textContent = '本周挑战榜 · 北京时间每周一重置';
+    else if (!profile.optedIn) cloudStatus.textContent = '填写昵称后，将自动上传今后的挑战成绩';
+    else cloudStatus.textContent = '挑战成绩会自动上传到本周排行榜';
+    if (!cloudNickname.value && profile.nickname) cloudNickname.value = profile.nickname;
+  }
+
+  function setCloudStatus(text, retry) {
+    cloudStatus.textContent = text;
+    cloudRetry.hidden = !retry;
+  }
+
+  async function submitCloudResult(result) {
+    if (!result || gameType !== 'challenge') return;
+    const token = ++cloudUploadToken;
+    setCloudStatus('正在上传本局成绩…', false);
+    try {
+      const response = await leaderboard.submit(result);
+      if (token !== cloudUploadToken || response.skipped) return;
+      setCloudStatus('本周最高 ' + response.personalBest.toLocaleString('zh-CN') + ' · 当前第 ' + response.rank + ' 名' + (response.improved ? ' · 新纪录！' : ''), false);
+    } catch (error) {
+      if (token !== cloudUploadToken) return;
+      setCloudStatus('云排行榜暂不可用，本地纪录不受影响', true);
+    }
+  }
+
+  function renderLeaderboardEntries(data) {
+    leaderboardList.innerHTML = '';
+    const entries = Array.isArray(data.entries) ? data.entries : [];
+    if (!entries.length) {
+      const empty = document.createElement('p');
+      empty.className = 'leaderboard-empty';
+      empty.textContent = '本周还没有成绩，等你拿下第一名。';
+      leaderboardList.appendChild(empty);
+    } else {
+      entries.forEach((entry, index) => {
+        const row = document.createElement('div');
+        row.className = 'leaderboard-row';
+        const rank = document.createElement('b');
+        rank.textContent = String(index + 1);
+        const name = document.createElement('span');
+        name.textContent = entry.playerName;
+        const detail = document.createElement('small');
+        detail.textContent = 'STAGE ' + entry.stage + ' · ' + entry.maxChain + ' CHAIN';
+        const points = document.createElement('strong');
+        points.textContent = Number(entry.score || 0).toLocaleString('zh-CN');
+        name.appendChild(detail);
+        row.append(rank, name, points);
+        leaderboardList.appendChild(row);
+      });
+    }
+    leaderboardMeta.textContent = '北京时间每周一重置 · ' + entries.length + ' 位上榜';
+  }
+
+  async function loadLeaderboard() {
+    leaderboardList.innerHTML = '<p class="leaderboard-empty">正在连接云排行榜…</p>';
+    leaderboardRefresh.disabled = true;
+    try {
+      renderLeaderboardEntries(await leaderboard.load());
+    } catch (error) {
+      leaderboardList.innerHTML = '<p class="leaderboard-empty">云排行榜暂不可用<br><small>游戏和本地纪录不受影响</small></p>';
+      leaderboardMeta.textContent = '连接失败 · 可以稍后重试';
+    } finally {
+      leaderboardRefresh.disabled = false;
+    }
+  }
+
+  function openLeaderboard() {
+    const profile = leaderboard.readProfile();
+    leaderboardProfile.hidden = !profile.optedIn;
+    leaderboardNickname.value = profile.nickname;
+    leaderboardOverlay.hidden = false;
+    loadLeaderboard();
   }
 
 
@@ -812,7 +934,7 @@
 
   function saveState() {
     if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing' && mode !== 'build' && mode !== 'contract') return;
-    storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, allClearCount, hiAtStart, bestChainAtStart, challengeState, runBuild, itemState }));
+    storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, allClearCount, activeDurationMs, hiAtStart, bestChainAtStart, challengeState, runBuild, itemState }));
   }
 
   function restoreState(s) {
@@ -830,6 +952,7 @@
     clearedTotal = restored.clearedTotal;
     runMaxChain = restored.runMaxChain;
     allClearCount = restored.allClearCount;
+    activeDurationMs = restored.activeDurationMs;
     hiAtStart = restored.hiAtStart;
     bestChainAtStart = restored.bestChainAtStart;
     challengeState = restored.challengeState;
@@ -889,6 +1012,7 @@
     if (!lastT) lastT = now;
     const dt = Math.min((now - lastT) / 1000, 0.04);
     lastT = now;
+    if (mode === 'playing' || mode === 'resolving') activeDurationMs = Math.min(86400000, activeDurationMs + dt * 1000);
     update(dt);
     saveAcc += dt;
     if (saveAcc >= 1) { saveAcc -= 1; saveState(); }
@@ -987,6 +1111,40 @@
       if (result.accepted) haptic([18, 25, 24]);
       continueAfterReward();
     },
+  });
+
+  cloudEnable.addEventListener('click', () => {
+    const enabled = leaderboard.enable(cloudNickname.value);
+    if (enabled.error) {
+      setCloudStatus(enabled.error, false);
+      cloudNickname.focus();
+      return;
+    }
+    cloudConsent.hidden = true;
+    leaderboardProfile.hidden = false;
+    leaderboardNickname.value = enabled.profile.nickname;
+    if (lastCloudResult) submitCloudResult(lastCloudResult);
+    else setCloudStatus('挑战周榜已启用', false);
+  });
+  cloudRetry.addEventListener('click', () => submitCloudResult(lastCloudResult));
+  leaderboardOpen.addEventListener('click', openLeaderboard);
+  leaderboardClose.addEventListener('click', () => { leaderboardOverlay.hidden = true; });
+  leaderboardRefresh.addEventListener('click', loadLeaderboard);
+  leaderboardSaveName.addEventListener('click', () => {
+    const renamed = leaderboard.rename(leaderboardNickname.value);
+    if (renamed.error) {
+      leaderboardMeta.textContent = renamed.error;
+      leaderboardNickname.focus();
+      return;
+    }
+    cloudNickname.value = renamed.profile.nickname;
+    leaderboardMeta.textContent = '昵称已保存 · 下一次上传时同步';
+  });
+  leaderboardDisable.addEventListener('click', () => {
+    leaderboard.disable();
+    leaderboardProfile.hidden = true;
+    leaderboardMeta.textContent = '已停止自动上传，本地纪录仍会正常保存';
+    renderCloudScore(mode);
   });
 
 
