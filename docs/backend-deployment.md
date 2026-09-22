@@ -30,6 +30,8 @@
 3. CloudBase `arcadeGateway` 部署及线上验收；
 4. 将提交号和服务地址写入运行摘要。
 
+工作流统一使用 Node.js 22，以满足当前 Wrangler 的最低运行版本要求。
+
 同一时间只允许一个生产部署运行。后点击的任务会等待，不会中断正在进行的部署。
 
 ## GitHub Environment
