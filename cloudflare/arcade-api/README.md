@@ -2,6 +2,16 @@
 
 这个目录是独立于游戏前端的最小 Worker + D1 实验。目前只支持噗呦排行榜，不会影响 GitHub Pages 或本地存档。
 
+## 代码结构
+
+- `src/index.js`：Worker 入口与路由组装。
+- `src/http.js`：响应和 CORS。
+- `src/leaderboard-rules.js`：周榜周期与成绩校验。
+- `src/leaderboard-service.js`：排行榜业务流程。
+- `src/leaderboard-store.js`：D1 查询与写入。
+
+Worker 与 CloudBase 网关分别部署，但共同执行仓库根目录 `server-contracts/` 中的接口契约测试。
+
 ## 本地验证
 
 ```bash

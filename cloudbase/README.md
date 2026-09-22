@@ -13,6 +13,8 @@
 - `arcade-gateway/`：正式国内网关，通过Cloudflare D1 REST API读写现有数据库。
 - `arcade-gateway-probe/`：连通性探针。验证结果为CloudBase无法访问`workers.dev`，但可以访问Cloudflare管理API。
 
+`arcade-gateway/` 内部按 HTTP 适配、排行榜规则、业务流程、D1 存储和 D1 REST 客户端拆分；它与 Worker 共同执行根目录 `server-contracts/` 中的接口契约测试，避免两个入口的业务规则漂移。
+
 正式网关需要在CloudBase函数`arcadeGateway`中配置环境变量`CLOUDFLARE_D1_API_TOKEN`。Token只授予账户级D1编辑权限，不得写入仓库或前端代码。
 
 ## 部署注意

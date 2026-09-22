@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleRequest, validateScore, weekInfo } from '../src/index.js';
+import worker, { handleRequest, validateScore, weekInfo } from '../src/index.js';
 
 function environment(routes = []) {
   const calls = [];
@@ -90,4 +90,18 @@ test('CORS allows the arcade origin and rejects unknown preflight origins', asyn
   assert.equal(allowed.headers.get('access-control-allow-origin'), 'https://zhangsibo0731-debug.github.io');
   const denied = await handleRequest(new Request('https://api.test/api/v1/scores', { method: 'OPTIONS', headers: { origin: 'https://evil.example' } }), env);
   assert.equal(denied.status, 403);
+});
+
+test('malformed JSON and D1 failures return safe errors', async () => {
+  const malformed = await handleRequest(new Request('https://api.test/api/v1/scores', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: '{bad',
+  }), {});
+  assert.equal(malformed.status, 400);
+  assert.match((await malformed.json()).error, /JSON/);
+
+  const failed = await worker.fetch(new Request('https://api.test/api/v1/leaderboard?game=puyo'), {
+    DB: { prepare() { throw new Error('database-secret-detail'); } },
+  });
+  assert.equal(failed.status, 500);
+  assert.equal((await failed.json()).error, 'Internal Server Error');
 });

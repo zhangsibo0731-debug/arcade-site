@@ -1,0 +1,35 @@
+{
+  "validScore": {
+    "submissionId": "contract-1",
+    "playerId": "player-1",
+    "playerName": "月兔",
+    "game": "puyo",
+    "mode": "challenge",
+    "score": 12345,
+    "stage": 6,
+    "maxChain": 4,
+    "durationMs": 90000,
+    "gameVersion": "58"
+  },
+  "weekCases": [
+    {
+      "input": "2026-09-20T15:59:59.000Z",
+      "key": "2026-09-14",
+      "resetAt": "2026-09-20T16:00:00.000Z"
+    },
+    {
+      "input": "2026-09-20T16:00:00.000Z",
+      "key": "2026-09-21",
+      "resetAt": "2026-09-27T16:00:00.000Z"
+    }
+  ],
+  "invalidScores": [
+    { "patch": { "submissionId": "" }, "error": "缺少成绩标识、玩家标识或昵称" },
+    { "patch": { "playerName": "1234567890123" }, "error": "昵称不合法" },
+    { "patch": { "mode": "classic" }, "error": "不支持的游戏或模式" },
+    { "patch": { "score": -1 }, "error": "分数不合法" },
+    { "patch": { "stage": 0 }, "error": "Stage 不合法" },
+    { "patch": { "maxChain": 100 }, "error": "连锁数不合法" },
+    { "patch": { "durationMs": 999 }, "error": "游戏时长不合法" }
+  ]
+}

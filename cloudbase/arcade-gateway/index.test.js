@@ -57,3 +57,14 @@ test('missing credentials fail without exposing secrets', async () => {
   assert.equal(response.statusCode, 503);
   assert.equal(JSON.parse(response.body).error, '排行榜网关尚未配置');
 });
+
+test('malformed JSON and D1 failures return safe errors', async () => {
+  const malformed = await handleRequest({ method: 'POST', url: '/api/v1/scores', headers: {}, body: '{bad' }, { d1: {} });
+  assert.equal(malformed.statusCode, 400);
+  assert.match(JSON.parse(malformed.body).error, /JSON/);
+
+  const d1 = { query: async () => { throw new Error('database-secret-detail'); } };
+  const failed = await handleRequest({ method: 'GET', url: '/api/v1/leaderboard?game=puyo', headers: {} }, { d1, now: NOW });
+  assert.equal(failed.statusCode, 503);
+  assert.equal(JSON.parse(failed.body).error, '排行榜暂时不可用');
+});
