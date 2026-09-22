@@ -251,6 +251,9 @@
     btnPause.hidden = true;
     renderUpgradeChoices();
     upgradeOverlay.hidden = false;
+    // Mobile Safari can retain hover/focus from the control underneath the
+    // newly opened overlay, making a reward look preselected.
+    if (document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
     drawNext();
     saveState();
     return true;

@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 2;
 
   function create(options) {
     const rows = options.rows;
@@ -78,9 +78,13 @@
       if (keys.activeSave) {
         try {
           const activeType = global.localStorage.getItem(keys.activeSave);
+          // `none` means the previously active run was deliberately cleared.
+          // Do not resurrect an older save from the other mode on next launch.
+          if (activeType === 'none') return null;
           if (activeType === 'classic' || activeType === 'challenge') {
             const active = load(activeType);
             if (active) return active;
+            return null;
           }
         } catch (e) {}
       }
@@ -95,7 +99,7 @@
       try {
         global.localStorage.removeItem(typeKey('save', type));
         if (keys.activeSave && global.localStorage.getItem(keys.activeSave) === type) {
-          global.localStorage.removeItem(keys.activeSave);
+          global.localStorage.setItem(keys.activeSave, 'none');
         }
       } catch (e) {}
     }

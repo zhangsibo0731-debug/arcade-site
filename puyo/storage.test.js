@@ -59,6 +59,9 @@ assert.strictEqual(storage.loadLatest(), null);
 storage.save('classic', { savedAt: 40, board: [[0, 0], [1, 2]] });
 storage.clear('classic');
 assert.strictEqual(data.has('save'), false);
-assert.strictEqual(data.has('active-save'), false);
+assert.strictEqual(data.get('active-save'), 'none');
+// Clearing the active run must not revive an older save from the other mode.
+data.set('challenge-save', JSON.stringify({ savedAt: 20, board: [[0, 6], [1, 2]] }));
+assert.strictEqual(storage.loadLatest(), null);
 
 console.log('puyo storage tests passed');

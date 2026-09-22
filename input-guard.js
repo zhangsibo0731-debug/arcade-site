@@ -16,7 +16,7 @@
   ].join(',');
 
   const style = document.createElement('style');
-  style.textContent = interactiveSelector + '{' +
+  style.textContent = interactiveSelector + ',' + interactiveSelector.split(',').map(function (selector) { return selector + ' *'; }).join(',') + '{' +
     '-webkit-touch-callout:none!important;' +
     '-webkit-user-select:none!important;' +
     'user-select:none!important;' +
