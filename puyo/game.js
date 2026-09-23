@@ -645,7 +645,10 @@
     haptic(chain >= 3 ? [22, 28, 22 + chain * 2] : chain > 1 ? [16, 24, 16] : 10);
     if (chain >= 2) shakeBoard(chain);
 
-    popDuration = Math.max(170, 300 - (chain - 1) * 22);
+    // Keep a single clear crisp, but give each later link more anticipation and
+    // weight. Previously both phases became faster as the chain climbed, so a
+    // valuable chain could finish before the player had time to read it.
+    popDuration = chain === 1 ? 300 : Math.min(430, 330 + (chain - 2) * 30);
     renderer.startPop(clearingCells, popDuration);
 
     setTimeout(() => {
@@ -656,16 +659,18 @@
       }
       renderer.clearPop();
       renderer.clearRemoteLinks();
-      applyGravity(true);
-      const settleDelay = Math.max(120, 225 - (chain - 1) * 14);
+      const chainFallDuration = Math.min(250, 190 + (chain - 1) * 18);
+      applyGravity(true, chainFallDuration);
+      const impactHold = Math.min(90, 35 + (chain - 1) * 12);
+      const settleDelay = chainFallDuration + impactHold;
       setTimeout(() => resolveStep(chain + 1, token, taskSettled), settleDelay);
     }, popDuration);
   }
 
-  function applyGravity(animate) {
+  function applyGravity(animate, duration) {
     const result = boardRules.applyGravity(board, animate);
     board = result.board;
-    fallDuration = 190;
+    fallDuration = duration || 190;
     renderer.startFall(result.offsets, fallDuration);
   }
 

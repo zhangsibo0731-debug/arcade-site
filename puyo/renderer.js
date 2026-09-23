@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 2;
+  const VERSION = 3;
 
   function create(options) {
     const canvas = options.canvas;
@@ -295,6 +295,12 @@
           let drawY = y + 0.5 - offset * (1 - fallEase);
           let scaleX = scale;
           let scaleY = scale;
+          if (offset > 0 && fallProgress > 0.68 && fallProgress < 1) {
+            const impact = (fallProgress - 0.68) / 0.32;
+            const squash = Math.sin(impact * Math.PI * 2) * (1 - impact) * 0.09;
+            scaleX *= 1 + squash;
+            scaleY *= 1 - squash;
+          }
           if (garbageFall) {
             const elapsed = now - garbageFallStartedAt - garbageFall.delay;
             const progress = Math.min(1, Math.max(0, elapsed / 540));
@@ -312,7 +318,13 @@
             context.scale(scaleX, scaleY);
             drawGarbage(context, 0, 0, cell * 0.44, alpha, 1);
             context.restore();
-          } else drawBlob(context, (x + 0.5) * cell, drawY * cell, cell * 0.44 * scale, color, alpha, true);
+          } else {
+            context.save();
+            context.translate((x + 0.5) * cell, drawY * cell);
+            context.scale(scaleX, scaleY);
+            drawBlob(context, 0, 0, cell * 0.44, color, alpha, true);
+            context.restore();
+          }
           if (flash > 0) {
             context.fillStyle = 'rgba(255,255,255,' + flash.toFixed(3) + ')';
             context.beginPath();

@@ -272,7 +272,7 @@ body {
   color: #fff;
   text-shadow: 0 3px 16px rgba(0,0,0,.6);
   transform: translate(-50%, -50%) rotate(var(--chain-tilt, -6deg));
-  animation: chain-pop .7s cubic-bezier(.17,.89,.35,1.35) both;
+  animation: chain-pop var(--chain-duration, 780ms) cubic-bezier(.17,.89,.35,1.35) both;
   pointer-events: none;
 }
 .chain-pop div { display: flex; align-items: baseline; justify-content: center; gap: 6px; }

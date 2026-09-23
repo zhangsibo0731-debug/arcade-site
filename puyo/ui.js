@@ -199,17 +199,19 @@
 
     function showChain(chain, gained) {
       clearTimeout(chainTimer);
+      const displayDuration = Math.min(1080, 700 + chain * 80);
       elements.chainValue.textContent = chain === 1 ? '消除' : chain;
       elements.chainLabel.textContent = chain === 1 ? 'CLEAR' : 'CHAIN';
       elements.chainGain.textContent = '+' + gained;
       elements.chainPop.style.setProperty('--chain-size', (chain === 1 ? 36 : Math.min(92, 50 + (chain - 2) * 7)) + 'px');
       elements.chainPop.style.setProperty('--chain-hue', String(Math.max(0, 82 - Math.max(0, chain - 2) * 13)));
       elements.chainPop.style.setProperty('--chain-tilt', (chain <= 1 ? -4 : Math.min(8, chain) * (chain % 2 ? 1 : -1)) + 'deg');
+      elements.chainPop.style.setProperty('--chain-duration', displayDuration + 'ms');
       elements.chainPop.setAttribute('data-tier', chain >= 5 ? 'climax' : chain >= 3 ? 'impact' : chain >= 2 ? 'chain' : 'clear');
       elements.chainPop.hidden = true;
       void elements.chainPop.offsetWidth;
       elements.chainPop.hidden = false;
-      chainTimer = setTimeout(() => { elements.chainPop.hidden = true; }, 760);
+      chainTimer = setTimeout(() => { elements.chainPop.hidden = true; }, displayDuration + 40);
     }
 
     function showChainResult(result) {
