@@ -883,7 +883,7 @@
         const name = document.createElement('span');
         name.textContent = entry.playerName;
         const detail = document.createElement('small');
-        detail.textContent = 'STAGE ' + entry.stage + ' · ' + entry.maxChain + ' CHAIN';
+        detail.textContent = '阶段 ' + entry.stage + ' · ' + entry.maxChain + ' CHAIN';
         const points = document.createElement('strong');
         points.textContent = Number(entry.score || 0).toLocaleString('zh-CN');
         name.appendChild(detail);

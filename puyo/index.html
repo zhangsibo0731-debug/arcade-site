@@ -51,9 +51,9 @@
           <small id="chainGain">+0</small>
         </div>
         <div class="chain-result" id="chainResult" hidden>本次 2 CHAIN!</div>
-        <div class="level-pop" id="levelPop" hidden>LEVEL UP! · 2</div>
-        <div class="all-clear-pop" id="allClearPop" hidden><strong>ALL CLEAR!</strong><small>全消 +2100</small></div>
-        <div class="bottle-pop" id="bottlePop" hidden><small>🧪 MIX</small><strong id="bottleTransform">🔵 → 🔴</strong></div>
+        <div class="level-pop" id="levelPop" hidden>等级提升！· 2</div>
+        <div class="all-clear-pop" id="allClearPop" hidden><strong>全消！</strong><small>全消 +2100</small></div>
+        <div class="bottle-pop" id="bottlePop" hidden><small>🧪 混色</small><strong id="bottleTransform">🔵 → 🔴</strong></div>
         <div class="overlay" id="overlay" hidden>
           <div class="ov-card">
             <div class="ov-orbit" aria-hidden="true"><i></i><i></i></div>
@@ -80,7 +80,7 @@
         </div>
         <div class="overlay leaderboard-overlay" id="leaderboardOverlay" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle" hidden>
           <div class="ov-card leaderboard-panel">
-            <span class="upgrade-kicker">WEEKLY CHALLENGE</span>
+            <span class="upgrade-kicker">本周挑战榜</span>
             <h2 class="ov-title" id="leaderboardTitle">本周挑战榜</h2>
             <p class="ov-sub" id="leaderboardMeta" aria-live="polite">北京时间每周一重置</p>
             <div class="leaderboard-profile" id="leaderboardProfile" hidden>
@@ -107,7 +107,7 @@
         </div>
         <div class="overlay upgrade-overlay" id="upgradeOverlay" hidden>
           <div class="ov-card upgrade-panel">
-            <span class="upgrade-kicker" id="upgradeKicker">STAGE REWARD</span>
+            <span class="upgrade-kicker" id="upgradeKicker">阶段奖励</span>
             <h2 class="ov-title">选择一项强化</h2>
             <p class="ov-sub">本局有效 · 重复选择可升级</p>
             <div class="upgrade-choices" id="upgradeChoices"></div>
@@ -115,15 +115,15 @@
         </div>
         <div class="overlay contract-overlay" id="contractOverlay" role="dialog" aria-modal="true" aria-labelledby="contractTitle" hidden>
           <div class="ov-card contract-panel">
-            <span class="upgrade-kicker">OPTIONAL CONTRACT</span>
+            <span class="upgrade-kicker">可选契约</span>
             <h2 class="ov-title" id="contractTitle">⚠ 超载契约</h2>
-            <p class="ov-sub">仅限当前 Stage</p>
+            <p class="ov-sub">仅限当前阶段</p>
             <div class="contract-terms">
               <span><small>风险</small><strong>待落干扰立即 +2</strong></span>
               <i aria-hidden="true">⇄</i>
               <span><small>奖励</small><strong>完成后额外选择 1 次强化</strong></span>
             </div>
-            <p class="contract-note">任务失败不会追加惩罚，但契约会持续到完成本 Stage。</p>
+            <p class="contract-note">任务失败不会追加惩罚，但契约会持续到完成本阶段。</p>
             <div class="ov-actions">
               <button class="ov-btn ov-btn--ghost" id="contractSkip" type="button">安全跳过</button>
               <button class="ov-btn contract-accept" id="contractAccept" type="button">接受超载</button>
@@ -132,7 +132,7 @@
         </div>
         <div class="overlay upgrade-overlay build-overlay" id="buildOverlay" role="dialog" aria-modal="true" aria-labelledby="buildTitle" hidden>
           <div class="upgrade-panel build-panel">
-            <span class="upgrade-kicker">CURRENT BUILD</span>
+            <span class="upgrade-kicker">本局强化</span>
             <h2 class="ov-title" id="buildTitle">本局强化</h2>
             <p class="ov-sub">本局结束后会清空</p>
             <div class="build-details" id="buildDetails"></div>
@@ -155,7 +155,7 @@
         <button class="next-swap" id="nextSwapButton" type="button" data-a="swap" hidden>交换 NEXT · 0</button>
       </div>
       <div class="challenge-card" id="challengeCard" hidden>
-        <span>STAGE <b id="challengeStage">1</b> <em id="specialBadge" hidden>SPECIAL</em></span>
+        <span>阶段 <b id="challengeStage">1</b> <em id="specialBadge" hidden>特殊关</em></span>
         <small class="mission-scope" id="missionScope">单回合</small>
         <strong id="missionTitle">完成 2 CHAIN</strong>
         <small id="missionProgress">最高 0 / 2 CHAIN</small>

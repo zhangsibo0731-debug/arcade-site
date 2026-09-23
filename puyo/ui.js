@@ -49,7 +49,7 @@
       const mission = state.mission;
       elements.challengeStage.textContent = state.stage;
       elements.specialBadge.hidden = !state.special;
-      elements.specialBadge.textContent = state.special ? state.special.title : 'SPECIAL';
+      elements.specialBadge.textContent = state.special ? state.special.title : '特殊关';
       elements.challengeCard.classList.toggle('is-special', !!state.special);
       elements.missionTitle.textContent = mission.title;
       const preview = view.turnStats.missionBaseProgress == null ? mission : Object.assign({}, mission, { progress: view.turnStats.missionBaseProgress });
@@ -96,7 +96,7 @@
 
     function renderUpgradeChoices(runBuild) {
       if (runBuild.pendingRelicChoice && runBuild.pendingRelicChoice.length) {
-        elements.upgradeKicker.textContent = 'SPECIAL RELIC · 唯一遗物';
+        elements.upgradeKicker.textContent = '特殊遗物 · 唯一遗物';
         elements.upgradeChoices.innerHTML = runBuild.pendingRelicChoice.map((id) => {
           const card = rogueliteRules.relicCardFor(runBuild, id);
           if (!card) return '';
@@ -107,7 +107,7 @@
         }).join('');
         return;
       }
-      elements.upgradeKicker.textContent = runBuild.pendingKind === 'special' ? 'SPECIAL REWARD · 稀有保底' : (runBuild.pendingKind === 'specialBonus' ? 'SPECIAL REWARD · 遗物集齐补偿' : (runBuild.pendingKind === 'contract' ? 'CONTRACT REWARD · 额外强化' : 'STAGE REWARD'));
+      elements.upgradeKicker.textContent = runBuild.pendingKind === 'special' ? '特殊奖励 · 稀有保底' : (runBuild.pendingKind === 'specialBonus' ? '特殊奖励 · 遗物集齐补偿' : (runBuild.pendingKind === 'contract' ? '契约奖励 · 额外强化' : '阶段奖励'));
       elements.upgradeChoices.innerHTML = runBuild.pendingChoice.map((id) => {
         const card = rogueliteRules.cardFor(runBuild, id);
         if (!card) return '';
@@ -163,7 +163,7 @@
         const records = [];
         if (view.score > view.hiAtStart && view.score > 0) records.push('最高分新纪录');
         if (view.runMaxChain > view.bestChainAtStart && view.runMaxChain > 0) records.push('连锁新纪录');
-        elements.ovSub.textContent = (view.gameType === 'challenge' ? '挑战模式\n' : '经典模式\n') + 'SCORE  ' + view.score + '\nLEVEL  ' + view.level + '\nMAX CHAIN  ' + view.runMaxChain + '\nBEST CHAIN  ' + view.bestChain + '\n消除  ' + view.clearedTotal + ' 颗 · 全消  ' + view.allClearCount + ' 次' + (view.gameType === 'challenge' ? '\n完成任务  ' + view.challengeState.completed + ' · 清除干扰  ' + view.challengeState.garbageCleared : '') + (records.length ? '\nNEW RECORD! · ' + records.join(' / ') : '');
+        elements.ovSub.textContent = (view.gameType === 'challenge' ? '挑战模式\n' : '经典模式\n') + 'SCORE  ' + view.score + '\nLEVEL  ' + view.level + '\n本局最高连锁  ' + view.runMaxChain + '\n历史最高连锁  ' + view.bestChain + '\n消除  ' + view.clearedTotal + ' 颗 · 全消  ' + view.allClearCount + ' 次' + (view.gameType === 'challenge' ? '\n完成任务  ' + view.challengeState.completed + ' · 清除干扰  ' + view.challengeState.garbageCleared : '') + (records.length ? '\n新纪录！· ' + records.join(' / ') : '');
         elements.ovBtn.textContent = '再来一局';
         elements.ovBack.hidden = false;
       }
@@ -214,7 +214,7 @@
 
     function showChainResult(result) {
       const summary = typeof result === 'number' ? { chain: result } : result;
-      const headline = (summary.isBest ? 'NEW BEST! · ' : '') + summary.chain + ' CHAIN!';
+      const headline = (summary.isBest ? '连锁新纪录！· ' : '') + summary.chain + ' CHAIN!';
       const details = [];
       if (summary.cleared) details.push('消除 ' + summary.cleared + ' 颗');
       if (summary.score) details.push('得分 +' + summary.score.toLocaleString('zh-CN'));
@@ -224,7 +224,7 @@
 
     function showLevel(level) {
       clearTimeout(levelTimer);
-      elements.levelPop.textContent = 'LEVEL UP! · ' + level;
+      elements.levelPop.textContent = '等级提升！· ' + level;
       elements.levelPop.hidden = true;
       void elements.levelPop.offsetWidth;
       elements.levelPop.hidden = false;

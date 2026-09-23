@@ -104,14 +104,14 @@
       const pressurePrefix = occupancyTier === 'critical' ? '临界空间 · ' : (occupancyTier === 'crowded' ? '棋盘拥挤 · ' : '');
       const clearText = removed.length ? ' · 清障 ×' + removed.length + (deferredByReward.deferred ? ' · 到期干扰延后 1 组' : '') : '';
       let message = null;
-      if (outcome.enteredSpecial) message = { text: 'STAGE ' + stageBefore + ' 完成' + clearText + '\n特殊关：' + challengeState.special.title, complete: true, duration: 1650 };
-      else if (outcome.specialCompleted) message = { text: '特殊关完成 → STAGE ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (itemReward.granted ? ' · 混色瓶 +1' : ' · 混色瓶已满'), complete: true, duration: 1650 };
-      else if (outcome.completed) message = { text: 'STAGE ' + stageBefore + ' 完成 → STAGE ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (contractResult.rewarded ? ' · 契约强化已获得' : '') + (outcome.canceled ? ' · 抵消 ×' + outcome.canceled : ''), complete: true, duration: 1550 };
-      else if (outcome.specialFailed) message = { text: '特殊关失败 · STAGE ' + stageBefore + ' 保持不变\n惩罚干扰 ×' + outcome.specialPenalty + ' · 2组后落下', complete: false, duration: 1900 };
+      if (outcome.enteredSpecial) message = { text: '阶段 ' + stageBefore + ' 完成' + clearText + '\n特殊关：' + challengeState.special.title, complete: true, duration: 1650 };
+      else if (outcome.specialCompleted) message = { text: '特殊关完成 → 阶段 ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (itemReward.granted ? ' · 混色瓶 +1' : ' · 混色瓶已满'), complete: true, duration: 1650 };
+      else if (outcome.completed) message = { text: '阶段 ' + stageBefore + ' 完成 → 阶段 ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (contractResult.rewarded ? ' · 契约强化已获得' : '') + (outcome.canceled ? ' · 抵消 ×' + outcome.canceled : ''), complete: true, duration: 1550 };
+      else if (outcome.specialFailed) message = { text: '特殊关失败 · 阶段 ' + stageBefore + ' 保持不变\n惩罚干扰 ×' + outcome.specialPenalty + ' · 2组后落下', complete: false, duration: 1900 };
       else if (placed.length) message = { text: pressurePrefix + (outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, complete: false };
       else if (buffered) message = { text: '缓冲层抵消 · × ' + buffered, complete: true };
       else if (outcome.canceled) message = { text: (outcome.deferredCanceled ? '近期干扰抵消' : (outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消')) + ' · × ' + outcome.canceled, complete: outcome.pressureTriggered };
-      else if (outcome.expired) message = { text: '任务失败 · STAGE ' + stageBefore + ' 保持不变\n已更换新任务', complete: false, duration: 1800 };
+      else if (outcome.expired) message = { text: '任务失败 · 阶段 ' + stageBefore + ' 保持不变\n已更换新任务', complete: false, duration: 1800 };
       return {
         challengeState,
         runBuild,

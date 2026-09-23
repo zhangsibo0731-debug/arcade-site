@@ -82,7 +82,7 @@ assert.strictEqual(result.challengeState.deferredIn, 1);
 assert.deepStrictEqual(result.triggered, ['chainShield', 'largeGroup']);
 assert.strictEqual(result.runBuild.offered, true);
 assert.strictEqual(result.waitsForBoard, true);
-assert.ok(result.message.text.includes('STAGE 1 完成'));
+assert.ok(result.message.text.includes('阶段 1 完成'));
 
 const specialRules = Object.assign({}, challengeRules, {
   resolveTurn: () => ({
