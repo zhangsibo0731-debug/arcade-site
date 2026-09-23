@@ -7,7 +7,7 @@
 <title>噗呦噗呦 · 连锁消除</title>
 <link rel="preconnect" href="https://miaoda.feishu.cn" crossorigin />
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="styles.css?v=26" />
+<link rel="stylesheet" href="styles.css?v=27" />
 </head>
 <body>
 <main class="app">
@@ -53,7 +53,11 @@
         <div class="chain-result" id="chainResult" hidden>本次 2 CHAIN!</div>
         <div class="level-pop" id="levelPop" hidden>等级提升！· 2</div>
         <div class="all-clear-pop" id="allClearPop" hidden><strong>全消！</strong><small>全消 +2100</small></div>
-        <div class="bottle-pop" id="bottlePop" hidden><small>🧪 混色</small><strong id="bottleTransform">🔵 → 🔴</strong></div>
+        <div class="bottle-pop" id="bottlePop" hidden>
+          <small>🧪 混色瓶</small>
+          <strong id="bottleTransform">🔵 蓝色 → 🔴 粉色</strong>
+          <span id="bottleExplanation">蓝色噗呦全部变为粉色</span>
+        </div>
         <div class="overlay" id="overlay" hidden>
           <div class="ov-card">
             <div class="ov-orbit" aria-hidden="true"><i></i><i></i></div>
@@ -199,8 +203,8 @@
 <script src="board-rules.js?v=1"></script>
 <script src="scoring-rules.js?v=3"></script>
 <script src="rotation-rules.js?v=1"></script>
-<script src="renderer.js?v=3"></script>
-<script src="ui.js?v=13"></script>
+<script src="renderer.js?v=4"></script>
+<script src="ui.js?v=14"></script>
 <script src="input.js?v=4"></script>
 <script src="session-state.js?v=7"></script>
 <script src="challenge-rules.js?v=8"></script>
@@ -208,6 +212,6 @@
 <script src="active-item-rules.js?v=1"></script>
 <script src="challenge-effects.js?v=6"></script>
 <script src="leaderboard.js?v=2"></script>
-<script src="game.js?v=59"></script>
+<script src="game.js?v=60"></script>
 </body>
 </html>

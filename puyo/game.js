@@ -34,6 +34,7 @@
   const allClearPop = $('allClearPop');
   const bottlePop = $('bottlePop');
   const bottleTransform = $('bottleTransform');
+  const bottleExplanation = $('bottleExplanation');
   const modePicker = $('modePicker');
   const challengeCard = $('challengeCard');
   const challengeStage = $('challengeStage');
@@ -109,7 +110,7 @@
       upgradeKicker, upgradeChoices, chainResult, chainValue, chainLabel,
       chainGain, chainPop, levelPop, allClearPop, btnPause, buildButton, buildClose,
       btnSound, btnResumeContinue, btnResumeNew,
-      mixBottleButton, bottlePop, bottleTransform,
+      mixBottleButton, bottlePop, bottleTransform, bottleExplanation,
     },
   });
   const HI_KEY = 'puyo_hi_v1';
@@ -480,11 +481,15 @@
       board = bottle.board;
       updateChallengeHud();
       if (bottle.applied) {
-        renderer.startRecolor(bottle.changedCells, 420);
-        ui.showBottleTransform(bottle.sourceColor, bottle.targetColor);
-        play('potion');
-        haptic([10, 22, 14]);
-        setTimeout(() => resolveStep(1, token), 420);
+        const bottleDuration = 1120;
+        renderer.startRecolor(bottle.changedCells, bottleDuration, bottle.sourceColor, bottle.targetColor);
+        ui.showBottleTransform(bottle.sourceColor, bottle.targetColor, bottleDuration);
+        setTimeout(() => {
+          if (token !== resolveToken || mode !== 'resolving') return;
+          play('potion');
+          haptic([10, 22, 14]);
+        }, 310);
+        setTimeout(() => resolveStep(1, token), bottleDuration);
         return;
       }
     }

@@ -18,7 +18,7 @@ function element() {
 }
 
 const elements = {};
-['score','highScore','level','runChain','overlay','ovTitle','ovSub','ovBtn','ovBack','challengeCard','challengeStage','specialBadge','missionTitle','missionScope','missionProgress','missionDeadline','missionMeter','garbageQueue','garbageCount','garbageEta','buildSummary','buildCount','buildChips','buildDetails','upgradeKicker','upgradeChoices','chainResult','chainValue','chainLabel','chainGain','chainPop','levelPop','contractOverlay','contractSkip','contractAccept','contractStatus','mixBottleButton','bottlePop','bottleTransform'].forEach((key) => { elements[key] = element(); });
+['score','highScore','level','runChain','overlay','ovTitle','ovSub','ovBtn','ovBack','challengeCard','challengeStage','specialBadge','missionTitle','missionScope','missionProgress','missionDeadline','missionMeter','garbageQueue','garbageCount','garbageEta','buildSummary','buildCount','buildChips','buildDetails','upgradeKicker','upgradeChoices','chainResult','chainValue','chainLabel','chainGain','chainPop','levelPop','contractOverlay','contractSkip','contractAccept','contractStatus','mixBottleButton','bottlePop','bottleTransform','bottleExplanation'].forEach((key) => { elements[key] = element(); });
 const allClearDetail = element();
 elements.allClearPop = element();
 elements.allClearPop.querySelector = () => allClearDetail;
@@ -108,7 +108,8 @@ assert.ok(elements.chainResult.textContent.includes('4 CHAIN!'), 'stage feedback
 ui.showAllClear(5);
 assert.strictEqual(allClearDetail.textContent, '全消 +2100 · 额外防御 +5');
 ui.showBottleTransform(4, 1);
-assert.ok(elements.bottleTransform.textContent.includes('蓝 →'));
+assert.ok(elements.bottleTransform.textContent.includes('蓝色 →'));
+assert.strictEqual(elements.bottleExplanation.textContent, '蓝色噗呦全部变为粉色');
 ['btnPause','buildButton','buildClose','btnSound','btnResumeContinue','btnResumeNew'].forEach((key) => { elements[key] = element(); });
 let paused = false;
 ui.bindActions({ pause: () => { paused = true; }, openBuild() {}, closeBuild() {}, toggleSound() {}, selectMode() {}, primary() {}, resume() {}, resumeNew() {}, chooseUpgrade() {} });

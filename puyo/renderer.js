@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 3;
+  const VERSION = 4;
 
   function create(options) {
     const canvas = options.canvas;
@@ -28,9 +28,11 @@
     let fallDuration = 210;
     let garbageFalls = new Map();
     let garbageFallStartedAt = 0;
-    let recolorCells = new Set();
+    let recolorCells = new Map();
     let recolorStartedAt = 0;
     let recolorDuration = 420;
+    let recolorSource = 0;
+    let recolorTarget = 0;
 
     function drawBlob(target, x, y, radius, color, alpha, eyes) {
       const base = colors[color - 1];
@@ -202,10 +204,13 @@
       fallDuration = duration;
     }
 
-    function startRecolor(cells, duration) {
-      recolorCells = new Set(cells.map((position) => position[0] + ',' + position[1]));
+    function startRecolor(cells, duration, sourceColor, targetColor) {
+      const ordered = cells.slice().sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+      recolorCells = new Map(ordered.map((position, index) => [position[0] + ',' + position[1], index]));
       recolorStartedAt = performance.now();
       recolorDuration = duration || 420;
+      recolorSource = sourceColor || 0;
+      recolorTarget = targetColor || 0;
     }
 
     function resetEffects() {
@@ -215,6 +220,8 @@
       fallOffsets.clear();
       garbageFalls.clear();
       recolorCells.clear();
+      recolorSource = 0;
+      recolorTarget = 0;
     }
 
     function drawBridge(x, y, color, nextX, nextY) {
@@ -265,8 +272,10 @@
         for (let x = 0; x < cols; x++) {
           const color = board[y][x];
           if (!color || popCells.has(x + ',' + y) || (fallProgress < 1 && fallOffsets.has(x + ',' + y))) continue;
-          if (color !== garbage && x + 1 < cols && board[y][x + 1] === color && !popCells.has((x + 1) + ',' + y) && !fallOffsets.has((x + 1) + ',' + y)) drawBridge(x, y, color, x + 1, y);
-          if (color !== garbage && y + 1 < rows && board[y + 1][x] === color && !popCells.has(x + ',' + (y + 1)) && !fallOffsets.has(x + ',' + (y + 1))) drawBridge(x, y, color, x, y + 1);
+          const key = x + ',' + y;
+          const recoloring = recolorProgress < 1 && recolorCells.has(key);
+          if (color !== garbage && x + 1 < cols && board[y][x + 1] === color && !popCells.has((x + 1) + ',' + y) && !fallOffsets.has((x + 1) + ',' + y) && !recoloring && !(recolorProgress < 1 && recolorCells.has((x + 1) + ',' + y))) drawBridge(x, y, color, x + 1, y);
+          if (color !== garbage && y + 1 < rows && board[y + 1][x] === color && !popCells.has(x + ',' + (y + 1)) && !fallOffsets.has(x + ',' + (y + 1)) && !recoloring && !(recolorProgress < 1 && recolorCells.has(x + ',' + (y + 1)))) drawBridge(x, y, color, x, y + 1);
         }
       }
 
@@ -290,6 +299,8 @@
             }
           }
           const key = x + ',' + y;
+          const recolorIndex = recolorCells.get(key);
+          let displayColor = color;
           const offset = fallOffsets.get(key) || 0;
           const garbageFall = color === garbage ? garbageFalls.get(key) : null;
           let drawY = y + 0.5 - offset * (1 - fallEase);
@@ -312,6 +323,21 @@
               scaleY *= 1 - squash;
             }
           }
+          if (recolorIndex != null && recolorProgress < 1 && color !== garbage) {
+            const count = Math.max(1, recolorCells.size);
+            const stagger = count <= 1 ? 0 : (recolorIndex / (count - 1)) * 0.24;
+            const localProgress = Math.min(1, Math.max(0, (recolorProgress - 0.26 - stagger) / 0.22));
+            displayColor = localProgress < 0.5 ? (recolorSource || color) : (recolorTarget || color);
+            const anticipation = recolorProgress < 0.26 + stagger
+              ? Math.sin(Math.min(1, recolorProgress / Math.max(0.01, 0.26 + stagger)) * Math.PI) * 0.06
+              : 0;
+            const transformPulse = Math.sin(localProgress * Math.PI) * 0.16;
+            const settleProgress = Math.min(1, Math.max(0, (recolorProgress - 0.72) / 0.28));
+            const settleBounce = Math.sin(settleProgress * Math.PI * 2) * (1 - settleProgress) * 0.055;
+            scaleX *= 1 + anticipation + transformPulse + settleBounce;
+            scaleY *= 1 - anticipation * 0.55 - transformPulse * 0.65 - settleBounce;
+            flash = Math.max(flash, transformPulse * 3.7);
+          }
           if (color === garbage) {
             context.save();
             context.translate((x + 0.5) * cell, drawY * cell);
@@ -322,20 +348,13 @@
             context.save();
             context.translate((x + 0.5) * cell, drawY * cell);
             context.scale(scaleX, scaleY);
-            drawBlob(context, 0, 0, cell * 0.44, color, alpha, true);
+            drawBlob(context, 0, 0, cell * 0.44, displayColor, alpha, true);
             context.restore();
           }
           if (flash > 0) {
             context.fillStyle = 'rgba(255,255,255,' + flash.toFixed(3) + ')';
             context.beginPath();
             context.arc((x + 0.5) * cell, drawY * cell, cell * 0.42 * scale, 0, Math.PI * 2);
-            context.fill();
-          }
-          if (recolorCells.has(x + ',' + y) && recolorProgress < 1) {
-            const pulse = Math.sin(recolorProgress * Math.PI) * 0.72;
-            context.fillStyle = 'rgba(255,255,255,' + pulse.toFixed(3) + ')';
-            context.beginPath();
-            context.arc((x + 0.5) * cell, drawY * cell, cell * (0.32 + pulse * 0.16), 0, Math.PI * 2);
             context.fill();
           }
         }

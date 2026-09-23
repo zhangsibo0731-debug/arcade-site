@@ -56,6 +56,7 @@ board[11][1] = 6;
 renderer.startPop([[0, 11]], 280);
 renderer.startFall(new Map([['0,10', 2]]), 190);
 renderer.startGarbageFall([[1, 11]], 590);
+renderer.startRecolor([[0, 11], [0, 10]], 1120, 1, 2);
 renderer.addRemoteLink([0, 11], [1, 11]);
 renderer.burst(0, 11, 1, 2);
 renderer.update(0.016);

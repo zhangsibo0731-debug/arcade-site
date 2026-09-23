@@ -331,10 +331,16 @@ body {
 .chain-result { top: 31%; width: 88%; color: #fff; font-size: 15px; line-height: 1.45; white-space: pre-line; animation: result-pop 1.1s ease both; }
 .chain-result[data-kind="chain"] { color: var(--lime); font-size: 17px; }
 .chain-result[data-kind="climax"] { color: #f6cf45; font-size: 19px; text-shadow: 0 3px 18px rgba(0,0,0,.75), 0 0 20px rgba(246,207,69,.5); }
-.bottle-pop { position: absolute; z-index: 8; top: 42%; left: 50%; width: 82%; padding: 10px 7px; color: #fff; text-align: center; transform: translate(-50%,-50%); pointer-events: none; border: 1px solid rgba(169,121,247,.55); border-radius: 13px; background: rgba(23,19,41,.88); box-shadow: 0 0 28px rgba(169,121,247,.38); animation: bottle-reveal .42s ease both; }
+.bottle-pop { position: absolute; z-index: 8; top: 42%; left: 50%; width: 86%; padding: 12px 8px; color: #fff; text-align: center; transform: translate(-50%,-50%); pointer-events: none; border: 1px solid rgba(169,121,247,.68); border-radius: 14px; background: rgba(23,19,41,.92); box-shadow: 0 0 32px rgba(169,121,247,.45); animation: bottle-reveal var(--bottle-duration, 1120ms) ease both; }
 .bottle-pop small { display: block; color: #d8c5ff; font-size: 8px; font-weight: 800; letter-spacing: .18em; }
-.bottle-pop strong { display: block; margin-top: 3px; font-size: 22px; }
-@keyframes bottle-reveal { 0% { opacity: 0; transform: translate(-50%,-44%) scale(.78); } 40% { opacity: 1; transform: translate(-50%,-50%) scale(1.06); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
+.bottle-pop strong { display: block; margin-top: 5px; font-size: 21px; }
+.bottle-pop span { display: block; margin-top: 5px; color: #efe7ff; font-size: 10px; font-weight: 700; }
+@keyframes bottle-reveal {
+  0% { opacity: 0; transform: translate(-50%,-43%) scale(.76); }
+  14% { opacity: 1; transform: translate(-50%,-50%) scale(1.06); }
+  30%, 78% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%,-56%) scale(.98); }
+}
 .level-pop { top: 17%; color: var(--cyan); font-size: 25px; letter-spacing: .06em; animation: level-pop .95s ease both; }
 .all-clear-pop {
   position: absolute;

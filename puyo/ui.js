@@ -252,15 +252,18 @@
       setTimeout(() => elements.challengeCard.classList.remove('is-defending'), 520);
     }
 
-    function showBottleTransform(sourceColor, targetColor) {
+    function showBottleTransform(sourceColor, targetColor, duration) {
       const names = ['', '粉', '黄', '绿', '蓝', '紫'];
       const dots = ['', '🔴', '🟡', '🟢', '🔵', '🟣'];
+      const displayDuration = Math.max(700, Number(duration) || 1120);
       clearTimeout(bottleTimer);
-      elements.bottleTransform.textContent = dots[sourceColor] + ' ' + names[sourceColor] + ' → ' + dots[targetColor] + ' ' + names[targetColor];
+      elements.bottleTransform.textContent = dots[sourceColor] + ' ' + names[sourceColor] + '色 → ' + dots[targetColor] + ' ' + names[targetColor] + '色';
+      elements.bottleExplanation.textContent = names[sourceColor] + '色噗呦全部变为' + names[targetColor] + '色';
+      elements.bottlePop.style.setProperty('--bottle-duration', displayDuration + 'ms');
       elements.bottlePop.hidden = true;
       void elements.bottlePop.offsetWidth;
       elements.bottlePop.hidden = false;
-      bottleTimer = setTimeout(() => { elements.bottlePop.hidden = true; }, 430);
+      bottleTimer = setTimeout(() => { elements.bottlePop.hidden = true; }, displayDuration + 40);
     }
 
     function resetTransient() {
