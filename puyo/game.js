@@ -596,7 +596,17 @@
     const colors = new Set(groups.map((g) => g.color));
     const cells = groups.flatMap((g) => g.cells);
     const modifiers = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild) : rogueliteRules.modifiers({});
-    const clearEffects = challengeEffects.resolveClear({ active: gameType === 'challenge', board, cells, groups, modifiers, cleanerUsed: turnStats.cleanerUsed });
+    const clearEffects = challengeEffects.resolveClear({
+      active: gameType === 'challenge',
+      board,
+      cells,
+      groups,
+      modifiers,
+      cleanerUsed: turnStats.cleanerUsed,
+      // Stage cleanup can create a bonus cascade after turn stats reset. It may
+      // still score and trigger Color Burst, but must not grant a second Cleaner.
+      allowCleaner: !taskSettled,
+    });
     turnStats.cleanerUsed = clearEffects.cleanerUsed;
     const garbageCells = clearEffects.garbageCells;
     clearEffects.triggered.forEach(flashUpgrade);

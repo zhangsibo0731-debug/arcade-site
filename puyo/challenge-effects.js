@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 7;
+  const VERSION = 8;
 
   function create(options) {
     const challengeRules = options.challengeRules;
@@ -18,7 +18,7 @@
       const remoteLinks = [];
       const triggered = [];
       let cleanerUsed = !!view.cleanerUsed;
-      if (!cleanerUsed && garbageCells.length && view.modifiers.cleanerClear) {
+      if (view.allowCleaner !== false && !cleanerUsed && garbageCells.length && view.modifiers.cleanerClear) {
         cleanerUsed = true;
         const cleanerCells = boardRules.garbageCandidates(view.board, excluded, view.cells).slice(0, view.modifiers.cleanerClear);
         cleanerCells.forEach((position) => excluded.add(position[0] + ',' + position[1]));

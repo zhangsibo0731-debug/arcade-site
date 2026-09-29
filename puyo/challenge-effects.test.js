@@ -77,6 +77,12 @@ noAdjacentBoard[0][3] = 6;
 const delayedCleaner = effects.resolveClear({ active: true, board: noAdjacentBoard, cells, groups: [{ color: 1, cells }], modifiers: cleanerModifiers, cleanerUsed: false });
 assert.strictEqual(delayedCleaner.cleanerUsed, false);
 
+const rewardChainClear = effects.resolveClear({ active: true, board: clearBoard, cells, groups: [{ color: 1, cells }], modifiers: rogueliteRules.modifiers({}), cleanerUsed: false, allowCleaner: false });
+assert.strictEqual(rewardChainClear.garbageCells.length, 3);
+assert.deepStrictEqual(rewardChainClear.triggered, ['colorBurst']);
+assert.strictEqual(rewardChainClear.remoteLinks.length, 1);
+assert.strictEqual(rewardChainClear.cleanerUsed, false);
+
 const turnBoard = boardRules.emptyBoard();
 turnBoard[3][0] = 6;
 turnBoard[3][1] = 6;
