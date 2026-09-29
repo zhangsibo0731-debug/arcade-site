@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 8;
+  const VERSION = 9;
   const GARBAGE = 6;
   const MAX_GARBAGE_DEBT = 999;
   const DEFERRED_DELAY = 2;
@@ -91,6 +91,13 @@
     if (occupied >= OCCUPANCY_HIGH) return 1;
     if (occupied >= OCCUPANCY_MEDIUM) return 2;
     return 4;
+  }
+
+  function stageRewardForOccupancy(occupiedCells, specialCompleted) {
+    const occupied = boundedInt(occupiedCells, 0, 0, 72);
+    let reward = occupied >= OCCUPANCY_HIGH ? 4 : (occupied >= OCCUPANCY_MEDIUM ? 3 : 2);
+    if (specialCompleted) reward++;
+    return Math.min(4, reward);
   }
 
   function deferredDelayForOccupancy(occupiedCells) {
@@ -315,7 +322,9 @@
       if (activeSpecial) state.lastSpecialType = activeSpecial.type;
       state.completed++;
       state.stage = state.completed + 1;
-      reward = Math.min(7, 2 + Math.floor(state.stage / 3) + (specialCompleted ? 2 : 0));
+      // The board-aware settlement layer calculates the actual cleanup amount.
+      // Keep this value as the minimum completion reward and completion signal.
+      reward = specialCompleted ? 3 : 2;
       bonus = 120 * completedStage * (specialCompleted ? 2 : 1);
       state.turnsLeft = Math.max(6, 9 - Math.floor(state.stage / 3));
       const next = advanceMission(state, random);
@@ -381,5 +390,5 @@
     return placed;
   }
 
-  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MAX_GARBAGE_DEBT, DEFERRED_DELAY, CRITICAL_DEFERRED_DELAY, OCCUPANCY_MEDIUM, OCCUPANCY_HIGH, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, defenseForChain, boardOccupancy, garbageCapForOccupancy, deferredDelayForOccupancy, enqueueDeferred, cancelGarbage, advancePressure, releaseGarbage, deferDueGarbage, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
+  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MAX_GARBAGE_DEBT, DEFERRED_DELAY, CRITICAL_DEFERRED_DELAY, OCCUPANCY_MEDIUM, OCCUPANCY_HIGH, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, defenseForChain, boardOccupancy, garbageCapForOccupancy, stageRewardForOccupancy, deferredDelayForOccupancy, enqueueDeferred, cancelGarbage, advancePressure, releaseGarbage, deferDueGarbage, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
 })(window);

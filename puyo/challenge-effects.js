@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 5;
+  const VERSION = 7;
 
   function create(options) {
     const challengeRules = options.challengeRules;
@@ -12,12 +12,14 @@
     const rows = options.rows;
 
     function resolveClear(view) {
-      if (!view.active) return { garbageCells: [], remoteLinks: [], triggered: [] };
+      if (!view.active) return { garbageCells: [], remoteLinks: [], triggered: [], cleanerUsed: !!view.cleanerUsed };
       let garbageCells = challengeRules.adjacentGarbage(view.board, view.cells, garbage);
       const excluded = new Set(garbageCells.map((position) => position[0] + ',' + position[1]));
       const remoteLinks = [];
       const triggered = [];
-      if (garbageCells.length && view.modifiers.cleanerClear) {
+      let cleanerUsed = !!view.cleanerUsed;
+      if (!cleanerUsed && garbageCells.length && view.modifiers.cleanerClear) {
+        cleanerUsed = true;
         const cleanerCells = boardRules.garbageCandidates(view.board, excluded, view.cells).slice(0, view.modifiers.cleanerClear);
         cleanerCells.forEach((position) => excluded.add(position[0] + ',' + position[1]));
         garbageCells = garbageCells.concat(cleanerCells);
@@ -35,7 +37,7 @@
           triggered.push('colorBurst');
         }
       }
-      return { garbageCells, remoteLinks, triggered };
+      return { garbageCells, remoteLinks, triggered, cleanerUsed };
     }
 
     function settleTurn(view) {
@@ -62,14 +64,16 @@
       else if (outcome.completed) runBuild = rogueliteRules.offer(runBuild, challengeState.completed, view.random);
       if (outcome.completed) runBuild = rogueliteRules.offerContract(runBuild, challengeState.stage, !!challengeState.special);
       runBuild = rogueliteRules.offerBonus(runBuild, challengeState.completed, view.random);
+      const occupancy = challengeRules.boardOccupancy(view.board);
       let removed = [];
+      let rewardCount = 0;
       let scoreBonus = upgradeResult.scoreBonus;
       if (outcome.reward) {
-        removed = boardRules.garbageCandidates(view.board, new Set(), []).slice(0, outcome.reward);
+        rewardCount = challengeRules.stageRewardForOccupancy(occupancy, outcome.specialCompleted);
+        removed = boardRules.garbageCandidates(view.board, new Set(), []).slice(0, rewardCount);
         challengeState.garbageCleared += removed.length;
         scoreBonus += outcome.bonus;
       }
-      const occupancy = challengeRules.boardOccupancy(view.board);
       let release = { state: challengeState, source: '', requested: 0, released: 0, carried: 0, cap: challengeRules.garbageCapForOccupancy(occupancy) };
       let deferredByReward = { source: '', deferred: 0 };
       if (removed.length) {
@@ -122,6 +126,7 @@
         modifiers,
         triggered,
         removed,
+        rewardCount,
         placed,
         incomingCount,
         requestedGarbage: release.released,

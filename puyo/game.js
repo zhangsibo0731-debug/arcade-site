@@ -596,7 +596,8 @@
     const colors = new Set(groups.map((g) => g.color));
     const cells = groups.flatMap((g) => g.cells);
     const modifiers = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild) : rogueliteRules.modifiers({});
-    const clearEffects = challengeEffects.resolveClear({ active: gameType === 'challenge', board, cells, groups, modifiers });
+    const clearEffects = challengeEffects.resolveClear({ active: gameType === 'challenge', board, cells, groups, modifiers, cleanerUsed: turnStats.cleanerUsed });
+    turnStats.cleanerUsed = clearEffects.cleanerUsed;
     const garbageCells = clearEffects.garbageCells;
     clearEffects.triggered.forEach(flashUpgrade);
     clearEffects.remoteLinks.forEach((link) => renderer.addRemoteLink(link.from, link.to));

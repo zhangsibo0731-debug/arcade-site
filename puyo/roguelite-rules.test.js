@@ -51,6 +51,7 @@ assert.equal(modifiers.chainScoreMultiplier, 1.5);
 assert.equal(modifiers.colorBurstThreshold, 7);
 assert.equal(modifiers.largeGroupThreshold, 8);
 assert.equal(modifiers.cleanerClear, 3);
+assert.ok(rules.BY_ID.cleaner.effects.every((effect) => effect.includes('每回合首次')));
 assert.equal(modifiers.bufferReduction, 1);
 assert.equal(modifiers.lockDelayMultiplier, 1.2);
 assert.equal(modifiers.foresightLevel, 3);

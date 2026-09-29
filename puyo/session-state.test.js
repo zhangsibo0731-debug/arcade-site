@@ -23,6 +23,7 @@ const session = global.PuyoSessionState.create({
 
 assert.strictEqual(session.freshTurnStats().cleared, 0);
 assert.strictEqual(session.freshTurnStats().allClearDefense, 0);
+assert.strictEqual(session.freshTurnStats().cleanerUsed, false);
 const snap = session.snapshot({ gameType: 'classic', board: emptyBoard(), pair: null, queue: [], score: 5, level: 1, clearedTotal: 0, runMaxChain: 0, allClearCount: 2, activeDurationMs: 12345, hiAtStart: 3, bestChainAtStart: 2 });
 assert.strictEqual(snap.score, 5);
 assert.strictEqual(snap.challengeState, null);

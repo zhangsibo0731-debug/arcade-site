@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 11;
+  const VERSION = 12;
   const MAX_LEVEL = 3;
   const SCHOOLS = Object.freeze({
     chain: Object.freeze({ id: 'chain', name: '连锁' }),
@@ -15,7 +15,7 @@
     { id: 'chainEcho', name: '连锁回响', school: 'chain', rarity: 'common', maxLevel: 3, tags: ['chain', 'score'], synergies: ['chainShield', 'chainCharge'], effects: ['3 CHAIN 得分 +15%', '3 CHAIN 得分 +30%', '3 CHAIN 得分 +50%'] },
     { id: 'colorBurst', name: '彩色爆破', school: 'group', rarity: 'rare', maxLevel: 3, tags: ['largeGroup', 'garbage'], synergies: ['largeGroup'], effects: ['7 颗同消时远程爆破 1 颗干扰', '6 颗同消时远程爆破 1 颗干扰', '5 颗同消时远程爆破 1 颗干扰'] },
     { id: 'largeGroup', name: '大团奖励', school: 'group', rarity: 'common', maxLevel: 3, tags: ['largeGroup', 'defense'], synergies: ['colorBurst'], effects: ['9 颗同消抵消 2 颗', '8 颗同消抵消 2 颗', '7 颗同消抵消 2 颗'] },
-    { id: 'cleaner', name: '清道夫', school: 'adversity', rarity: 'common', maxLevel: 3, tags: ['garbage', 'defense'], synergies: ['buffer', 'scrapValue'], effects: ['清除相邻干扰时，再清除附近 1 颗', '清除相邻干扰时，再清除附近 2 颗', '清除相邻干扰时，再清除附近 3 颗'] },
+    { id: 'cleaner', name: '清道夫', school: 'adversity', rarity: 'common', maxLevel: 3, tags: ['garbage', 'defense'], synergies: ['buffer', 'scrapValue'], effects: ['每回合首次清除相邻干扰时，再清除附近 1 颗', '每回合首次清除相邻干扰时，再清除附近 2 颗', '每回合首次清除相邻干扰时，再清除附近 3 颗'] },
     { id: 'buffer', name: '缓冲层', school: 'adversity', rarity: 'rare', maxLevel: 3, tags: ['pressure', 'defense'], synergies: ['cleaner', 'lastStand'], effects: ['每个 Stage 首次干扰 -1', '每个 Stage 首次干扰 -2', '每个 Stage 首次干扰 -3'] },
     { id: 'steadyHands', name: '从容落子', school: 'planning', rarity: 'common', maxLevel: 3, tags: ['control', 'lock'], synergies: ['foresight'], effects: ['锁定时间 +10%', '锁定时间 +20%', '锁定时间 +30%'] },
     { id: 'foresight', name: '预知', school: 'planning', rarity: 'rare', maxLevel: 3, tags: ['next', 'information'], synergies: ['steadyHands', 'nextSwap'], effects: ['NEXT 对比更清晰', '标记下一组同色', '显示第 3 组 NEXT'] },

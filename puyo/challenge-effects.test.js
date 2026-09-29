@@ -7,6 +7,7 @@ require('./challenge-rules.js');
 require('./challenge-effects.js');
 
 const boardRules = global.PuyoBoardRules.create({ rows: 4, cols: 4, garbage: 6, rotations: [[0, -1], [1, 0], [0, 1], [-1, 0]] });
+const largeBoardRules = global.PuyoBoardRules.create({ rows: 12, cols: 6, garbage: 6, rotations: [[0, -1], [1, 0], [0, 1], [-1, 0]] });
 const adjacentGarbage = (board, cells, garbage) => {
   const found = new Map();
   cells.forEach(([x, y]) => [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx, dy]) => {
@@ -59,6 +60,22 @@ const clear = effects.resolveClear({ active: true, board: clearBoard, cells, gro
 assert.strictEqual(clear.garbageCells.length, 4);
 assert.deepStrictEqual(clear.triggered, ['cleaner', 'colorBurst']);
 assert.strictEqual(clear.remoteLinks.length, 1);
+assert.strictEqual(clear.cleanerUsed, true);
+
+const cleanerModifiers = { cleanerClear: 1, colorBurstThreshold: 0, colorBurstClear: 0 };
+const firstChainClear = effects.resolveClear({ active: true, board: clearBoard, cells, groups: [{ color: 1, cells }], modifiers: cleanerModifiers, cleanerUsed: false });
+assert.strictEqual(firstChainClear.garbageCells.length, 3);
+assert.deepStrictEqual(firstChainClear.triggered, ['cleaner']);
+assert.strictEqual(firstChainClear.cleanerUsed, true);
+const laterChainClear = effects.resolveClear({ active: true, board: clearBoard, cells, groups: [{ color: 1, cells }], modifiers: cleanerModifiers, cleanerUsed: firstChainClear.cleanerUsed });
+assert.strictEqual(laterChainClear.garbageCells.length, 2);
+assert.deepStrictEqual(laterChainClear.triggered, []);
+assert.strictEqual(laterChainClear.cleanerUsed, true);
+
+const noAdjacentBoard = boardRules.emptyBoard();
+noAdjacentBoard[0][3] = 6;
+const delayedCleaner = effects.resolveClear({ active: true, board: noAdjacentBoard, cells, groups: [{ color: 1, cells }], modifiers: cleanerModifiers, cleanerUsed: false });
+assert.strictEqual(delayedCleaner.cleanerUsed, false);
 
 const turnBoard = boardRules.emptyBoard();
 turnBoard[3][0] = 6;
@@ -74,6 +91,7 @@ const result = effects.settleTurn({
 });
 assert.strictEqual(result.scoreBonus, 100);
 assert.strictEqual(result.removed.length, 2);
+assert.strictEqual(result.rewardCount, 2);
 assert.strictEqual(result.placed.length, 0);
 assert.strictEqual(result.incomingCount, 0);
 assert.strictEqual(result.deferredByReward, 1);
@@ -83,6 +101,47 @@ assert.deepStrictEqual(result.triggered, ['chainShield', 'largeGroup']);
 assert.strictEqual(result.runBuild.offered, true);
 assert.strictEqual(result.waitsForBoard, true);
 assert.ok(result.message.text.includes('阶段 1 完成'));
+
+function completionEffects(specialCompleted) {
+  const occupancyRules = Object.assign({}, global.PuyoChallengeRules, {
+    resolveTurn: () => ({
+      state: { stage: 9, completed: 8, garbageCleared: 0, pendingGarbage: 0, pressureIn: 2, deferredGarbage: 0, deferredIn: 0 },
+      completed: true,
+      specialCompleted: !!specialCompleted,
+      reward: 2,
+      bonus: 100,
+      pressureTriggered: false,
+      entryGarbage: 0,
+      regularGarbage: 0,
+      canceled: 0,
+    }),
+  });
+  return global.PuyoChallengeEffects.create({ challengeRules: occupancyRules, rogueliteRules, activeItemRules, boardRules: largeBoardRules, garbage: 6, rows: 12 });
+}
+
+function boardWithGarbage(count) {
+  const nextBoard = largeBoardRules.emptyBoard();
+  for (let index = 0; index < count; index++) nextBoard[11 - Math.floor(index / 6)][index % 6] = 6;
+  return nextBoard;
+}
+
+function settleCompletion(count, specialCompleted) {
+  return completionEffects(specialCompleted).settleTurn({
+    challengeState: { stage: 8 },
+    runBuild: { bufferedStage: 0 },
+    itemState: { inventory: { mixBottle: 0 }, armedItem: '' },
+    turnStats: { maxChain: 1, extraDefense: 0 },
+    board: boardWithGarbage(count),
+    random: () => 0,
+  });
+}
+
+assert.strictEqual(settleCompletion(43, false).removed.length, 2);
+assert.strictEqual(settleCompletion(44, false).removed.length, 3);
+assert.strictEqual(settleCompletion(52, false).removed.length, 4);
+assert.strictEqual(settleCompletion(43, true).removed.length, 3);
+assert.strictEqual(settleCompletion(44, true).removed.length, 4);
+assert.strictEqual(settleCompletion(52, true).removed.length, 4);
 
 const specialRules = Object.assign({}, challengeRules, {
   resolveTurn: () => ({
@@ -122,7 +181,6 @@ assert.strictEqual(fullSpecialResult.itemState.inventory.mixBottle, 2);
 assert.strictEqual(fullSpecialResult.itemReward.granted, 0);
 assert.ok(fullSpecialResult.message.text.includes('混色瓶已满'));
 
-const largeBoardRules = global.PuyoBoardRules.create({ rows: 12, cols: 6, garbage: 6, rotations: [[0, -1], [1, 0], [0, 1], [-1, 0]] });
 const pressureRules = Object.assign({}, global.PuyoChallengeRules, {
   resolveTurn: () => ({
     state: { stage: 8, completed: 7, garbageCleared: 0, pendingGarbage: 5, pressureIn: 0, deferredGarbage: 0, deferredIn: 0 },

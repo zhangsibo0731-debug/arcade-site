@@ -108,6 +108,14 @@ const generatedTypes = new Set(Array.from({ length: 9 }, (_, index) => rules.mis
 assert.deepEqual(generatedTypes, new Set(rules.MISSION_TYPES));
 assert.equal(rules.normalize({ mission: { type: 'scoreTurn', target: 1000, title: '得分', progress: 750 } }).mission.progress, 750);
 
+assert.equal(rules.stageRewardForOccupancy(0, false), 2);
+assert.equal(rules.stageRewardForOccupancy(rules.OCCUPANCY_MEDIUM - 1, false), 2);
+assert.equal(rules.stageRewardForOccupancy(rules.OCCUPANCY_MEDIUM, false), 3);
+assert.equal(rules.stageRewardForOccupancy(rules.OCCUPANCY_HIGH, false), 4);
+assert.equal(rules.stageRewardForOccupancy(0, true), 3);
+assert.equal(rules.stageRewardForOccupancy(rules.OCCUPANCY_MEDIUM, true), 4);
+assert.equal(rules.stageRewardForOccupancy(rules.OCCUPANCY_HIGH, true), 4);
+
 const complete = rules.resolveTurn(initial, { maxChain: 2, cleared: 8, maxColors: 1 }, () => 0);
 assert.equal(complete.completed, true);
 assert.equal(complete.state.completed, 1);

@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 7;
+  const VERSION = 8;
 
   function create(options) {
     const storage = options.storage;
@@ -11,7 +11,7 @@
     const emptyBoard = options.emptyBoard;
 
     function freshTurnStats() {
-      return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, largestGroupColor: 0, garbageCleared: 0, scoreGained: 0, clearedThisTurn: false, boardHeight: null, clearedColors: [], colorClearedCount: 0, extraDefense: 0, allClearDefense: 0, missionBaseProgress: null };
+      return { maxChain: 0, cleared: 0, maxColors: 0, largestGroup: 0, largestGroupColor: 0, garbageCleared: 0, scoreGained: 0, clearedThisTurn: false, boardHeight: null, clearedColors: [], colorClearedCount: 0, extraDefense: 0, allClearDefense: 0, missionBaseProgress: null, cleanerUsed: false };
     }
 
     function snapshot(state) {
