@@ -83,6 +83,16 @@ assert.deepStrictEqual(rewardChainClear.triggered, ['colorBurst']);
 assert.strictEqual(rewardChainClear.remoteLinks.length, 1);
 assert.strictEqual(rewardChainClear.cleanerUsed, false);
 
+const sturdyBoardRules = global.PuyoBoardRules.create({ rows: 4, cols: 4, garbage: 6, isGarbage: global.PuyoChallengeRules.isGarbage, rotations: [[0, -1], [1, 0], [0, 1], [-1, 0]] });
+const sturdyEffects = global.PuyoChallengeEffects.create({ challengeRules: global.PuyoChallengeRules, rogueliteRules, activeItemRules, boardRules: sturdyBoardRules, garbage: 6, rows: 4 });
+const sturdyBoard = sturdyBoardRules.emptyBoard();
+sturdyBoard[3] = [1, 1, 1, 1];
+sturdyBoard[2][0] = global.PuyoChallengeRules.STURDY_GARBAGE;
+sturdyBoard[2][3] = global.PuyoChallengeRules.CRACKED_GARBAGE;
+const sturdyClear = sturdyEffects.resolveClear({ active: true, board: sturdyBoard, cells, groups: [{ color: 1, cells }], modifiers: { cleanerClear: 0, colorBurstThreshold: 0, colorBurstClear: 0 }, cleanerUsed: false });
+assert.deepStrictEqual(sturdyClear.garbageHits.map((hit) => [hit.from, hit.to, hit.destroyed]), [[7, 8, false], [8, 0, true]]);
+assert.strictEqual(sturdyClear.destroyedGarbage, 1);
+
 const turnBoard = boardRules.emptyBoard();
 turnBoard[3][0] = 6;
 turnBoard[3][1] = 6;
@@ -226,6 +236,40 @@ assert.strictEqual(pressureResult.releaseSource, 'pending');
 assert.strictEqual(pressureResult.challengeState.deferredGarbage, 7);
 assert.strictEqual(pressureResult.challengeState.deferredIn, 3);
 assert.ok(pressureResult.message.text.includes('干扰落下 × 1'));
+
+function settleOpenPressure(stage, count) {
+  const typedPressureRules = Object.assign({}, global.PuyoChallengeRules, {
+    resolveTurn: () => ({
+      state: { stage, completed: stage - 1, garbageCleared: 0, pendingGarbage: count, pressureIn: 0, deferredGarbage: 0, deferredIn: 0 },
+      completed: false,
+      reward: 0,
+      bonus: 0,
+      pressureTriggered: true,
+      specialPenalty: 0,
+      entryGarbage: 0,
+      regularGarbage: 0,
+      canceled: 0,
+    }),
+  });
+  const typedEffects = global.PuyoChallengeEffects.create({ challengeRules: typedPressureRules, rogueliteRules, activeItemRules, boardRules: largeBoardRules, garbage: 6, rows: 12 });
+  const typedBoard = largeBoardRules.emptyBoard();
+  const typedResult = typedEffects.settleTurn({
+    challengeState: { stage },
+    runBuild: { bufferedStage: 0 },
+    itemState: { inventory: { mixBottle: 0 }, armedItem: '' },
+    turnStats: { maxChain: 1, extraDefense: 0 },
+    board: typedBoard,
+    random: () => 0,
+  });
+  return { result: typedResult, board: typedBoard };
+}
+
+const stageEightPressure = settleOpenPressure(8, 4);
+assert.deepStrictEqual(stageEightPressure.result.incomingValues.sort(), [6, 6, 6, 7]);
+assert.strictEqual(stageEightPressure.board.flat().filter((cell) => cell === 7).length, 1);
+const stageFifteenPressure = settleOpenPressure(15, 4);
+assert.deepStrictEqual(stageFifteenPressure.result.incomingValues.sort(), [6, 6, 7, 7]);
+assert.strictEqual(stageFifteenPressure.board.flat().filter((cell) => cell === 7).length, 2);
 
 const bufferedRogueliteRules = Object.assign({}, rogueliteRules, {
   modifiers: () => ({ cleanerClear: 0, colorBurstThreshold: 0, colorBurstClear: 0, bufferReduction: 3 }),

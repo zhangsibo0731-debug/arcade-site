@@ -93,9 +93,9 @@
   const rogueliteRules = window.PuyoRogueliteRules;
   const activeItemRules = window.PuyoActiveItemRules;
   const GARBAGE = challengeRules.GARBAGE;
-  const boardRules = window.PuyoBoardRules.create({ rows: ROWS, cols: COLS, garbage: GARBAGE, rotations: ROT });
+  const boardRules = window.PuyoBoardRules.create({ rows: ROWS, cols: COLS, garbage: GARBAGE, isGarbage: challengeRules.isGarbage, rotations: ROT });
   const challengeEffects = window.PuyoChallengeEffects.create({ challengeRules, rogueliteRules, activeItemRules, boardRules, garbage: GARBAGE, rows: ROWS });
-  const renderer = window.PuyoRenderer.create({ canvas, nextCanvas, boardWrap, boardArea, nextPanel, nextLabel, colors: COLORS, darks: DARKS, rows: ROWS, cols: COLS, garbage: GARBAGE });
+  const renderer = window.PuyoRenderer.create({ canvas, nextCanvas, boardWrap, boardArea, nextPanel, nextLabel, colors: COLORS, darks: DARKS, rows: ROWS, cols: COLS, garbage: GARBAGE, sturdyGarbage: challengeRules.STURDY_GARBAGE, crackedGarbage: challengeRules.CRACKED_GARBAGE, isGarbage: challengeRules.isGarbage });
   const ui = window.PuyoUI.create({
     challengeRules,
     rogueliteRules,
@@ -124,6 +124,8 @@
     rows: ROWS,
     cols: COLS,
     garbage: GARBAGE,
+    maxCell: challengeRules.CRACKED_GARBAGE,
+    isGarbage: challengeRules.isGarbage,
     colorCount: COLORS.length,
     rotationCount: ROT.length,
     keys: {
@@ -193,7 +195,7 @@
   }
 
   function freshChainFeedback() {
-    return { score: 0, cleared: 0, garbage: 0, previousBest: bestChain };
+    return { score: 0, cleared: 0, garbage: 0, previousBest: bestChain, rewardChain: false };
   }
 
   function hasUpgradeChoice() {
@@ -501,16 +503,18 @@
   }
 
 
-  function animateStageReward(cells, token) {
+  function animateStageReward(hits, token) {
+    const cells = hits.map((hit) => hit.cell);
     popDuration = 340;
     renderer.startPop(cells, popDuration);
     fallDuration = popDuration + 220;
     setTimeout(() => {
       if (token !== resolveToken || mode !== 'resolving') return;
-      cells.forEach((p) => {
-        if (board[p[1]][p[0]] !== GARBAGE) return;
-        renderer.burst(p[0], p[1], GARBAGE, 2);
-        board[p[1]][p[0]] = 0;
+      hits.forEach((hit) => {
+        const p = hit.cell;
+        if (board[p[1]][p[0]] !== hit.from) return;
+        renderer.burst(p[0], p[1], hit.from, 2);
+        board[p[1]][p[0]] = hit.to;
       });
       renderer.clearPop();
       play('clear', 2);
@@ -534,7 +538,7 @@
     itemState = result.itemState;
     result.triggered.forEach(flashUpgrade);
     score += result.scoreBonus;
-    if (result.removed.length) animateStageReward(result.removed, token);
+    if (result.rewardHits.length) animateStageReward(result.rewardHits, token);
     else if (result.placed.length) startGarbageFall(result.placed);
     if (result.defenseFlash) flashGarbageDefense();
     if (result.message) showChallengeMessage(result.message.text, result.message.complete, result.message.duration);
@@ -551,13 +555,6 @@
     if (!groups.length) {
       music.setIntensity(0);
       renderer.clearPop();
-      if (chain > 2 && !taskSettled) showChainResult({
-        chain: chain - 1,
-        score: chainFeedback.score,
-        cleared: chainFeedback.cleared,
-        garbage: chainFeedback.garbage,
-        isBest: chain - 1 > chainFeedback.previousBest,
-      });
       if (!taskSettled && chain > 1) {
         const allClear = scoringRules.allClearResult({
           board,
@@ -585,7 +582,21 @@
         setTimeout(() => resolveStep(chain, token, true), fallDuration);
         return;
       }
-      if (openUpgradeChoice() || openContractChoice()) return;
+      if (chain > 2) showChainResult({
+        chain: chain - 1,
+        score: chainFeedback.score,
+        cleared: chainFeedback.cleared,
+        garbage: chainFeedback.garbage,
+        isBest: chain - 1 > chainFeedback.previousBest,
+        rewardChain: chainFeedback.rewardChain,
+      });
+      const rewardChoicePending = hasUpgradeChoice() || (gameType === 'challenge' && runBuild.contract && runBuild.contract.status === 'pending');
+      if (rewardChoicePending) {
+        ui.afterResults(() => {
+          if (mode === 'resolving') continueAfterReward();
+        });
+        return;
+      }
       mode = 'playing';
       btnPause.hidden = false;
       spawnPair();
@@ -594,6 +605,7 @@
     }
 
     const colors = new Set(groups.map((g) => g.color));
+    if (taskSettled) chainFeedback.rewardChain = true;
     const cells = groups.flatMap((g) => g.cells);
     const modifiers = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild) : rogueliteRules.modifiers({});
     const clearEffects = challengeEffects.resolveClear({
@@ -609,6 +621,8 @@
     });
     turnStats.cleanerUsed = clearEffects.cleanerUsed;
     const garbageCells = clearEffects.garbageCells;
+    const garbageHits = clearEffects.garbageHits || [];
+    const destroyedGarbage = clearEffects.destroyedGarbage || 0;
     clearEffects.triggered.forEach(flashUpgrade);
     clearEffects.remoteLinks.forEach((link) => renderer.addRemoteLink(link.from, link.to));
     const clearingCells = cells.concat(garbageCells);
@@ -625,7 +639,7 @@
     music.onChain(chain);
     chainFeedback.score += gained;
     chainFeedback.cleared += cells.length;
-    chainFeedback.garbage += garbageCells.length;
+    chainFeedback.garbage += destroyedGarbage;
 
     const previousLevel = level;
     score += gained;
@@ -640,14 +654,14 @@
         turnStats.largestGroup = largest.cells.length;
         turnStats.largestGroupColor = largest.color;
       }
-      turnStats.garbageCleared += garbageCells.length;
+      turnStats.garbageCleared += destroyedGarbage;
       turnStats.scoreGained += gained;
       turnStats.clearedThisTurn = true;
       turnStats.clearedColors = Array.from(new Set(turnStats.clearedColors.concat(Array.from(colors))));
       if (challengeState.mission.type === 'targetColor') turnStats.colorClearedCount += groups.filter((group) => group.color === challengeState.mission.color).reduce((sum, group) => sum + group.cells.length, 0);
       updateChallengeHud();
     }
-    if (gameType === 'challenge') challengeState.garbageCleared += garbageCells.length;
+    if (gameType === 'challenge') challengeState.garbageCleared += destroyedGarbage;
     level = Math.min(12, Math.floor(clearedTotal / 35) + 1);
     runMaxChain = Math.max(runMaxChain, chain);
     if (chain > bestChain) {
@@ -669,10 +683,16 @@
 
     setTimeout(() => {
       if (token !== resolveToken) return;
-      for (const p of clearingCells) {
+      for (const p of cells) {
         renderer.burst(p[0], p[1], board[p[1]][p[0]], chain);
         board[p[1]][p[0]] = 0;
       }
+      garbageHits.forEach((hit) => {
+        const p = hit.cell;
+        if (board[p[1]][p[0]] !== hit.from) return;
+        renderer.burst(p[0], p[1], hit.from, chain);
+        board[p[1]][p[0]] = hit.to;
+      });
       renderer.clearPop();
       renderer.clearRemoteLinks();
       const chainFallDuration = Math.min(250, 190 + (chain - 1) * 18);

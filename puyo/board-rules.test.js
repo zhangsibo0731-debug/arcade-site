@@ -7,6 +7,7 @@ const rules = global.PuyoBoardRules.create({
   rows: 6,
   cols: 4,
   garbage: 6,
+  isGarbage: (value) => value === 6 || value === 7 || value === 8,
   rotations: [[0, -1], [1, 0], [0, 1], [-1, 0]],
 });
 
@@ -22,6 +23,8 @@ assert.strictEqual(rules.collides(empty, { colors: [1, 2] }, 1, 0, 3), false);
 const groupsBoard = rules.emptyBoard();
 groupsBoard[5] = [1, 1, 1, 1];
 groupsBoard[4][0] = 6;
+groupsBoard[4][1] = 7;
+groupsBoard[4][2] = 8;
 groupsBoard[3][3] = 2;
 assert.deepStrictEqual(rules.findClearGroups(groupsBoard).map((group) => [group.color, group.cells.length]), [[1, 4]]);
 
@@ -40,7 +43,9 @@ const garbageBoard = rules.emptyBoard();
 garbageBoard[5][0] = 6;
 garbageBoard[5][3] = 6;
 garbageBoard[1][1] = 6;
-assert.deepStrictEqual(rules.garbageCandidates(garbageBoard, new Set(), [[0, 4]]), [[0, 5], [3, 5], [1, 1]]);
+garbageBoard[4][2] = 7;
+garbageBoard[2][2] = 8;
+assert.deepStrictEqual(rules.garbageCandidates(garbageBoard, new Set(), [[0, 4]]), [[0, 5], [2, 4], [3, 5], [2, 2], [1, 1]]);
 assert.strictEqual(rules.groupBonus(4), 0);
 assert.strictEqual(rules.groupBonus(7), 4);
 assert.strictEqual(rules.groupBonus(11), 10);

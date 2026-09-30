@@ -1,8 +1,10 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 9;
+  const VERSION = 11;
   const GARBAGE = 6;
+  const STURDY_GARBAGE = 7;
+  const CRACKED_GARBAGE = 8;
   const MAX_GARBAGE_DEBT = 999;
   const DEFERRED_DELAY = 2;
   const CRITICAL_DEFERRED_DELAY = 3;
@@ -71,6 +73,37 @@
 
   function garbageForStage(stage) {
     return Math.min(5, 1 + Math.floor(Math.max(1, stage) / 2));
+  }
+
+  function isGarbage(value) {
+    return value === GARBAGE || value === STURDY_GARBAGE || value === CRACKED_GARBAGE;
+  }
+
+  function damageGarbage(value) {
+    if (value === GARBAGE || value === CRACKED_GARBAGE) return { from: value, to: 0, destroyed: true };
+    if (value === STURDY_GARBAGE) return { from: value, to: CRACKED_GARBAGE, destroyed: false };
+    return { from: value, to: value, destroyed: false };
+  }
+
+  function sturdyGarbageForDrop(stage, count) {
+    const currentStage = boundedInt(stage, 1, 1, 999999);
+    const amount = boundedInt(count, 0, 0, 72);
+    if (currentStage < 8 || amount < 2) return 0;
+    if (currentStage >= 15 && amount >= 4) return 2;
+    return 1;
+  }
+
+  function garbageValuesForDrop(stage, count, random) {
+    const amount = boundedInt(count, 0, 0, 72);
+    const sturdyCount = sturdyGarbageForDrop(stage, amount);
+    const values = Array(amount).fill(GARBAGE);
+    const rng = typeof random === 'function' ? random : Math.random;
+    const available = values.map((_, index) => index);
+    for (let index = 0; index < sturdyCount; index++) {
+      const pick = Math.floor(rng() * available.length) % available.length;
+      values[available.splice(pick, 1)[0]] = STURDY_GARBAGE;
+    }
+    return values;
   }
 
   function defenseForChain(chain) {
@@ -353,7 +386,7 @@
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     cells.forEach((cell) => dirs.forEach((dir) => {
       const x = cell[0] + dir[0], y = cell[1] + dir[1];
-      if (y >= 0 && y < board.length && x >= 0 && x < board[0].length && board[y][x] === value) result.add(x + ',' + y);
+      if (y >= 0 && y < board.length && x >= 0 && x < board[0].length && (value === GARBAGE ? isGarbage(board[y][x]) : board[y][x] === value)) result.add(x + ',' + y);
     }));
     return Array.from(result, (key) => key.split(',').map(Number));
   }
@@ -369,11 +402,13 @@
     return removed;
   }
 
-  function placeGarbage(board, count, random, garbageValue) {
-    const value = garbageValue || GARBAGE;
+  function placeGarbage(board, countOrValues, random, garbageValue) {
+    const values = Array.isArray(countOrValues)
+      ? countOrValues.filter(isGarbage)
+      : Array(Math.max(0, boundedInt(countOrValues, 0, 0, 72))).fill(garbageValue || GARBAGE);
     const rng = typeof random === 'function' ? random : Math.random;
     const placed = [];
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < values.length; i++) {
       const heights = board[0].map((_, x) => {
         const first = board.findIndex((row) => row[x] !== 0);
         return first < 0 ? board.length : first;
@@ -384,11 +419,11 @@
       const choices = available.filter((entry) => entry.height >= safest - 1);
       const choice = choices[Math.floor(rng() * choices.length) % choices.length];
       const y = choice.height - 1;
-      board[y][choice.x] = value;
+      board[y][choice.x] = values[i];
       placed.push([choice.x, y]);
     }
     return placed;
   }
 
-  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, MAX_GARBAGE_DEBT, DEFERRED_DELAY, CRITICAL_DEFERRED_DELAY, OCCUPANCY_MEDIUM, OCCUPANCY_HIGH, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, defenseForChain, boardOccupancy, garbageCapForOccupancy, stageRewardForOccupancy, deferredDelayForOccupancy, enqueueDeferred, cancelGarbage, advancePressure, releaseGarbage, deferDueGarbage, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
+  global.PuyoChallengeRules = Object.freeze({ VERSION, GARBAGE, STURDY_GARBAGE, CRACKED_GARBAGE, MAX_GARBAGE_DEBT, DEFERRED_DELAY, CRITICAL_DEFERRED_DELAY, OCCUPANCY_MEDIUM, OCCUPANCY_HIGH, MISSION_TYPES, SPECIAL_TYPES, missionFor, specialFor, missionProgress, missionPresentation, garbageForStage, isGarbage, damageGarbage, sturdyGarbageForDrop, garbageValuesForDrop, defenseForChain, boardOccupancy, garbageCapForOccupancy, stageRewardForOccupancy, deferredDelayForOccupancy, enqueueDeferred, cancelGarbage, advancePressure, releaseGarbage, deferDueGarbage, normalize, resolveTurn, adjacentGarbage, removeGarbage, placeGarbage });
 })(window);

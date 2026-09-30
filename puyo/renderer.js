@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 4;
+  const VERSION = 5;
 
   function create(options) {
     const canvas = options.canvas;
@@ -17,6 +17,9 @@
     const rows = options.rows;
     const cols = options.cols;
     const garbage = options.garbage;
+    const sturdyGarbage = options.sturdyGarbage;
+    const crackedGarbage = options.crackedGarbage;
+    const isGarbage = typeof options.isGarbage === 'function' ? options.isGarbage : (value) => value === garbage;
     let cell = 32;
     let particles = [];
     let popCells = new Set();
@@ -66,7 +69,7 @@
       target.restore();
     }
 
-    function drawGarbage(target, x, y, radius, alpha, scale) {
+    function drawGarbage(target, x, y, radius, alpha, scale, kind) {
       target.save();
       target.globalAlpha = alpha == null ? 1 : alpha;
       target.translate(x, y);
@@ -87,6 +90,30 @@
       target.arc(-radius * 0.22, -radius * 0.02, radius * 0.09, 0, Math.PI * 2);
       target.arc(radius * 0.22, -radius * 0.02, radius * 0.09, 0, Math.PI * 2);
       target.fill();
+      if (kind === sturdyGarbage || kind === crackedGarbage) {
+        target.strokeStyle = kind === sturdyGarbage ? '#d8eff4' : '#b9d6df';
+        target.lineWidth = Math.max(2, radius * 0.13);
+        target.beginPath();
+        target.arc(0, 0, radius * 0.98, -2.55, -0.6);
+        target.arc(0, 0, radius * 0.98, 0.6, 2.55);
+        target.stroke();
+        target.fillStyle = 'rgba(216,239,244,.72)';
+        target.fillRect(-radius * 0.7, -radius * 0.77, radius * 0.3, radius * 0.14);
+        target.fillRect(radius * 0.4, -radius * 0.77, radius * 0.3, radius * 0.14);
+      }
+      if (kind === crackedGarbage) {
+        target.strokeStyle = '#494257';
+        target.lineWidth = Math.max(1.5, radius * 0.09);
+        target.lineCap = 'round';
+        target.beginPath();
+        target.moveTo(radius * 0.05, -radius * 0.78);
+        target.lineTo(-radius * 0.13, -radius * 0.28);
+        target.lineTo(radius * 0.12, radius * 0.02);
+        target.lineTo(-radius * 0.08, radius * 0.58);
+        target.moveTo(-radius * 0.12, -radius * 0.28);
+        target.lineTo(-radius * 0.46, -radius * 0.05);
+        target.stroke();
+      }
       target.restore();
     }
 
@@ -164,7 +191,7 @@
           vy: Math.sin(angle) * speed - 20,
           life: 0.55 + Math.random() * 0.25,
           size: cell * (0.08 + Math.random() * 0.1),
-          color: color === garbage ? '#b9b4c8' : colors[color - 1],
+          color: isGarbage(color) ? '#b9b4c8' : colors[color - 1],
         });
       }
     }
@@ -274,8 +301,8 @@
           if (!color || popCells.has(x + ',' + y) || (fallProgress < 1 && fallOffsets.has(x + ',' + y))) continue;
           const key = x + ',' + y;
           const recoloring = recolorProgress < 1 && recolorCells.has(key);
-          if (color !== garbage && x + 1 < cols && board[y][x + 1] === color && !popCells.has((x + 1) + ',' + y) && !fallOffsets.has((x + 1) + ',' + y) && !recoloring && !(recolorProgress < 1 && recolorCells.has((x + 1) + ',' + y))) drawBridge(x, y, color, x + 1, y);
-          if (color !== garbage && y + 1 < rows && board[y + 1][x] === color && !popCells.has(x + ',' + (y + 1)) && !fallOffsets.has(x + ',' + (y + 1)) && !recoloring && !(recolorProgress < 1 && recolorCells.has(x + ',' + (y + 1)))) drawBridge(x, y, color, x, y + 1);
+          if (!isGarbage(color) && x + 1 < cols && board[y][x + 1] === color && !popCells.has((x + 1) + ',' + y) && !fallOffsets.has((x + 1) + ',' + y) && !recoloring && !(recolorProgress < 1 && recolorCells.has((x + 1) + ',' + y))) drawBridge(x, y, color, x + 1, y);
+          if (!isGarbage(color) && y + 1 < rows && board[y + 1][x] === color && !popCells.has(x + ',' + (y + 1)) && !fallOffsets.has(x + ',' + (y + 1)) && !recoloring && !(recolorProgress < 1 && recolorCells.has(x + ',' + (y + 1)))) drawBridge(x, y, color, x, y + 1);
         }
       }
 
@@ -302,7 +329,7 @@
           const recolorIndex = recolorCells.get(key);
           let displayColor = color;
           const offset = fallOffsets.get(key) || 0;
-          const garbageFall = color === garbage ? garbageFalls.get(key) : null;
+          const garbageFall = isGarbage(color) ? garbageFalls.get(key) : null;
           let drawY = y + 0.5 - offset * (1 - fallEase);
           let scaleX = scale;
           let scaleY = scale;
@@ -323,7 +350,7 @@
               scaleY *= 1 - squash;
             }
           }
-          if (recolorIndex != null && recolorProgress < 1 && color !== garbage) {
+          if (recolorIndex != null && recolorProgress < 1 && !isGarbage(color)) {
             const count = Math.max(1, recolorCells.size);
             const stagger = count <= 1 ? 0 : (recolorIndex / (count - 1)) * 0.24;
             const localProgress = Math.min(1, Math.max(0, (recolorProgress - 0.26 - stagger) / 0.22));
@@ -338,11 +365,11 @@
             scaleY *= 1 - anticipation * 0.55 - transformPulse * 0.65 - settleBounce;
             flash = Math.max(flash, transformPulse * 3.7);
           }
-          if (color === garbage) {
+          if (isGarbage(color)) {
             context.save();
             context.translate((x + 0.5) * cell, drawY * cell);
             context.scale(scaleX, scaleY);
-            drawGarbage(context, 0, 0, cell * 0.44, alpha, 1);
+            drawGarbage(context, 0, 0, cell * 0.44, alpha, 1, color);
             context.restore();
           } else {
             context.save();

@@ -1,12 +1,13 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 2;
 
   function create(options) {
     const rows = options.rows;
     const cols = options.cols;
     const garbage = options.garbage;
+    const isGarbage = typeof options.isGarbage === 'function' ? options.isGarbage : (value) => value === garbage;
     const rotations = options.rotations;
     const clearSize = options.clearSize || 4;
 
@@ -37,7 +38,7 @@
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const color = board[y][x];
-          if (!color || color === garbage || seen[y][x]) continue;
+          if (!color || isGarbage(color) || seen[y][x]) continue;
           const group = [];
           const stack = [[x, y]];
           seen[y][x] = true;
@@ -82,7 +83,7 @@
       const candidates = [];
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
-          if (board[y][x] !== garbage || blocked.has(x + ',' + y)) continue;
+          if (!isGarbage(board[y][x]) || blocked.has(x + ',' + y)) continue;
           const distance = Math.min(...origins.map((cell) => Math.abs(x - cell[0]) + Math.abs(y - cell[1])));
           candidates.push({ cell: [x, y], distance: distance });
         }

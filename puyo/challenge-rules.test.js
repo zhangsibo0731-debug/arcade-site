@@ -8,6 +8,20 @@ const rules = global.PuyoChallengeRules;
 
 const initial = rules.normalize({}, () => 0);
 assert.equal(initial.stage, 1);
+assert.equal(rules.isGarbage(rules.GARBAGE), true);
+assert.equal(rules.isGarbage(rules.STURDY_GARBAGE), true);
+assert.equal(rules.isGarbage(rules.CRACKED_GARBAGE), true);
+assert.equal(rules.isGarbage(5), false);
+assert.deepEqual(rules.damageGarbage(rules.GARBAGE), { from: 6, to: 0, destroyed: true });
+assert.deepEqual(rules.damageGarbage(rules.STURDY_GARBAGE), { from: 7, to: 8, destroyed: false });
+assert.deepEqual(rules.damageGarbage(rules.CRACKED_GARBAGE), { from: 8, to: 0, destroyed: true });
+assert.equal(rules.sturdyGarbageForDrop(7, 4), 0);
+assert.equal(rules.sturdyGarbageForDrop(8, 1), 0);
+assert.equal(rules.sturdyGarbageForDrop(8, 2), 1);
+assert.equal(rules.sturdyGarbageForDrop(14, 4), 1);
+assert.equal(rules.sturdyGarbageForDrop(15, 3), 1);
+assert.equal(rules.sturdyGarbageForDrop(15, 4), 2);
+assert.deepEqual(rules.garbageValuesForDrop(15, 4, () => 0), [7, 7, 6, 6]);
 assert.equal(initial.mission.type, 'chain');
 assert.equal(initial.turnsLeft, 8);
 assert.equal(initial.pendingGarbage, 1);
@@ -285,5 +299,12 @@ const placed = rules.placeGarbage(empty, 3, () => 0, rules.GARBAGE);
 assert.equal(placed.length, 3);
 assert.deepEqual(placed, [[0, 5], [0, 4], [1, 5]]);
 assert.equal(empty.flat().filter((cell) => cell === rules.GARBAGE).length, 3);
+
+const typedBoard = Array.from({ length: 6 }, () => Array(4).fill(0));
+const typedPlaced = rules.placeGarbage(typedBoard, [rules.STURDY_GARBAGE, rules.GARBAGE, rules.CRACKED_GARBAGE], () => 0);
+assert.deepEqual(typedPlaced, [[0, 5], [0, 4], [1, 5]]);
+assert.equal(typedBoard[5][0], rules.STURDY_GARBAGE);
+assert.equal(typedBoard[4][0], rules.GARBAGE);
+assert.equal(typedBoard[5][1], rules.CRACKED_GARBAGE);
 
 console.log('challenge-rules tests passed');

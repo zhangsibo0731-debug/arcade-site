@@ -39,6 +39,9 @@ const renderer = global.PuyoRenderer.create({
   rows: 12,
   cols: 6,
   garbage: 6,
+  sturdyGarbage: 7,
+  crackedGarbage: 8,
+  isGarbage: (value) => value === 6 || value === 7 || value === 8,
 });
 
 assert.strictEqual(renderer.resize(), 40);
@@ -53,6 +56,8 @@ const board = Array.from({ length: 12 }, () => Array(6).fill(0));
 board[11][0] = 1;
 board[10][0] = 1;
 board[11][1] = 6;
+board[10][2] = 7;
+board[11][2] = 8;
 renderer.startPop([[0, 11]], 280);
 renderer.startFall(new Map([['0,10', 2]]), 190);
 renderer.startGarbageFall([[1, 11]], 590);
@@ -61,7 +66,7 @@ renderer.addRemoteLink([0, 11], [1, 11]);
 renderer.burst(0, 11, 1, 2);
 renderer.update(0.016);
 assert.doesNotThrow(() => renderer.drawBoard({ board, ghostCells: [], activeCells: [] }));
-assert.ok(metrics.radialGradients > 0, 'garbage cells should use the gray radial-gradient renderer');
+assert.ok(metrics.radialGradients >= 3, 'all garbage types should use the gray radial-gradient renderer');
 renderer.resetEffects();
 
 console.log('puyo renderer tests passed');

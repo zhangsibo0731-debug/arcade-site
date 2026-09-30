@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 8;
+  const VERSION = 10;
 
   function create(options) {
     const challengeRules = options.challengeRules;
@@ -10,6 +10,13 @@
     const boardRules = options.boardRules;
     const garbage = options.garbage;
     const rows = options.rows;
+
+    function hitsFor(board, cells) {
+      return cells.map((cell) => {
+        const damage = challengeRules.damageGarbage(board[cell[1]][cell[0]]);
+        return { cell, from: damage.from, to: damage.to, destroyed: damage.destroyed };
+      });
+    }
 
     function resolveClear(view) {
       if (!view.active) return { garbageCells: [], remoteLinks: [], triggered: [], cleanerUsed: !!view.cleanerUsed };
@@ -37,7 +44,8 @@
           triggered.push('colorBurst');
         }
       }
-      return { garbageCells, remoteLinks, triggered, cleanerUsed };
+      const garbageHits = hitsFor(view.board, garbageCells);
+      return { garbageCells, garbageHits, destroyedGarbage: garbageHits.filter((hit) => hit.destroyed).length, remoteLinks, triggered, cleanerUsed };
     }
 
     function settleTurn(view) {
@@ -66,12 +74,14 @@
       runBuild = rogueliteRules.offerBonus(runBuild, challengeState.completed, view.random);
       const occupancy = challengeRules.boardOccupancy(view.board);
       let removed = [];
+      let rewardHits = [];
       let rewardCount = 0;
       let scoreBonus = upgradeResult.scoreBonus;
       if (outcome.reward) {
         rewardCount = challengeRules.stageRewardForOccupancy(occupancy, outcome.specialCompleted);
         removed = boardRules.garbageCandidates(view.board, new Set(), []).slice(0, rewardCount);
-        challengeState.garbageCleared += removed.length;
+        rewardHits = hitsFor(view.board, removed);
+        challengeState.garbageCleared += rewardHits.filter((hit) => hit.destroyed).length;
         scoreBonus += outcome.bonus;
       }
       let release = { state: challengeState, source: '', requested: 0, released: 0, carried: 0, cap: challengeRules.garbageCapForOccupancy(occupancy) };
@@ -93,7 +103,10 @@
         if (buffered) triggered.push('buffer');
       }
       const incomingCount = pressure;
-      const placed = incomingCount ? challengeRules.placeGarbage(view.board, incomingCount, view.random, garbage) : [];
+      const incomingValues = incomingCount
+        ? challengeRules.garbageValuesForDrop(challengeState.stage, incomingCount, view.random)
+        : [];
+      const placed = incomingValues.length ? challengeRules.placeGarbage(view.board, incomingValues, view.random, garbage) : [];
 
       const specialDebt = (outcome.specialPenalty || 0) + (outcome.entryGarbage || 0);
       if (specialDebt) {
@@ -106,7 +119,9 @@
 
       const occupancyTier = release.cap === 1 ? 'critical' : (release.cap === 2 ? 'crowded' : 'normal');
       const pressurePrefix = occupancyTier === 'critical' ? '临界空间 · ' : (occupancyTier === 'crowded' ? '棋盘拥挤 · ' : '');
-      const clearText = removed.length ? ' · 清障 ×' + removed.length + (deferredByReward.deferred ? ' · 到期干扰延后 1 组' : '') : '';
+      const rewardDestroyed = rewardHits.filter((hit) => hit.destroyed).length;
+      const rewardCracked = rewardHits.length - rewardDestroyed;
+      const clearText = removed.length ? (rewardDestroyed ? ' · 清障 ×' + rewardDestroyed : '') + (rewardCracked ? ' · 破甲 ×' + rewardCracked : '') + (deferredByReward.deferred ? ' · 到期干扰延后 1 组' : '') : '';
       let message = null;
       if (outcome.enteredSpecial) message = { text: '阶段 ' + stageBefore + ' 完成' + clearText + '\n特殊关：' + challengeState.special.title, complete: true, duration: 1650 };
       else if (outcome.specialCompleted) message = { text: '特殊关完成 → 阶段 ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (itemReward.granted ? ' · 混色瓶 +1' : ' · 混色瓶已满'), complete: true, duration: 1650 };
@@ -126,8 +141,10 @@
         modifiers,
         triggered,
         removed,
+        rewardHits,
         rewardCount,
         placed,
+        incomingValues,
         incomingCount,
         requestedGarbage: release.released,
         carriedGarbage: release.carried,

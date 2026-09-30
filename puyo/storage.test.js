@@ -14,6 +14,8 @@ const storage = global.PuyoStorage.create({
   rows: 2,
   cols: 2,
   garbage: 6,
+  maxCell: 8,
+  isGarbage: (value) => value === 6 || value === 7 || value === 8,
   colorCount: 5,
   rotationCount: 4,
   keys: {
@@ -34,7 +36,8 @@ storage.writeMuted(true);
 assert.strictEqual(storage.readMuted(), true);
 
 assert.strictEqual(storage.validBoard([[0, 1], [5, 6]]), true);
-assert.strictEqual(storage.validBoard([[0, 1], [5, 7]]), false);
+assert.strictEqual(storage.validBoard([[0, 1], [7, 8]]), true);
+assert.strictEqual(storage.validBoard([[0, 1], [5, 9]]), false);
 assert.strictEqual(storage.validColors([1, 5]), true);
 assert.strictEqual(storage.validColors([0, 5]), false);
 assert.strictEqual(storage.validPair({ x: 1, y: -1, rot: 3, colors: [1, 5] }), true);
@@ -45,11 +48,16 @@ storage.save('challenge', { savedAt: 20, board: [[0, 6], [1, 2]] });
 assert.strictEqual(storage.loadLatest().gameType, 'challenge');
 assert.strictEqual(storage.loadLatest().savedAt, 20);
 
+storage.save('classic', { savedAt: 25, board: [[0, 7], [1, 2]] });
+assert.strictEqual(storage.loadLatest(), null);
+storage.save('challenge', { savedAt: 26, board: [[0, 8], [1, 2]] });
+assert.strictEqual(storage.loadLatest().gameType, 'challenge');
+
 // The active session wins even when another mode has a newer timestamp.
 storage.save('classic', { savedAt: 30, board: [[0, 0], [1, 2]] });
 data.set('active-save', 'challenge');
 assert.strictEqual(storage.loadLatest().gameType, 'challenge');
-assert.strictEqual(storage.loadLatest().savedAt, 20);
+assert.strictEqual(storage.loadLatest().savedAt, 26);
 
 data.set('save', JSON.stringify({ savedAt: 30, board: [[0, 6], [1, 2]] }));
 assert.strictEqual(storage.loadLatest().gameType, 'challenge');

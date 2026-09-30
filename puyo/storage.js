@@ -1,12 +1,14 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 2;
+  const VERSION = 3;
 
   function create(options) {
     const rows = options.rows;
     const cols = options.cols;
     const garbage = options.garbage;
+    const maxCell = Number.isInteger(options.maxCell) ? options.maxCell : garbage;
+    const isGarbage = typeof options.isGarbage === 'function' ? options.isGarbage : (value) => value === garbage;
     const colorCount = options.colorCount;
     const rotationCount = options.rotationCount;
     const keys = options.keys;
@@ -39,7 +41,7 @@
     function validBoard(value) {
       return Array.isArray(value) && value.length === rows && value.every((row) =>
         Array.isArray(row) && row.length === cols && row.every((cell) =>
-          Number.isInteger(cell) && cell >= 0 && cell <= garbage
+          Number.isInteger(cell) && cell >= 0 && cell <= maxCell
         )
       );
     }
@@ -69,7 +71,7 @@
       try {
         const value = JSON.parse(global.localStorage.getItem(typeKey('save', type)));
         if (!value || !validBoard(value.board)) return null;
-        if (type === 'classic' && value.board.some((row) => row.includes(garbage))) return null;
+        if (type === 'classic' && value.board.some((row) => row.some(isGarbage))) return null;
         return Object.assign({}, value, { gameType: type });
       } catch (e) { return null; }
     }

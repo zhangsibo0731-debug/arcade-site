@@ -145,4 +145,30 @@ const specialBuild = global.PuyoRogueliteRules.offerRelic(settledBuild, () => 0)
 assert.equal(specialBuild.pendingRelicChoice.length, 2);
 assert.ok(specialBuild.pendingRelicChoice.every((id) => global.PuyoRogueliteRules.RELIC_BY_ID[id].rarity === 'relic'));
 
+// One placed pair owns one Cleaner charge. Stage reward cascades cannot consume a
+// second charge or advance the next mission, and the following pair starts fresh.
+const lifecycleEffects = global.PuyoChallengeEffects.create({
+  challengeRules: global.PuyoChallengeRules,
+  rogueliteRules: global.PuyoRogueliteRules,
+  activeItemRules: global.PuyoActiveItemRules,
+  boardRules,
+  garbage,
+  rows,
+});
+const lifecycleBoard = boardRules.emptyBoard();
+lifecycleBoard[11] = [1, 1, 1, 1, garbage, 0];
+lifecycleBoard[9][5] = garbage;
+const lifecycleCells = [[0, 11], [1, 11], [2, 11], [3, 11]];
+const lifecycleGroups = [{ color: 1, cells: lifecycleCells }];
+const lifecycleModifiers = global.PuyoRogueliteRules.modifiers({ upgrades: { cleaner: 1, colorBurst: 1 } });
+const playerClear = lifecycleEffects.resolveClear({ active: true, board: lifecycleBoard, cells: lifecycleCells, groups: lifecycleGroups, modifiers: lifecycleModifiers, cleanerUsed: false, allowCleaner: true });
+assert.ok(playerClear.triggered.includes('cleaner'));
+assert.equal(playerClear.cleanerUsed, true);
+const rewardClear = lifecycleEffects.resolveClear({ active: true, board: lifecycleBoard, cells: lifecycleCells, groups: lifecycleGroups, modifiers: lifecycleModifiers, cleanerUsed: false, allowCleaner: false });
+assert.ok(!rewardClear.triggered.includes('cleaner'));
+assert.equal(rewardClear.cleanerUsed, false);
+assert.equal(global.PuyoChallengeRules.missionProgress({ type: 'garbageClear', target: 2, progress: 0 }, session.freshTurnStats()), 0);
+const nextPairClear = lifecycleEffects.resolveClear({ active: true, board: lifecycleBoard, cells: lifecycleCells, groups: lifecycleGroups, modifiers: lifecycleModifiers, cleanerUsed: session.freshTurnStats().cleanerUsed, allowCleaner: true });
+assert.ok(nextPairClear.triggered.includes('cleaner'));
+
 console.log('puyo flow regression tests passed');

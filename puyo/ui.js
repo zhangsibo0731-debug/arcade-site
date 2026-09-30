@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 12;
+  const VERSION = 13;
 
   function create(options) {
     const elements = options.elements;
@@ -15,6 +15,7 @@
     let allClearTimer = null;
     let bottleTimer = null;
     const resultQueue = [];
+    const resultWaiters = [];
     let resultActive = false;
     const levels = ['', 'Ⅰ', 'Ⅱ', 'Ⅲ'];
 
@@ -171,7 +172,11 @@
     }
 
     function playNextResult() {
-      if (resultActive || !resultQueue.length) return;
+      if (resultActive) return;
+      if (!resultQueue.length) {
+        resultWaiters.splice(0).forEach((callback) => callback());
+        return;
+      }
       resultActive = true;
       const item = resultQueue.shift();
       elements.chainResult.textContent = item.text;
@@ -191,6 +196,12 @@
     function queueResult(item) {
       resultQueue.push(item);
       playNextResult();
+    }
+
+    function afterResults(callback) {
+      if (typeof callback !== 'function') return;
+      if (resultActive || resultQueue.length) resultWaiters.push(callback);
+      else callback();
     }
 
     function showChallengeMessage(text, complete, duration) {
@@ -216,7 +227,7 @@
 
     function showChainResult(result) {
       const summary = typeof result === 'number' ? { chain: result } : result;
-      const headline = (summary.isBest ? '连锁新纪录！· ' : '') + summary.chain + ' CHAIN!';
+      const headline = (summary.isBest ? '连锁新纪录！· ' : '') + (summary.rewardChain ? '奖励连锁 · ' : '') + summary.chain + ' CHAIN!';
       const details = [];
       if (summary.cleared) details.push('消除 ' + summary.cleared + ' 颗');
       if (summary.score) details.push('得分 +' + summary.score.toLocaleString('zh-CN'));
@@ -274,6 +285,7 @@
       clearTimeout(allClearTimer);
       clearTimeout(bottleTimer);
       resultQueue.length = 0;
+      resultWaiters.length = 0;
       resultActive = false;
       elements.chainPop.hidden = true;
       elements.chainResult.hidden = true;
@@ -304,7 +316,7 @@
       elements.contractAccept.addEventListener('click', () => actions.decideContract(true));
     }
 
-    return Object.freeze({ selectGameType, renderHud, renderChallenge, renderUpgradeChoices, renderBuildDetails, showContract, hideContract, showOverlay, showChallengeMessage, showChain, showChainResult, showLevel, showAllClear, showBottleTransform, flashGarbageDefense, resetTransient, bindActions });
+    return Object.freeze({ selectGameType, renderHud, renderChallenge, renderUpgradeChoices, renderBuildDetails, showContract, hideContract, showOverlay, showChallengeMessage, showChain, showChainResult, afterResults, showLevel, showAllClear, showBottleTransform, flashGarbageDefense, resetTransient, bindActions });
   }
 
   global.PuyoUI = Object.freeze({ VERSION, create });
