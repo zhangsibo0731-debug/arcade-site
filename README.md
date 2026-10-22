@@ -70,6 +70,7 @@ pacman/                   吃豆人
 puyo/                     噗呦噗呦
 sudoku/                   数独
 tetris/                   俄罗斯方块
+wechat-minigame/          微信小游戏首版（噗呦噗呦）
 cloudflare/arcade-api/    Cloudflare Worker 与 D1 排行榜入口
 cloudbase/arcade-gateway/ CloudBase 国内排行榜网关
 server-contracts/         两套服务端共同遵循的接口契约
@@ -89,6 +90,18 @@ tools/music/              音乐制作与渲染工具
 - 排行榜以 Cloudflare D1 为唯一数据源；
 - CloudBase 网关是国内主要入口，Cloudflare Worker 是备用入口；
 - 服务端通过 GitHub Actions 手动部署，部署前会运行测试，部署后会检查线上接口。
+
+### 微信小游戏
+
+`wechat-minigame/` 是独立的微信小游戏工程，不影响现有网页版。首次导入微信开发者工具前执行：
+
+```bash
+node wechat-minigame/scripts/sync-puyo-rules.js
+node wechat-minigame/src/puyo-game.test.js
+node wechat-minigame/scripts/check-package.js
+```
+
+详细的 AppID、合法域名和体验版配置见该目录内的 README 与发布清单。
 
 ## 使用说明
 

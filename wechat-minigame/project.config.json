@@ -1,0 +1,19 @@
+{
+  "appid": "touristappid",
+  "compileType": "game",
+  "projectname": "moonlit-arcade",
+  "miniprogramRoot": "./",
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": false,
+    "checkSiteMap": false
+  },
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "scripts" },
+      { "type": "suffix", "value": ".test.js" },
+      { "type": "suffix", "value": ".md" }
+    ]
+  }
+}

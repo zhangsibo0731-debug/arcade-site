@@ -1,0 +1,167 @@
+(function (global) {
+  'use strict';
+
+  const VERSION = 10;
+
+  function create(options) {
+    const challengeRules = options.challengeRules;
+    const rogueliteRules = options.rogueliteRules;
+    const activeItemRules = options.activeItemRules;
+    const boardRules = options.boardRules;
+    const garbage = options.garbage;
+    const rows = options.rows;
+
+    function hitsFor(board, cells) {
+      return cells.map((cell) => {
+        const damage = challengeRules.damageGarbage(board[cell[1]][cell[0]]);
+        return { cell, from: damage.from, to: damage.to, destroyed: damage.destroyed };
+      });
+    }
+
+    function resolveClear(view) {
+      if (!view.active) return { garbageCells: [], remoteLinks: [], triggered: [], cleanerUsed: !!view.cleanerUsed };
+      let garbageCells = challengeRules.adjacentGarbage(view.board, view.cells, garbage);
+      const excluded = new Set(garbageCells.map((position) => position[0] + ',' + position[1]));
+      const remoteLinks = [];
+      const triggered = [];
+      let cleanerUsed = !!view.cleanerUsed;
+      if (view.allowCleaner !== false && !cleanerUsed && garbageCells.length && view.modifiers.cleanerClear) {
+        cleanerUsed = true;
+        const cleanerCells = boardRules.garbageCandidates(view.board, excluded, view.cells).slice(0, view.modifiers.cleanerClear);
+        cleanerCells.forEach((position) => excluded.add(position[0] + ',' + position[1]));
+        garbageCells = garbageCells.concat(cleanerCells);
+        if (cleanerCells.length) triggered.push('cleaner');
+      }
+      if (view.modifiers.colorBurstThreshold && view.groups.some((group) => group.cells.length >= view.modifiers.colorBurstThreshold)) {
+        const burstCells = boardRules.garbageCandidates(view.board, excluded, view.cells).slice(0, view.modifiers.colorBurstClear);
+        if (burstCells.length) {
+          const source = view.cells[Math.floor(view.cells.length / 2)];
+          burstCells.forEach((target) => {
+            excluded.add(target[0] + ',' + target[1]);
+            remoteLinks.push({ from: source, to: target });
+          });
+          garbageCells = garbageCells.concat(burstCells);
+          triggered.push('colorBurst');
+        }
+      }
+      const garbageHits = hitsFor(view.board, garbageCells);
+      return { garbageCells, garbageHits, destroyedGarbage: garbageHits.filter((hit) => hit.destroyed).length, remoteLinks, triggered, cleanerUsed };
+    }
+
+    function settleTurn(view) {
+      const stageBefore = view.challengeState.stage;
+      const occupiedTop = view.board.findIndex((row) => row.some(Boolean));
+      view.turnStats.boardHeight = occupiedTop < 0 ? 0 : rows - occupiedTop;
+      const modifiers = rogueliteRules.modifiers(view.runBuild);
+      const upgradeResult = rogueliteRules.resolveTurnUpgrades(view.runBuild, view.turnStats, stageBefore);
+      const triggered = upgradeResult.triggered.slice();
+      view.turnStats.extraDefense = (view.turnStats.extraDefense || 0) + upgradeResult.extraDefense;
+      view.turnStats.scoreGained = (view.turnStats.scoreGained || 0) + upgradeResult.scoreBonus;
+      const outcome = challengeRules.resolveTurn(view.challengeState, view.turnStats, view.random);
+      let challengeState = outcome.state;
+      let runBuild = upgradeResult.state;
+      let itemState = activeItemRules.normalize(view.itemState);
+      let itemReward = { granted: 0, full: false };
+      const contractResult = rogueliteRules.resolveContract(runBuild, stageBefore, outcome.completed);
+      runBuild = contractResult.state;
+      if (outcome.specialCompleted) {
+        runBuild = rogueliteRules.offerRelic(runBuild, view.random);
+        itemReward = activeItemRules.grant(itemState, activeItemRules.MIX_BOTTLE, 1);
+        itemState = itemReward.state;
+      }
+      else if (outcome.completed) runBuild = rogueliteRules.offer(runBuild, challengeState.completed, view.random);
+      if (outcome.completed) runBuild = rogueliteRules.offerContract(runBuild, challengeState.stage, !!challengeState.special);
+      runBuild = rogueliteRules.offerBonus(runBuild, challengeState.completed, view.random);
+      const occupancy = challengeRules.boardOccupancy(view.board);
+      let removed = [];
+      let rewardHits = [];
+      let rewardCount = 0;
+      let scoreBonus = upgradeResult.scoreBonus;
+      if (outcome.reward) {
+        rewardCount = challengeRules.stageRewardForOccupancy(occupancy, outcome.specialCompleted);
+        removed = boardRules.garbageCandidates(view.board, new Set(), []).slice(0, rewardCount);
+        rewardHits = hitsFor(view.board, removed);
+        challengeState.garbageCleared += rewardHits.filter((hit) => hit.destroyed).length;
+        scoreBonus += outcome.bonus;
+      }
+      let release = { state: challengeState, source: '', requested: 0, released: 0, carried: 0, cap: challengeRules.garbageCapForOccupancy(occupancy) };
+      let deferredByReward = { source: '', deferred: 0 };
+      if (removed.length) {
+        deferredByReward = challengeRules.deferDueGarbage(challengeState, 1);
+        challengeState = deferredByReward.state;
+      } else {
+        release = challengeRules.releaseGarbage(challengeState, occupancy);
+        challengeState = release.state;
+      }
+
+      let pressure = release.released;
+      let buffered = 0;
+      if (pressure && modifiers.bufferReduction && runBuild.bufferedStage !== challengeState.stage) {
+        pressure = Math.max(0, pressure - modifiers.bufferReduction);
+        buffered = release.released - pressure;
+        runBuild.bufferedStage = challengeState.stage;
+        if (buffered) triggered.push('buffer');
+      }
+      const incomingCount = pressure;
+      const incomingValues = incomingCount
+        ? challengeRules.garbageValuesForDrop(challengeState.stage, incomingCount, view.random)
+        : [];
+      const placed = incomingValues.length ? challengeRules.placeGarbage(view.board, incomingValues, view.random, garbage) : [];
+
+      const specialDebt = (outcome.specialPenalty || 0) + (outcome.entryGarbage || 0);
+      if (specialDebt) {
+        const specialDelay = occupancy >= challengeRules.OCCUPANCY_HIGH ? challengeRules.CRITICAL_DEFERRED_DELAY : challengeRules.DEFERRED_DELAY;
+        challengeState = challengeRules.enqueueDeferred(challengeState, specialDebt, specialDelay);
+      }
+      if (outcome.regularGarbage) {
+        challengeState.pendingGarbage = Math.min(challengeRules.MAX_GARBAGE_DEBT, challengeState.pendingGarbage + outcome.regularGarbage);
+      }
+
+      const occupancyTier = release.cap === 1 ? 'critical' : (release.cap === 2 ? 'crowded' : 'normal');
+      const pressurePrefix = occupancyTier === 'critical' ? '临界空间 · ' : (occupancyTier === 'crowded' ? '棋盘拥挤 · ' : '');
+      const rewardDestroyed = rewardHits.filter((hit) => hit.destroyed).length;
+      const rewardCracked = rewardHits.length - rewardDestroyed;
+      const clearText = removed.length ? (rewardDestroyed ? ' · 清障 ×' + rewardDestroyed : '') + (rewardCracked ? ' · 破甲 ×' + rewardCracked : '') + (deferredByReward.deferred ? ' · 到期干扰延后 1 组' : '') : '';
+      let message = null;
+      if (outcome.enteredSpecial) message = { text: '阶段 ' + stageBefore + ' 完成' + clearText + '\n特殊关：' + challengeState.special.title, complete: true, duration: 1650 };
+      else if (outcome.specialCompleted) message = { text: '特殊关完成 → 阶段 ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (itemReward.granted ? ' · 混色瓶 +1' : ' · 混色瓶已满'), complete: true, duration: 1650 };
+      else if (outcome.completed) message = { text: '阶段 ' + stageBefore + ' 完成 → 阶段 ' + challengeState.stage + clearText + '\n奖励 +' + outcome.bonus + (contractResult.rewarded ? ' · 契约强化已获得' : '') + (outcome.canceled ? ' · 抵消 ×' + outcome.canceled : ''), complete: true, duration: 1550 };
+      else if (outcome.specialFailed) message = { text: '特殊关失败 · 阶段 ' + stageBefore + ' 保持不变\n惩罚干扰 ×' + outcome.specialPenalty + ' · 2组后落下', complete: false, duration: 1900 };
+      else if (placed.length) message = { text: pressurePrefix + (outcome.canceled ? '抵消 × ' + outcome.canceled + ' · ' : '') + (buffered ? '缓冲 × ' + buffered + ' · ' : '') + '干扰落下 × ' + placed.length, complete: false };
+      else if (buffered) message = { text: '缓冲层抵消 · × ' + buffered, complete: true };
+      else if (outcome.canceled) message = { text: (outcome.deferredCanceled ? '近期干扰抵消' : (outcome.pressureTriggered ? '干扰全部抵消!' : '干扰抵消')) + ' · × ' + outcome.canceled, complete: outcome.pressureTriggered };
+      else if (outcome.expired) message = { text: '任务失败 · 阶段 ' + stageBefore + ' 保持不变\n已更换新任务', complete: false, duration: 1800 };
+      return {
+        challengeState,
+        runBuild,
+        itemState,
+        itemReward,
+        outcome,
+        contractRewarded: contractResult.rewarded,
+        modifiers,
+        triggered,
+        removed,
+        rewardHits,
+        rewardCount,
+        placed,
+        incomingValues,
+        incomingCount,
+        requestedGarbage: release.released,
+        carriedGarbage: release.carried,
+        releaseSource: release.source,
+        deferredByReward: deferredByReward.deferred,
+        occupancy,
+        occupancyTier,
+        buffered,
+        scoreBonus,
+        message,
+        defenseFlash: !!(outcome.canceled || buffered),
+        waitsForBoard: removed.length > 0 || placed.length > 0,
+      };
+    }
+
+    return Object.freeze({ resolveClear, settleTurn });
+  }
+
+  global.PuyoChallengeEffects = Object.freeze({ VERSION, create });
+})(typeof window !== 'undefined' ? window : globalThis);
