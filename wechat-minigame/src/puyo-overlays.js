@@ -90,14 +90,15 @@ function drawMission(game) {
 
 function drawGameOver(game) {
   const ui = createUI(game.ctx);
-  const top = game.safe.top + 40;
-  const height = Math.min(490, game.safe.bottom - top - 20);
+  const rows = presentation.resultRows(game);
+  const rowCount = Math.ceil(rows.length / 2);
+  const availableHeight = Math.min(game.safe.bottom, game.h) - game.safe.top;
+  const height = Math.min(304 + Math.max(0, rowCount - 1) * 48, availableHeight - 40);
+  const top = game.safe.top + (availableHeight - height) / 2;
   const result = game.result || {};
   ui.panel({ x: 22, y: top, w: game.w - 44, h: height }, { fill: '#211b3b' });
   ui.text('游戏结束', game.w / 2, top + 34, 25, ui.theme.text, 'center', 800);
   ui.text(game.gameType === 'challenge' ? '挑战模式' : '经典模式', game.w / 2, top + 64, 11, ui.theme.soft, 'center');
-  const rows = presentation.resultRows(game);
-  const rowCount = Math.ceil(rows.length / 2);
   const rowGap = Math.min(48, (height - 304) / Math.max(1, rowCount - 1));
   rows.forEach(([label, value], index) => {
     const x = 38 + index % 2 * (game.w - 76) / 2;
@@ -116,8 +117,9 @@ function drawGameOver(game) {
 function drawAudio(game) {
   const ui = createUI(game.ctx);
   const settings = game.audio.settings();
-  const top = game.safe.top + 46;
-  const height = Math.min(446, game.safe.bottom - top - 20);
+  const availableHeight = Math.min(game.safe.bottom, game.h) - game.safe.top;
+  const height = Math.min(376, availableHeight - 40);
+  const top = game.safe.top + (availableHeight - height) / 2;
   ui.panel({ x: 22, y: top, w: game.w - 44, h: height }, { fill: '#211b3b' });
   ui.text('声音与反馈', game.w / 2, top + 33, 23, ui.theme.text, 'center', 800);
   ui.text('点击音量切换档位，设置自动保存', game.w / 2, top + 63, 10, ui.theme.soft, 'center');

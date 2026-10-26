@@ -170,6 +170,10 @@ for (const [width, height, top, bottom] of [[320,568,47,534],[375,667,20,647],[3
   const texts = [];
   context.fillText = (text, x, y) => texts.push({ text, x, y });
   game.mode = 'gameover'; game.result = { newHighScore: true, newBestChain: true }; game.draw();
+  const resultBack = game.buttons.find((item) => item.action === 'lobby').box;
+  const resultHeight = Math.min(448, bottom - top - 40);
+  const resultTop = resultBack.y - resultHeight + 49;
+  assert.ok(Math.abs((resultTop - top) - (bottom - resultTop - resultHeight)) < 1, 'game-over panel must center in the safe area');
   const record = texts.find((item) => item.text.startsWith('新纪录'));
   const statisticValues = texts.filter((item) => /^(0|1)( 颗| 次)?$/.test(item.text) && item.y < record.y);
   assert.ok(statisticValues.every((item) => item.y <= record.y - 20), 'record notice must not overlap statistics');
@@ -195,5 +199,16 @@ for (const [width, height, top, bottom] of [[320,568,47,534],[375,667,20,647],[3
   assert.ok(Math.abs((panelTop - top) - (bottom - panelBottom)) < 1, 'choice panel must center in safe area');
   assert.ok(panelTop >= top + 19 && panelBottom <= bottom - 19, 'choice panel needs safe margins');
   assert.ok(choices.every((box) => box.h >= 100 && box.h <= 128), 'cards must remain readable without excess blank space');
+  for (const mode of ['paused', 'contract', 'audio']) {
+    game.mode = mode === 'contract' ? 'choice' : mode;
+    game.choiceKind = mode === 'contract' ? 'contract' : '';
+    game.draw();
+    const endAction = mode === 'audio' ? 'closeAudio' : mode === 'contract' ? 'contractNo' : 'lobby';
+    const last = game.buttons.find((item) => item.action === endAction).box;
+    const height = mode === 'audio' ? Math.min(376, bottom - top - 40) : 250;
+    const panelTop = mode === 'audio' ? last.y - height + 51 : last.y - 197;
+    assert.ok(Math.abs((panelTop - top) - (bottom - panelTop - height)) < 1, mode + ' dialog must center within safe area');
+    assert.ok(game.buttons.every((item) => item.box.y >= panelTop && item.box.y + item.box.h <= panelTop + height), mode + ' buttons must stay inside panel');
+  }
 }
 console.log('wechat minigame puyo tests passed');

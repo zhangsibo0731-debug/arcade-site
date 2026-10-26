@@ -299,7 +299,9 @@ class PuyoGame {
   }
 
   drawDialog(title, sub, actions) {
-    const box = { x: 28, y: this.h * .28, w: this.w - 56, h: 250 };
+    const safeBottom = Math.min(this.safe.bottom, this.h);
+    const height = 146 + actions.length * 52;
+    const box = { x: 28, y: this.safe.top + (safeBottom - this.safe.top - height) / 2, w: this.w - 56, h: height };
     this.roundRect(box.x, box.y, box.w, box.h, 22, 'rgba(31,25,56,.98)', 'rgba(255,255,255,.18)');
     this.text(title, this.w / 2, box.y + 58, 25, '#fff', 'center', 800);
     this.wrapText(sub, box.x + 28, box.y + 91, box.w - 56, 12, '#b9b2c8', 'center');
