@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 5;
+  const VERSION = 6;
   const CHAIN_NOTES = [72, 74, 76, 79, 81, 84, 86, 88, 91, 93];
   const midi = (note) => 440 * Math.pow(2, (note - 69) / 12);
 
@@ -12,28 +12,62 @@
     const soundOffIcon = options.soundOffIcon;
     let muted = storage.readMuted();
     let context = null;
+    let destination = null;
+    const voices = new Map();
+    const isMuted = () => typeof options.isMuted === 'function' ? options.isMuted() : muted;
 
     function applyMuted() {
-      soundOnIcon.hidden = muted;
-      soundOffIcon.hidden = !muted;
-      button.setAttribute('aria-label', muted ? '开启声音' : '关闭声音');
+      if (soundOnIcon) soundOnIcon.hidden = isMuted();
+      if (soundOffIcon) soundOffIcon.hidden = !isMuted();
+      if (button) button.setAttribute('aria-label', isMuted() ? '开启声音' : '关闭声音');
     }
 
     function ensure() {
-      if (muted) return null;
+      if (isMuted()) return null;
       if (context) return context;
       try {
         const AudioContext = global.AudioContext || global.webkitAudioContext;
-        if (!AudioContext) return null;
-        context = new AudioContext();
+        if (!AudioContext && !options.createContext) return null;
+        context = options.createContext ? options.createContext() : new AudioContext();
+        if (!context) return null;
+        destination = options.destinationFor ? options.destinationFor(context) : context.destination;
         return context;
-      } catch (e) { return null; }
+      } catch (e) { context = null; return null; }
+    }
+
+    function release(voice) {
+      const gain = voices.get(voice);
+      voices.delete(voice);
+      try { voice.disconnect(); } catch (e) {}
+      try { if (gain) gain.disconnect(); } catch (e) {}
+    }
+
+    function route(voice, gain) {
+      if (voices.size >= 64) {
+        const oldest = voices.keys().next().value;
+        try { oldest.stop(); } catch (e) {}
+        release(oldest);
+      }
+      voice.connect(gain);
+      gain.connect(destination);
+      voices.set(voice, gain);
+      voice.onended = () => release(voice);
+    }
+
+    function stop() {
+      Array.from(voices.keys()).forEach((voice) => {
+        try { voice.stop(); } catch (e) {}
+        release(voice);
+      });
     }
 
     function play(name, chain) {
       const audioContext = ensure();
       if (!audioContext) return;
-      if (audioContext.state === 'suspended') audioContext.resume();
+      if (audioContext.state === 'suspended') {
+        const resumed = audioContext.resume();
+        if (resumed && resumed.catch) resumed.catch(() => {});
+      }
       const now = audioContext.currentTime;
       const addNote = (note, delay, length, volume, wave) => {
         const voice = audioContext.createOscillator();
@@ -43,8 +77,7 @@
         voiceGain.gain.setValueAtTime(0.001, now + delay);
         voiceGain.gain.exponentialRampToValueAtTime(volume, now + delay + .012);
         voiceGain.gain.exponentialRampToValueAtTime(.001, now + delay + length);
-        voice.connect(voiceGain);
-        voiceGain.connect(audioContext.destination);
+        route(voice, voiceGain);
         voice.start(now + delay);
         voice.stop(now + delay + length + .02);
       };
@@ -71,8 +104,7 @@
       else if (name === 'chainEnd') oscillator.frequency.exponentialRampToValueAtTime(freq * 1.2, now + dur);
       gain.gain.setValueAtTime(vol, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
+      route(oscillator, gain);
       oscillator.start(now);
       oscillator.stop(now + dur + 0.02);
       if (name === 'chain' || name === 'chainEnd' || name === 'chainBest' || name === 'level' || name === 'allclear' || name === 'potion') {
@@ -83,8 +115,7 @@
         upperGain.gain.setValueAtTime(0.001, now);
         upperGain.gain.exponentialRampToValueAtTime(vol * 0.7, now + 0.06);
         upperGain.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.08);
-        upper.connect(upperGain);
-        upperGain.connect(audioContext.destination);
+        route(upper, upperGain);
         upper.start(now + 0.05);
         upper.stop(now + dur + 0.1);
       }
@@ -110,12 +141,13 @@
       muted = !muted;
       storage.writeMuted(muted);
       applyMuted();
+      if (muted) stop();
       if (!muted) ensure();
       return muted;
     }
 
     applyMuted();
-    return Object.freeze({ ensure, play, haptic, toggle, isMuted: () => muted });
+    return Object.freeze({ ensure, play, haptic, toggle, stop, isMuted });
   }
 
   global.PuyoAudio = Object.freeze({ VERSION, CHAIN_NOTES, create });

@@ -15,14 +15,18 @@ function create(platform, storage, version) {
     const name = cleanNickname(nickname);
     if (!name) return false;
     const current = profile();
-    storage.set(PROFILE_KEY, {
+    return storage.set(PROFILE_KEY, {
       playerId: current.playerId || ('wx-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)),
       nickname: name,
       optedIn: true,
-    });
-    return true;
+    }) !== false;
   }
-  function load() { return platform.request('/api/v1/leaderboard?game=puyo&mode=challenge'); }
+  function load() {
+    return platform.request('/api/v1/leaderboard?game=puyo&mode=challenge').then((data) => {
+      if (!data || !Array.isArray(data.entries)) throw new Error('排行榜数据格式异常，请稍后重试');
+      return data;
+    });
+  }
   function submit(result) {
     const current = profile();
     if (!current.optedIn || !current.nickname) return Promise.resolve({ skipped: true });

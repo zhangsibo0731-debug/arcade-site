@@ -26,5 +26,16 @@ assert.strictEqual(leaderboard.profile().nickname, '月夜玩家');
   assert.strictEqual(calls[0].path, '/api/v1/leaderboard?game=puyo&mode=challenge');
   assert.strictEqual(calls[1].options.data.score, 1234);
   assert.strictEqual(calls[1].options.data.gameVersion, 'test-1');
+  const failedStorage = leaderboardModule.create(platform, { get: () => ({}), set: () => false }, 'test');
+  assert.strictEqual(failedStorage.enable('月夜玩家'), false, 'failed persistence must not report registration success');
+  for (const data of [null, {}, { entries: {} }]) {
+    const malformed = leaderboardModule.create({ request: async () => data }, storage, 'test');
+    await assert.rejects(malformed.load(), /数据格式异常/);
+  }
+  const offline = leaderboardModule.create({ request: async () => { throw new Error('offline'); } }, storage, 'test');
+  await assert.rejects(offline.load(), /offline/);
+  await assert.rejects(offline.submit({ score: 10 }), /offline/);
+  const anonymous = leaderboardModule.create(platform, { get: () => ({}) }, 'test');
+  assert.deepStrictEqual(await anonymous.submit({ score: 10 }), { skipped: true });
   console.log('wechat minigame leaderboard tests passed');
 })().catch((error) => { console.error(error); process.exit(1); });

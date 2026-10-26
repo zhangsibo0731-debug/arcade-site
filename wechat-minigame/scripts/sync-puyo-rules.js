@@ -13,6 +13,11 @@ const files = [
   'roguelite-rules.js',
   'active-item-rules.js',
   'challenge-effects.js',
+  'session-state.js',
+  'game-session.js',
+  'storage.js',
+  'input.js',
+  'audio.js',
 ];
 
 const checkOnly = process.argv.includes('--check');

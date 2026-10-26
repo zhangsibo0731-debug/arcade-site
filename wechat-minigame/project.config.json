@@ -1,5 +1,5 @@
 {
-  "appid": "touristappid",
+  "appid": "wx651977169c7bb583",
   "compileType": "game",
   "projectname": "moonlit-arcade",
   "miniprogramRoot": "./",
@@ -7,13 +7,44 @@
     "es6": true,
     "minified": true,
     "urlCheck": false,
-    "checkSiteMap": false
+    "checkSiteMap": false,
+    "postcss": false,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "enhance": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
   },
   "packOptions": {
     "ignore": [
-      { "type": "folder", "value": "scripts" },
-      { "type": "suffix", "value": ".test.js" },
-      { "type": "suffix", "value": ".md" }
-    ]
-  }
+      {
+        "value": "scripts",
+        "type": "folder"
+      },
+      {
+        "value": ".test.js",
+        "type": "suffix"
+      },
+      {
+        "value": ".md",
+        "type": "suffix"
+      }
+    ],
+    "include": []
+  },
+  "simulatorPluginLibVersion": {},
+  "isGameTourist": false,
+  "editorSetting": {}
 }

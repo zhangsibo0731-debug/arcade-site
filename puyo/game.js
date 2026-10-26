@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoMusic || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules || !window.PuyoActiveItemRules || !window.PuyoLeaderboard) throw new Error('Puyo modules failed to load.');
+  if (!window.PuyoStorage || !window.PuyoAudio || !window.PuyoMusic || !window.PuyoBoardRules || !window.PuyoScoringRules || !window.PuyoRotationRules || !window.PuyoRenderer || !window.PuyoUI || !window.PuyoInput || !window.PuyoSessionState || !window.PuyoChallengeEffects || !window.PuyoChallengeRules || !window.PuyoRogueliteRules || !window.PuyoActiveItemRules || !window.PuyoGameSession || !window.PuyoGameSessionWebEffects || !window.PuyoLeaderboard) throw new Error('Puyo modules failed to load.');
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('board');
@@ -149,6 +149,7 @@
   const ensureAudio = audio.ensure;
   const play = audio.play;
   const haptic = audio.haptic;
+  const sharedEngineEnabled = new URLSearchParams(location.search).get('engine') !== 'legacy';
 
   let board = [];
   let pair = null;
@@ -189,6 +190,72 @@
   let buildReturnMode = 'playing';
   let lastCloudResult = null;
   let cloudUploadToken = 0;
+  let sharedEventLog = [];
+  const sharedSession = window.PuyoGameSession.create({
+    boardRules,
+    scoringRules,
+    rotationRules,
+    challengeRules,
+    rogueliteRules,
+    activeItemRules,
+    challengeEffects,
+    sessionState,
+    rotations: ROT,
+    random: Math.random,
+    now: Date.now,
+    rows: ROWS,
+    cols: COLS,
+  });
+  const sharedEffects = window.PuyoGameSessionWebEffects.create({
+    session: sharedSession,
+    renderer,
+    ui,
+    play,
+    haptic,
+    music,
+    onState: syncSharedState,
+  });
+
+  function syncSharedState(view, events) {
+    if (!sharedEngineEnabled || !view) return;
+    if (events && events.length) sharedEventLog = sharedEventLog.concat(events.map((event) => ({ id: event.id, type: event.type, choiceKind: event.choiceKind || '' }))).slice(-100);
+    const preserveBuildOverlay = mode === 'build' && !buildOverlay.hidden;
+    gameType = view.gameType;
+    board = view.board;
+    pair = view.pair;
+    queue = view.queue;
+    score = view.score;
+    hi = view.highScore;
+    level = view.level;
+    clearedTotal = view.clearedTotal;
+    runMaxChain = view.runMaxChain;
+    allClearCount = view.allClearCount;
+    activeDurationMs = view.activeDurationMs;
+    bestChain = view.bestChain;
+    hiAtStart = view.hiAtStart;
+    bestChainAtStart = view.bestChainAtStart;
+    challengeState = view.challengeState;
+    runBuild = view.runBuild;
+    itemState = view.itemState;
+    turnStats = view.turnStats;
+    mode = view.mode;
+    if (preserveBuildOverlay) mode = 'build';
+    resumeNeedsResolution = view.resumeResolution;
+    (events || []).forEach((event) => {
+      if (event.type === 'upgradeTriggered') flashUpgrade(event.upgradeId);
+      if (event.type === 'garbageDefense') flashGarbageDefense();
+      if (event.type === 'choiceOpened') {
+        if (event.choiceKind === 'contract') openContractChoice();
+        else openUpgradeChoice();
+      }
+      if (event.type === 'gameOver') gameOverFromShared(event);
+    });
+    if (events && events.length) {
+      updateHud();
+      drawNext();
+      updateChallengeHud();
+    }
+  }
 
   function freshTurnStats() {
     return sessionState.freshTurnStats();
@@ -231,6 +298,10 @@
     if (gameType !== 'challenge' || !Object.keys(runBuild.upgrades).length || !['playing', 'paused'].includes(mode)) return;
     if (input) input.stop();
     buildReturnMode = mode;
+    if (sharedEngineEnabled && mode === 'playing') {
+      sharedSession.dispatch({ type: 'pause' });
+      sharedEffects.pump();
+    }
     mode = 'build';
     btnPause.hidden = true;
     renderBuildDetails();
@@ -241,6 +312,10 @@
   function closeBuildOverlay() {
     if (mode !== 'build') return;
     buildOverlay.hidden = true;
+    if (sharedEngineEnabled && buildReturnMode === 'playing') {
+      sharedSession.dispatch({ type: 'resume' });
+      sharedEffects.pump();
+    }
     mode = buildReturnMode === 'paused' ? 'paused' : 'playing';
     btnPause.hidden = mode !== 'playing';
     lastT = performance.now();
@@ -313,7 +388,7 @@
   const emptyBoard = boardRules.emptyBoard;
 
   function colorCount() {
-    return level >= 6 ? 5 : 4;
+    return window.PuyoGameSession.colorCountForLevel(level);
   }
 
   function randomPair() {
@@ -448,6 +523,11 @@
   }
 
   function hardDrop() {
+    if (sharedEngineEnabled) {
+      sharedSession.dispatch({ type: 'hardDrop' });
+      sharedEffects.pump();
+      return;
+    }
     if (mode !== 'playing' || !pair) return;
     let distance = 0;
     while (tryMove(0, 1)) distance++;
@@ -748,11 +828,16 @@
   }
 
   function gravityInterval() {
-    return Math.max(0.18, 0.9 - (level - 1) * 0.055);
+    return window.PuyoGameSession.gravityIntervalMsForLevel(level) / 1000;
   }
 
   function update(dt) {
     renderer.update(dt);
+    if (sharedEngineEnabled) {
+      const sharedView = sharedSession.tick(dt * 1000);
+      sharedEffects.pump(sharedView);
+      return;
+    }
     if (mode !== 'playing' || !pair) return;
     gravityAcc += dt;
     if (gravityAcc >= gravityInterval()) {
@@ -762,18 +847,48 @@
     if (collidesAt(pair.x, pair.y + 1, pair.rot)) {
       lockAcc += dt;
       const buildModifiers = gameType === 'challenge' ? rogueliteRules.modifiers(runBuild) : rogueliteRules.modifiers({});
-      const lockMultiplier = buildModifiers.lockDelayMultiplier * (pair.swapLock ? buildModifiers.nextSwapLockMultiplier : 1);
+      const lockDelay = window.PuyoGameSession.lockDelayMsFor(buildModifiers, pair) / 1000;
+      const lockMultiplier = lockDelay / 0.48;
       if (lockMultiplier > 1 && lockAcc >= 0.48 && !pair.steadyNotified) {
         pair.steadyNotified = true;
         flashUpgrade(pair.swapLock ? 'nextSwap' : 'steadyHands');
       }
-      if (lockAcc >= 0.48 * lockMultiplier) lockPair();
+      if (lockAcc >= lockDelay) lockPair();
     } else {
       lockAcc = 0;
     }
   }
 
   function newGame() {
+    if (sharedEngineEnabled) {
+      resolveToken++;
+      sharedEffects.cancel();
+      resumeNeedsResolution = false;
+      gameType = selectedGameType;
+      hi = storage.readHighScore(gameType);
+      bestChain = storage.readBestChain(gameType);
+      hiAtStart = hi;
+      bestChainAtStart = bestChain;
+      lastCloudResult = null;
+      renderer.resetEffects();
+      triggeredUpgrades.clear();
+      upgradeFlashTimers.forEach((timer) => clearTimeout(timer));
+      upgradeFlashTimers.clear();
+      ui.resetTransient();
+      overlayEl.hidden = true;
+      resumeOverlay.hidden = true;
+      upgradeOverlay.hidden = true;
+      buildOverlay.hidden = true;
+      contractOverlay.hidden = true;
+      btnPause.hidden = false;
+      modePicker.hidden = true;
+      sharedSession.start(gameType, { highScore: hi, bestChain });
+      sharedEffects.pump();
+      saveState();
+      play('start');
+      music.start(musicSituation());
+      return;
+    }
     resolveToken++;
     resumeNeedsResolution = false;
     gameType = selectedGameType;
@@ -829,6 +944,23 @@
     music.stop();
     haptic([70, 45, 90]);
     updateHud();
+    if (lastCloudResult && leaderboard.readProfile().optedIn) submitCloudResult(lastCloudResult);
+  }
+
+  function gameOverFromShared(event) {
+    if (input) input.stop();
+    clearQuickTurnHint();
+    lastCloudResult = event.gameType === 'challenge' ? {
+      score: event.score,
+      stage: event.stage,
+      maxChain: event.maxChain,
+      durationMs: Math.max(1000, Math.round(event.durationMs)),
+      gameVersion: '55',
+    } : null;
+    clearState();
+    music.stop();
+    showOverlay('gameover');
+    btnPause.hidden = true;
     if (lastCloudResult && leaderboard.readProfile().optedIn) submitCloudResult(lastCloudResult);
   }
 
@@ -959,6 +1091,17 @@
 
   function togglePause() {
     if (input) input.stop();
+    if (sharedEngineEnabled) {
+      const command = mode === 'playing' ? 'pause' : mode === 'paused' ? 'resume' : '';
+      if (!command || !sharedSession.dispatch({ type: command })) return;
+      sharedEffects.pump();
+      if (command === 'pause') { music.pause(); saveState(); }
+      else { lastT = performance.now(); music.resume(); }
+      if (command === 'pause') setMode('paused');
+      else if (mode === 'playing') setMode('playing');
+      else { overlayEl.hidden = true; btnPause.hidden = true; updateChallengeHud(); }
+      return;
+    }
     if (mode === 'playing') {
       setMode('paused');
       music.pause();
@@ -980,6 +1123,11 @@
 
   function saveState() {
     if (mode !== 'playing' && mode !== 'paused' && mode !== 'choosing' && mode !== 'build' && mode !== 'contract') return;
+    if (sharedEngineEnabled) {
+      const snapshot = sharedSession.snapshot();
+      if (snapshot) storage.save(gameType, snapshot);
+      return;
+    }
     storage.save(gameType, sessionState.snapshot({ gameType, board, pair, queue, score, level, clearedTotal, runMaxChain, allClearCount, activeDurationMs, hiAtStart, bestChainAtStart, challengeState, runBuild, itemState }));
   }
 
@@ -988,6 +1136,16 @@
     selectedGameType = gameType;
     hi = storage.readHighScore(gameType);
     bestChain = storage.readBestChain(gameType);
+    if (sharedEngineEnabled) {
+      hiAtStart = Number.isFinite(s.hiAtStart) ? s.hiAtStart : hi;
+      bestChainAtStart = Number.isFinite(s.bestChainAtStart) ? s.bestChainAtStart : bestChain;
+      sharedSession.restore(s, { highScore: hi, bestChain });
+      sharedEffects.pump();
+      updateHud();
+      drawNext();
+      updateChallengeHud();
+      return mode !== 'gameover';
+    }
     chainFeedback = freshChainFeedback();
     const restored = sessionState.restore(s, { highScore: hi, bestChain });
     board = restored.board;
@@ -1033,6 +1191,15 @@
 
 
   function drawBoard() {
+    if (sharedEngineEnabled) {
+      const sharedView = sharedSession.view();
+      renderer.drawBoard({
+        board: sharedView.board,
+        ghostCells: sharedView.mode === 'playing' || sharedView.mode === 'paused' ? sharedView.ghostCells.filter((position) => position.y >= 0) : [],
+        activeCells: sharedView.mode === 'playing' || sharedView.mode === 'paused' ? sharedView.activeCells.filter((position) => position.y >= 0) : [],
+      });
+      return;
+    }
     let ghostCells = [];
     let activeCells = [];
     if (pair && (mode === 'playing' || mode === 'paused')) {
@@ -1068,6 +1235,23 @@
 
   function action(name) {
     ensureAudio();
+    if (sharedEngineEnabled) {
+      const commands = {
+        left: { type: 'move', direction: -1 },
+        right: { type: 'move', direction: 1 },
+        down: { type: 'softDrop' },
+        cw: { type: 'rotate', direction: 1 },
+        ccw: { type: 'rotate', direction: -1 },
+        drop: { type: 'hardDrop' },
+        swap: { type: 'swapNext' },
+        bottle: { type: 'toggleBottle' },
+      };
+      if (commands[name]) {
+        sharedSession.dispatch(commands[name]);
+        sharedEffects.pump();
+      }
+      return;
+    }
     if (name === 'left') tryMove(-1, 0);
     else if (name === 'right') tryMove(1, 0);
     else if (name === 'down') softDrop();
@@ -1108,11 +1292,28 @@
     primary() {
       ensureAudio();
       if (mode === 'menu' || mode === 'gameover') newGame();
-      else if (mode === 'paused') { setMode('playing'); music.resume(); }
+      else if (mode === 'paused') {
+        if (sharedEngineEnabled) {
+          sharedSession.dispatch({ type: 'resume' });
+          sharedEffects.pump();
+        }
+        if (mode === 'resolving') { overlayEl.hidden = true; btnPause.hidden = true; updateChallengeHud(); }
+        else setMode('playing');
+        music.resume();
+      }
     },
     resume() {
       resumeOverlay.hidden = true;
       lastT = performance.now();
+      if (sharedEngineEnabled) {
+        sharedSession.dispatch({ type: 'resume' });
+        sharedEffects.pump();
+        btnPause.hidden = mode !== 'playing';
+        updateChallengeHud();
+        ensureAudio();
+        music.start(musicSituation());
+        return;
+      }
       if (resumeNeedsResolution) {
         resumeNeedsResolution = false;
         mode = 'resolving';
@@ -1135,6 +1336,15 @@
     },
     chooseUpgrade(id) {
       if (mode !== 'choosing') return;
+      if (sharedEngineEnabled) {
+        const relic = runBuild.pendingRelicChoice.includes(id);
+        if (!sharedSession.dispatch({ type: relic ? 'chooseRelic' : 'chooseUpgrade', id })) return;
+        upgradeOverlay.hidden = true;
+        sharedEffects.pump();
+        play('level', challengeState.stage);
+        haptic([14, 30, 20]);
+        return;
+      }
       const result = runBuild.pendingRelicChoice.includes(id)
         ? rogueliteRules.chooseRelic(runBuild, id)
         : rogueliteRules.choose(runBuild, id, challengeState.completed);
@@ -1149,6 +1359,13 @@
     },
     decideContract(accept) {
       if (mode !== 'contract') return;
+      if (sharedEngineEnabled) {
+        if (!sharedSession.dispatch({ type: 'chooseContract', accept })) return;
+        ui.hideContract();
+        sharedEffects.pump();
+        if (accept) haptic([18, 25, 24]);
+        return;
+      }
       const result = rogueliteRules.decideContract(runBuild, accept);
       runBuild = result.state;
       if (result.accepted) challengeState.pendingGarbage += result.garbage;
@@ -1227,7 +1444,27 @@
 
   if (window.__DSH_TEST__ || new URLSearchParams(location.search).has('test')) {
     window.__puyoTest = {
+      engine: sharedEngineEnabled ? 'shared' : 'legacy',
       getState: () => ({ board: board.map((r) => r.slice()), pair: pair ? JSON.parse(JSON.stringify(pair)) : null, score, level, mode, gameType, runMaxChain, bestChain, clearedTotal, challengeState: JSON.parse(JSON.stringify(challengeState)), runBuild: JSON.parse(JSON.stringify(runBuild)), itemState: JSON.parse(JSON.stringify(itemState)) }),
+      restoreShared: (saved) => {
+        if (!sharedEngineEnabled) return null;
+        sharedEffects.cancel();
+        overlayEl.hidden = true;
+        resumeOverlay.hidden = true;
+        upgradeOverlay.hidden = true;
+        contractOverlay.hidden = true;
+        sharedSession.restore(saved, { highScore: storage.readHighScore(saved && saved.gameType), bestChain: storage.readBestChain(saved && saved.gameType) });
+        sharedEffects.pump();
+        return sharedSession.view();
+      },
+      dispatchShared: (command) => {
+        if (!sharedEngineEnabled) return false;
+        const result = sharedSession.dispatch(command);
+        sharedEffects.pump();
+        return result;
+      },
+      sharedView: () => sharedEngineEnabled ? sharedSession.view() : null,
+      sharedEvents: () => sharedEventLog.slice(),
       setBoard: (next) => { if (storage.validBoard(next)) board = next.map((r) => r.slice()); },
       setPair: (next) => {
         if (storage.validPair(next)) pair = JSON.parse(JSON.stringify(next));

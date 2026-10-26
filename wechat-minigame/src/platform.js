@@ -34,32 +34,8 @@ function request(path, options) {
   }));
 }
 
-function audio() {
-  let muted = !!storage().get('moonlit_muted_v1', false);
-  let bgm = null;
-  function ensureBgm() {
-    if (bgm || !config.bgmUrl) return bgm;
-    bgm = wx.createInnerAudioContext();
-    bgm.loop = true;
-    bgm.volume = 0.38;
-    bgm.src = config.bgmUrl;
-    return bgm;
-  }
-  return {
-    isMuted: () => muted,
-    toggle() {
-      muted = !muted;
-      storage().set('moonlit_muted_v1', muted);
-      if (muted && bgm) bgm.pause();
-      else if (!muted && bgm) bgm.play();
-      return muted;
-    },
-    start() { const player = ensureBgm(); if (player && !muted) player.play(); },
-    pause() { if (bgm) bgm.pause(); },
-    resume() { if (bgm && !muted) bgm.play(); },
-    stop() { if (bgm) bgm.stop(); },
-    destroy() { if (bgm) bgm.destroy(); bgm = null; },
-  };
+function audio(options) {
+  return require('./puyo-audio.js').create(Object.assign({}, options || {}, { wx, storage: storage(), bgmUrl: config.bgmUrl }));
 }
 
 function systemInfo() {
