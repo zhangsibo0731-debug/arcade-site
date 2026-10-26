@@ -7,23 +7,29 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 function drawChoice(game) {
   if (game.choiceKind === 'contract') return game.drawDialog('超载契约', '增加 2 颗近期干扰；完成阶段后额外选择一次强化。可以跳过。', [{ label: '接受契约', action: 'contractYes' }, { label: '跳过', action: 'contractNo' }]);
   const ui = createUI(game.ctx);
-  const top = game.safe.top + 52;
   const cards = presentation.choiceCards(game);
   const gap = 10;
-  const height = Math.min(144, Math.floor((game.safe.bottom - top - 82 - gap * Math.max(0, cards.length - 1)) / Math.max(1, cards.length)));
-  ui.panel({ x: 18, y: top - 24, w: game.w - 36, h: 88 + cards.length * (height + gap) }, { fill: '#211b3b' });
+  const safeBottom = Math.min(game.safe.bottom, game.h);
+  const available = safeBottom - game.safe.top - 40;
+  const header = 102;
+  const height = Math.min(128, Math.floor((available - header - 16 - gap * Math.max(0, cards.length - 1)) / Math.max(1, cards.length)));
+  const panelHeight = header + 16 + cards.length * height + gap * Math.max(0, cards.length - 1);
+  const panelY = game.safe.top + (safeBottom - game.safe.top - panelHeight) / 2;
+  const top = panelY + 23;
+  ui.panel({ x: 18, y: panelY, w: game.w - 36, h: panelHeight }, { fill: '#211b3b' });
   ui.text(presentation.rewardTitle(game), game.w / 2, top, 11, ui.theme.lime, 'center', 700);
   ui.text(game.choiceKind === 'relic' ? '选择特殊遗物' : '选择一项强化', game.w / 2, top + 28, 22, ui.theme.text, 'center', 800);
+  ui.text('点击任一卡片选择 · 本局生效', game.w / 2, top + 53, 10, ui.theme.soft, 'center');
   cards.forEach((card, index) => {
-    const box = { x: 30, y: top + 56 + index * (height + gap), w: game.w - 60, h: height };
+    const box = { x: 30, y: panelY + header + index * (height + gap), w: game.w - 60, h: height };
     const color = card.rarity === 'relic' ? ui.theme.gold : card.recommended ? ui.theme.cyan : ui.theme.soft;
     ui.panel(box, { fill: '#2a2444', stroke: card.recommended ? 'rgba(86,220,237,.55)' : ui.theme.line, radius: 14 });
     ui.text(card.schoolName + (card.rarity === 'rare' ? ' · 稀有' : ''), box.x + 12, box.y + 17, 10, color, 'left', 700);
     ui.text(card.levelText, box.x + box.w - 12, box.y + 17, 10, ui.theme.lime, 'right', 700);
-    ui.text(card.name, box.x + 12, box.y + 41, 16, ui.theme.text, 'left', 800);
-    ui.wrap(card.effect, box.x + 12, box.y + 64, box.w - 24, 11, ui.theme.text, 'left', 2);
-    if (height >= 100) ui.wrap(card.synergyText, box.x + 12, box.y + (height >= 118 ? 98 : height - 18), box.w - 24, 9, card.ownedSynergies.length ? ui.theme.cyan : ui.theme.soft, 'left', height >= 118 ? 2 : 1);
-    if (height >= 140 && card.recommended) ui.text(card.recommendationReason, box.x + 12, box.y + height - 12, 9, ui.theme.cyan, 'left');
+    ui.text(card.name, box.x + 12, box.y + 38, 16, ui.theme.text, 'left', 800);
+    ui.wrap(card.effect, box.x + 12, box.y + 59, box.w - 24, 11, ui.theme.text, 'left', 2);
+    ui.wrap(card.synergyText, box.x + 12, box.y + height - (card.recommended ? 28 : 17), box.w - 24, 9, card.ownedSynergies.length ? ui.theme.cyan : ui.theme.soft, 'left', 1);
+    if (card.recommended) ui.text(card.recommendationReason, box.x + 12, box.y + height - 12, 9, ui.theme.cyan, 'left', 600, box.w - 24);
     game.buttons.push({ box, action: 'choice:' + card.id });
   });
 }

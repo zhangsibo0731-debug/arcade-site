@@ -185,5 +185,15 @@ for (const [width, height, top, bottom] of [[320,568,47,534],[375,667,20,647],[3
   assert.ok(buildBack.y + buildBack.h <= bottom - 20, 'build return button needs bottom breathing room');
   assert.strictEqual(game.buildMaxScroll, 0, 'empty build must not scroll');
   assert.ok(buildBack.y < top + (bottom - top) * .8, 'empty build must not stretch to screen bottom');
+  game.mode = 'choice'; game.choiceKind = 'upgrade';
+  game.build.pendingChoice = game.rogue.DEFINITIONS.slice(0, 3).map((item) => item.id);
+  game.draw();
+  const choices = game.buttons.filter((item) => item.action.startsWith('choice:')).map((item) => item.box);
+  assert.strictEqual(choices.length, 3);
+  const panelTop = choices[0].y - 102;
+  const panelBottom = choices[2].y + choices[2].h + 16;
+  assert.ok(Math.abs((panelTop - top) - (bottom - panelBottom)) < 1, 'choice panel must center in safe area');
+  assert.ok(panelTop >= top + 19 && panelBottom <= bottom - 19, 'choice panel needs safe margins');
+  assert.ok(choices.every((box) => box.h >= 100 && box.h <= 128), 'cards must remain readable without excess blank space');
 }
 console.log('wechat minigame puyo tests passed');
