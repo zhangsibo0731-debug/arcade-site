@@ -232,7 +232,11 @@ class PuyoGame {
     const ctx = this.ctx;
     this.visual.particles.forEach((particle) => {
       ctx.save(); ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife); ctx.fillStyle = particle.color;
-      ctx.beginPath(); ctx.arc(l.boardX + particle.x * l.cell, l.boardY + particle.y * l.cell, Math.max(2, l.cell * .08), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      const x = l.boardX + particle.x * l.cell, y = l.boardY + particle.y * l.cell, r = Math.max(2, l.cell * .08);
+      ctx.beginPath();
+      if (particle.ice) { ctx.moveTo(x, y - r * 1.6); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r * 1.6); ctx.lineTo(x - r, y); ctx.closePath(); }
+      else ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill(); ctx.restore();
     });
   }
 
@@ -321,10 +325,31 @@ class PuyoGame {
     ctx.translate(x, y);
     ctx.scale(state.scaleX || 1, state.scaleY || 1);
     if (this.rules.isGarbage(value)) {
-      ctx.fillStyle = value === 7 ? '#b9dce7' : '#aaa5b6';
+      if (value === 7 || value === 8) {
+        const cracked = value === 8 || state.iceCracked;
+        const r = radius;
+        const shell = ctx.createLinearGradient(-r, -r, r, r);
+        shell.addColorStop(0, '#ebffff'); shell.addColorStop(.4, cracked ? '#a6d9ec' : '#99e7ff'); shell.addColorStop(1, '#408bb8');
+        ctx.fillStyle = shell; ctx.strokeStyle = '#d5fbff'; ctx.lineWidth = Math.max(1.4, r * .10);
+        ctx.beginPath(); ctx.moveTo(-r * .58, -r); ctx.lineTo(r * .58, -r); ctx.lineTo(r, -r * .58); ctx.lineTo(r, r * .58); ctx.lineTo(r * .58, r); ctx.lineTo(-r * .58, r); ctx.lineTo(-r, r * .58); ctx.lineTo(-r, -r * .58); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = Math.max(1, r * .06);
+        ctx.beginPath(); ctx.moveTo(-r * .72, r * .20); ctx.lineTo(-r * .72, -r * .48); ctx.lineTo(-r * .40, -r * .72); ctx.lineTo(r * .26, -r * .72); ctx.stroke();
+        if (cracked) {
+          ctx.strokeStyle = '#285e86'; ctx.lineWidth = Math.max(1.6, r * .12);
+          ctx.beginPath(); ctx.moveTo(r * .25, -r * .95); ctx.lineTo(-r * .15, -r * .28); ctx.lineTo(r * .18, r * .07); ctx.lineTo(-r * .25, r * .9);
+          ctx.moveTo(r * .18, r * .07); ctx.lineTo(r * .68, r * .28); ctx.lineTo(r * .94, r * .08); ctx.stroke();
+        }
+        // Remaining-hit pips distinguish durability even without color vision.
+        ctx.fillStyle = '#24557b';
+        for (let index = 0; index < (cracked ? 1 : 2); index++) {
+          ctx.beginPath(); ctx.arc((cracked ? 0 : index ? .24 : -.24) * r, r * .57, r * .10, 0, Math.PI * 2); ctx.fill();
+        }
+        if (state.flash) { ctx.globalAlpha *= state.flash * .4; ctx.fillStyle = '#fff'; ctx.fillRect(-r * .65, -r * .65, r * 1.3, r * 1.3); }
+        ctx.restore(); return;
+      }
+      ctx.fillStyle = '#aaa5b6';
       ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = value === 7 ? '#effcff' : '#575161'; ctx.lineWidth = value === 7 ? 3 : 1.5; ctx.stroke();
-      if (value === 8) { ctx.beginPath(); ctx.moveTo(2, -radius * .75); ctx.lineTo(-3, -2); ctx.lineTo(4, radius * .7); ctx.stroke(); }
+      ctx.strokeStyle = '#575161'; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.fillStyle = '#4d4758'; ctx.beginPath(); ctx.arc(-radius * .23, 0, radius * .1, 0, Math.PI * 2); ctx.arc(radius * .23, 0, radius * .1, 0, Math.PI * 2); ctx.fill();
       if (state.flash) { ctx.globalAlpha *= state.flash * .72; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, radius * 1.05, 0, Math.PI * 2); ctx.fill(); }
       ctx.restore();

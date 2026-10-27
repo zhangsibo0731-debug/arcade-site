@@ -59,4 +59,24 @@ assert.strictEqual(game.cleared, 4);
 assert.strictEqual(game.maxChain, 1);
 assert.ok(game.pair);
 assert.ok(game.ghostCells.length);
+game.newGame('challenge');
+for (const [before, after] of [[7,8],[8,0]]) {
+  const fixture = game.controller.session.snapshot();
+  fixture.board = Array.from({length:12}, () => Array(6).fill(0));
+  fixture.board[11] = [1,1,1,1,before,0];
+  fixture.pair = {x:5,y:8,rot:0,colors:[2,3]};
+  fixture.challengeState.mission = {type:'chain',target:99,progress:0,title:'测试连锁'};
+  fixture.challengeState.pressureIn = 10;
+  game.controller.restore(fixture); game.perform('resume'); game.hardDrop();
+  const hit = game.controller.effect.event.garbageHits.find((item) => item.cell[0] === 4);
+  assert.strictEqual(hit.from, before);
+  assert.strictEqual(hit.to, after);
+  game.update(.15);
+  if (before === 7) {
+    assert.strictEqual(game.visual.cellState(4,11).alpha,1);
+    assert.strictEqual(game.visual.cellState(4,11).iceCracked,true);
+  }
+  for (let step=0; step<40 && game.mode==='resolving'; step++) game.update(.05);
+  assert.strictEqual(game.board[11][4],after,'visual feedback must preserve the two-hit rule');
+}
 console.log('wechat shared-core animation flow tests passed');

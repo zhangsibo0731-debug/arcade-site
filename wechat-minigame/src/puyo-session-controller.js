@@ -91,7 +91,10 @@ class PuyoSessionController {
       let duration;
       if (event.type === 'pop' || event.type === 'stageReward') {
         duration = event.type === 'pop' ? (event.chain === 1 ? 300 : Math.min(430, 330 + (event.chain - 2) * 30)) : 340;
-        visual.startPop(event.cells || event.hits.map((hit) => hit.cell), duration);
+        const hits = event.garbageHits || event.hits || [];
+        visual.startPop(event.cells || hits.map((hit) => hit.cell), duration, hits);
+        const ice = hits.filter((hit) => hit.from === 7 || hit.from === 8);
+        if (ice.length) visual.showNotice(ice.some((hit) => hit.to === 8) ? '冰壳破裂 · 再命中一次可清除' : '冰块击碎 ×' + ice.length, 1250);
       } else if (event.type === 'fall') {
         duration = Math.min(250, 190 + Math.max(0, (event.chain || 1) - 1) * 18);
         visual.startFall(new Map(event.offsets || []), duration);
@@ -180,7 +183,12 @@ class PuyoSessionController {
         this.effect = null;
         if (event.type === 'pop') {
           const colored = new Map((event.coloredCells || []).map((cell) => [cell[0] + ',' + cell[1], cell[2]]));
-          game.visual.burst(event.cells, (cell) => game.cellColor(colored.get(cell[0] + ',' + cell[1]) || 6), event.chain);
+          const ice = (event.garbageHits || []).filter((hit) => hit.from === 7 || hit.from === 8);
+          const iceKeys = new Set(ice.map((hit) => hit.cell.join(',')));
+          game.visual.burst(event.cells.filter((cell) => !iceKeys.has(cell.join(','))), (cell) => game.cellColor(colored.get(cell[0] + ',' + cell[1]) || 6), event.chain);
+          game.visual.burstIce(ice);
+        } else if (event.type === 'stageReward') {
+          game.visual.burstIce((event.hits || []).filter((hit) => hit.from === 7 || hit.from === 8));
         }
         this.session.ackEffect(event.id);
         this.pump();

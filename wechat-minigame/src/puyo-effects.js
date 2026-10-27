@@ -54,8 +54,19 @@ class PuyoEffects {
     this.particles = this.particles.filter((particle) => particle.life > 0);
   }
 
-  startPop(cells, duration) {
-    this.pop = { cells: new Set(cells.map((cell) => cell[0] + ',' + cell[1])), elapsed: 0, duration: duration || 320 };
+  startPop(cells, duration, hits) {
+    this.pop = { cells: new Set(cells.map((cell) => cell[0] + ',' + cell[1])), hits: new Map((hits || []).map((hit) => [hit.cell.join(','), hit])), elapsed: 0, duration: duration || 320 };
+  }
+
+  burstIce(hits) {
+    (hits || []).forEach((hit) => {
+      const count = hit.to ? 4 : 10;
+      for (let index = 0; index < count; index++) {
+        const angle = index / count * Math.PI * 2;
+        this.particles.push({ x: hit.cell[0] + .5, y: hit.cell[1] + .5, vx: Math.cos(angle) * 2, vy: Math.sin(angle) * 2 - 1, life: .48, maxLife: .48, color: index % 2 ? '#eaffff' : '#83d9f4', ice: true });
+      }
+    });
+    if (this.particles.length > 512) this.particles.splice(0, this.particles.length - 512);
   }
 
   startFall(offsets, duration) {
@@ -152,6 +163,7 @@ class PuyoEffects {
     let alpha = 1;
     let flash = 0;
     let recolor = null;
+    let iceCracked = false;
 
     if (this.pop && this.pop.cells.has(key)) {
       const p = clamp01(this.pop.elapsed / this.pop.duration);
@@ -160,6 +172,14 @@ class PuyoEffects {
       scaleX = 1 + Math.sin(p * Math.PI) * 0.18 - vanish * 0.9;
       scaleY = 1 + Math.sin(p * Math.PI) * 0.1 - vanish * 0.9;
       alpha = 1 - vanish;
+      const hit = this.pop.hits.get(key);
+      if (hit && hit.to === 8) {
+        // A damaged shell survives this hit; it must never shrink/fade away.
+        alpha = 1;
+        scaleX = 1 + Math.sin(p * Math.PI * 3) * .07 * (1 - p);
+        scaleY = 1 - Math.sin(p * Math.PI) * .07;
+        iceCracked = p >= .25;
+      }
     }
 
     if (this.fall && this.fall.offsets.has(key)) {
@@ -203,7 +223,7 @@ class PuyoEffects {
       scaleY -= squash * 0.12;
     }
 
-    return { offsetRows, scaleX, scaleY, alpha, flash, recolor };
+    return { offsetRows, scaleX, scaleY, alpha, flash, recolor, iceCracked };
   }
 }
 

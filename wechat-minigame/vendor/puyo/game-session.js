@@ -495,7 +495,7 @@
       }
       emit('chain', { chain, score: scoring.score, cells, remoteLinks: clearEffects.remoteLinks || [] });
       const encodedCells = cells.map((cell) => [cell[0], cell[1], state.board[cell[1]][cell[0]]]);
-      beginEffect('pop', { cells: cells.concat(clearEffects.garbageCells || []), coloredCells: encodedCells, chain }, {
+      beginEffect('pop', { cells: cells.concat(clearEffects.garbageCells || []), coloredCells: encodedCells, garbageHits: clearEffects.garbageHits || [], chain }, {
         kind: 'clear',
         cells: encodedCells,
         garbageHits: clearEffects.garbageHits || [],

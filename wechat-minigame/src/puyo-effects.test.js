@@ -14,6 +14,22 @@ assert.ok(state.scaleX < 1.2, 'pop scale should be bounded');
 effects.update(.3);
 assert.strictEqual(effects.pop, null);
 
+effects.startPop([[1, 2]], 400, [{cell:[1,2],from:7,to:8}]);
+for (let i = 0; i < 7; i++) {
+  effects.update(.05);
+  const ice = effects.cellState(1, 2);
+  assert.strictEqual(ice.alpha, 1, 'first ice hit must not fade the surviving shell');
+  assert.ok(ice.scaleX > .9 && ice.scaleY > .9, 'first hit must not shrink the ice away');
+}
+assert.strictEqual(effects.cellState(1,2).iceCracked, true);
+effects.startPop([[1, 2]], 400, [{cell:[1,2],from:8,to:0}]);
+effects.update(.3);
+assert.ok(effects.cellState(1,2).alpha < .5, 'second ice hit must dissolve the shell');
+effects.burstIce([{cell:[1,2],from:8,to:0}]);
+assert.strictEqual(effects.particles.filter((item) => item.ice).length, 10);
+effects.update(1);
+assert.strictEqual(effects.particles.length, 0, 'ice shards must expire');
+
 effects.startFall(new Map([['2,6', 4]]), 200);
 state = effects.cellState(2, 6);
 assert.ok(state.offsetRows < -3.9, 'fall starts at the previous row');
