@@ -20,6 +20,7 @@ node sudoku/migration.test.js
 node sudoku/web-platform.test.js
 node sudoku/resume-bridge.test.js
 node wechat-minigame/src/arcade-app.test.js
+node wechat-minigame/src/sudoku-game.test.js
 node wechat-minigame/src/bootstrap.test.js
 node wechat-minigame/src/puyo-save.test.js
 node wechat-minigame/src/puyo-presentation.test.js
