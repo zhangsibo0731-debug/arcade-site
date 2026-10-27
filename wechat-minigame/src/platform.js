@@ -40,11 +40,14 @@ function audio(options) {
 
 function systemInfo() {
   const info = wx.getSystemInfoSync();
+  let menuButton = null;
+  try { if (wx.getMenuButtonBoundingClientRect) menuButton = wx.getMenuButtonBoundingClientRect(); } catch (_) {}
   return {
     width: info.windowWidth,
     height: info.windowHeight,
     pixelRatio: Math.min(info.pixelRatio || 1, 2),
     safeArea: info.safeArea || { left: 0, top: 0, right: info.windowWidth, bottom: info.windowHeight },
+    menuButton,
   };
 }
 

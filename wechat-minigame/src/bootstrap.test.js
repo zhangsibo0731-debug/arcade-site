@@ -25,7 +25,7 @@ for (const readonlyWindow of [true, false]) {
         return;
       }
       if (filename === './platform.js') return {};
-      assert.strictEqual(filename, './puyo-game.js');
+      assert.strictEqual(filename, './arcade-app.js');
       return class {
         constructor(actualCanvas) {
           assert.strictEqual(actualCanvas, canvas);

@@ -19,13 +19,13 @@ require('../vendor/puyo/input.js');
 require('../vendor/puyo/audio.js');
 
 const platform = require('./platform.js');
-const PuyoGame = require('./puyo-game.js');
+const ArcadeApp = require('./arcade-app.js');
 
 const canvas = wx.createCanvas();
 if (typeof root.requestAnimationFrame !== 'function' && typeof canvas.requestAnimationFrame === 'function') {
   root.requestAnimationFrame = canvas.requestAnimationFrame.bind(canvas);
 }
-const game = new PuyoGame(canvas, platform);
+const game = new ArcadeApp(canvas, platform);
 game.start();
 
 wx.onHide(() => game.onHide());

@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('node:assert/strict');
+global.window=global;
+for(const name of ['board-rules','scoring-rules','rotation-rules','challenge-rules','roguelite-rules','active-item-rules','challenge-effects','session-state','game-session','storage','input'])require('../vendor/puyo/'+name+'.js');
+const ArcadeApp=require('./arcade-app.js');
+const values=new Map(),listeners={},callbacks=[];
+global.wx={onTouchStart:f=>listeners.start=f,onTouchMove:f=>listeners.move=f,onTouchEnd:f=>listeners.end=f,onTouchCancel:f=>listeners.cancel=f};
+global.requestAnimationFrame=f=>callbacks.push(f);
+const context=new Proxy({createLinearGradient:()=>({addColorStop(){}}),measureText:t=>({width:String(t).length*8})},{get:(o,k)=>k in o?o[k]:()=>{},set:(o,k,v)=>{o[k]=v;return true;}});
+const canvas={getContext:()=>context};
+const platform={storage:()=>({get:(k,f)=>values.has(k)?values.get(k):f,set:(k,v)=>{values.set(k,JSON.parse(JSON.stringify(v)));return true;},remove:k=>values.delete(k)}),systemInfo:()=>({width:390,height:844,pixelRatio:2,safeArea:{top:47,bottom:810,left:0,right:390},menuButton:{bottom:87}}),audio:()=>({isMuted:()=>false,settings:()=>({muted:false,music:100,sfx:100,vibration:false}),start(){},pause(){},resume(){},stop(){},play(){},haptic(){}})};
+const app=new ArcadeApp(canvas,platform);app.start();assert.equal(Object.keys(listeners).length,4);assert.equal(callbacks.length,1);app.frame(1);
+const card=app.buttons.find(b=>b.action==='openSudoku');assert.ok(card);const t={clientX:card.box.x+10,clientY:card.box.y+10};listeners.start({touches:[t]});listeners.end({changedTouches:[t]});assert.equal(app.scene,'sudoku');app.frame(100);assert.equal(app.sudoku.controller.view().layout.top,95,'capsule area reserved');app.frame(1200);assert.equal(app.sudoku.controller.view().model.state.elapsed,1);
+app.onHide();app.frame(60000);app.onShow();app.frame(61000);assert.equal(app.sudoku.controller.view().model.state.elapsed,1);assert.equal(app.sudoku.controller.view().overlay.kind,'paused');app.sudoku.controller.action('back');assert.equal(app.scene,'lobby');assert.ok(values.get('sudoku_canvas_save_v1'));
+app.open('puyo');app.puyo.newGame('challenge');app.puyo.save();const save=values.get('moonlit_puyo_save_v3_challenge');app.puyo.perform('lobby');app.touch('cancel',{});assert.equal(app.scene,'lobby');assert.ok(values.get('moonlit_puyo_save_v3_challenge'));assert.equal(values.get('moonlit_puyo_save_v3_challenge').gameType,save.gameType);
+app.open('sudoku');app.frame(62000);assert.equal(app.sudoku.controller.view().overlay.kind,'paused');assert.equal(Object.keys(listeners).length,4,'scene switches do not register more listeners');app.touch('cancel',{});
+console.log('Arcade router: shared canvas, single listeners, Sudoku entry/exit, capsule, lifecycle and Puyo save isolation passed');

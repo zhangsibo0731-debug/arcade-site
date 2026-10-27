@@ -2,21 +2,11 @@
   'use strict';
 
   // ---------- 配置 ----------
-  const LEVELS = {
-    easy: { label: '简单', clues: 44 },
-    medium: { label: '中等', clues: 36 },
-    hard: { label: '困难', clues: 30 },
-  };
-  // 每种棋盘：宫的行数/列数、儿童版固定提示数
-  const SIZES = {
-    4: { br: 2, bc: 2, clues: 10 },
-    6: { br: 2, bc: 3, clues: 24 },
-    9: { br: 3, bc: 3, clues: 56 },
-  };
+  const rules = window.SudokuRules.create();
+  const { LEVELS, SIZES } = rules;
   const STORAGE_KEY = 'sudoku_save_v1';
   const BEST_KEY = 'sudoku_best_v1';
-  const MAX_UNDO = 250;
-  const HINT_LIMIT = 3;
+  const session = window.SudokuSession.create(rules);
   const PRAISE = ['真棒！😊', '太厉害了！👏', '继续加油！💪', '你真聪明！🌟', '对啦！✨'];
   const LINE_PRAISE = ['连成一条线啦！🎉', '完成一排啦！⭐', '哇，好厉害！🥳'];
 
@@ -45,6 +35,7 @@
   const resumeMetaEl = $('resumeMeta');
   const btnResumeNew = $('btnResumeNew');
   const btnResumeContinue = $('btnResumeContinue');
+  const btnResumeOther = $('btnResumeOther');
   const toastEl = $('toast');
   const confettiEl = $('confetti');
 
@@ -52,196 +43,16 @@
   let state = null;       // { mode, size, level, board, givens, notes, solution, mistakes, elapsed, won, hintsLeft }
   let selected = null;    // { r, c }
   let notesMode = false;
-  let history = [];       // 撤销栈（board/notes 快照）
+  let invalidSave = null;
+  let resumeImport = false;
+  let resumeAlternative = null;
+  let resumeSource = '';
+  function syncSession() { const v = session.view(); state = v.state; selected = v.selected; notesMode = v.notesMode; }
+  function setNotes(value) { session.setNotes(value); syncSession(); }
   let timerId = null;
 
-  // ---------- 数独引擎（泛化 N×N）----------
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
-    }
-    return arr;
-  }
-
-  function findEmpty(grid) {
-    const N = grid.length;
-    for (let r = 0; r < N; r++) {
-      for (let c = 0; c < N; c++) {
-        if (grid[r][c] === 0) return [r, c];
-      }
-    }
-    return null;
-  }
-
-  function isValidPlacement(grid, r, c, n, br, bc) {
-    const N = grid.length;
-    for (let i = 0; i < N; i++) {
-      if (grid[r][i] === n || grid[i][c] === n) return false;
-    }
-    const R = Math.floor(r / br) * br;
-    const C = Math.floor(c / bc) * bc;
-    for (let rr = R; rr < R + br; rr++) {
-      for (let cc = C; cc < C + bc; cc++) {
-        if (grid[rr][cc] === n) return false;
-      }
-    }
-    return true;
-  }
-
-  function solveGrid(grid, br, bc, randomize) {
-    const N = grid.length;
-    const pos = findEmpty(grid);
-    if (!pos) return true;
-    const r = pos[0], c = pos[1];
-    const nums = [];
-    for (let n = 1; n <= N; n++) nums.push(n);
-    if (randomize) shuffle(nums);
-    for (const n of nums) {
-      if (isValidPlacement(grid, r, c, n, br, bc)) {
-        grid[r][c] = n;
-        if (solveGrid(grid, br, bc, randomize)) return true;
-        grid[r][c] = 0;
-      }
-    }
-    return false;
-  }
-
-  function countSolutions(grid, br, bc, limit) {
-    const N = grid.length;
-    let count = 0;
-    (function rec() {
-      if (count >= limit) return;
-      const pos = findEmpty(grid);
-      if (!pos) { count++; return; }
-      const r = pos[0], c = pos[1];
-      for (let n = 1; n <= N; n++) {
-        if (isValidPlacement(grid, r, c, n, br, bc)) {
-          grid[r][c] = n;
-          rec();
-          grid[r][c] = 0;
-          if (count >= limit) return;
-        }
-      }
-    })();
-    return count;
-  }
-
-  // 只用「某行/列/宫正好空 1 格」就能解完——最直观，最适合儿童
-  function lastEmptySolvable(grid, size, br, bc) {
-    const g = grid.map((row) => row.slice());
-    for (;;) {
-      let progress = false;
-      const units = buildUnits(size, br, bc);
-      for (const u of units) {
-        const empties = u.filter((p) => g[p[0]][p[1]] === 0);
-        if (empties.length === 1) {
-          const used = new Set(u.filter((p) => g[p[0]][p[1]] !== 0).map((p) => g[p[0]][p[1]]));
-          for (let n = 1; n <= size; n++) {
-            if (!used.has(n)) { g[empties[0][0]][empties[0][1]] = n; break; }
-          }
-          progress = true;
-        }
-      }
-      if (!progress) return findEmpty(g) === null;
-    }
-  }
-
-  function generatePuzzle(size, br, bc, clues, easy) {
-    const solution = Array.from({ length: size }, () => Array(size).fill(0));
-    solveGrid(solution, br, bc, true);
-
-    const puzzle = solution.map((row) => row.slice());
-    const positions = [];
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) positions.push([r, c]);
-    }
-    shuffle(positions);
-
-    let removed = 0;
-    const target = size * size - clues;
-    for (const pos of positions) {
-      if (removed >= target) break;
-      const r = pos[0], c = pos[1];
-      const backup = puzzle[r][c];
-      puzzle[r][c] = 0;
-      const copy = puzzle.map((row) => row.slice());
-      const ok = easy
-        ? lastEmptySolvable(copy, size, br, bc)
-        : countSolutions(copy, br, bc, 2) === 1;
-      if (ok) {
-        removed++;
-      } else {
-        puzzle[r][c] = backup;
-      }
-    }
-    return { puzzle, solution };
-  }
-
-  // 儿童版：保证开局有若干行/列/宫只空 1 格（多个明显落点，降低起步难度）
-  function buildUnits(size, br, bc) {
-    const units = [];
-    for (let r = 0; r < size; r++) {
-      const u = [];
-      for (let c = 0; c < size; c++) u.push([r, c]);
-      units.push(u);
-    }
-    for (let c = 0; c < size; c++) {
-      const u = [];
-      for (let r = 0; r < size; r++) u.push([r, c]);
-      units.push(u);
-    }
-    for (let R = 0; R < size; R += br) {
-      for (let C = 0; C < size; C += bc) {
-        const u = [];
-        for (let rr = R; rr < R + br; rr++) {
-          for (let cc = C; cc < C + bc; cc++) u.push([rr, cc]);
-        }
-        units.push(u);
-      }
-    }
-    return units;
-  }
-
-  function ensureEasyEntry(puzzle, solution, size, br, bc, target) {
-    for (let pass = 0; pass < target; pass++) {
-      const units = buildUnits(size, br, bc);
-      let best = null, bestEmpty = Infinity;
-      for (const u of units) {
-        const empties = u.filter((p) => puzzle[p[0]][p[1]] === 0);
-        if (empties.length >= 2 && empties.length < bestEmpty) { bestEmpty = empties.length; best = empties; }
-      }
-      if (!best) break;
-      for (let i = 0; i < best.length - 1; i++) {
-        const r = best[i][0], c = best[i][1];
-        puzzle[r][c] = solution[r][c];
-      }
-    }
-  }
-
-  // ---------- 一局新游戏 ----------
-  function clueCountFor(size, level) {
-    return size === 9 ? LEVELS[level].clues : SIZES[size].clues;
-  }
-
-  function makeGame(mode, size, level) {
-    const s = SIZES[size];
-    const g = generatePuzzle(size, s.br, s.bc, clueCountFor(size, level), mode === 'kids');
-    if (mode === 'kids') ensureEasyEntry(g.puzzle, g.solution, size, s.br, s.bc, size === 9 ? 3 : size === 6 ? 2 : 1);
-    return {
-      mode,
-      size,
-      level,
-      board: g.puzzle.map((row) => row.slice()),
-      givens: g.puzzle.map((row) => row.map((v) => v !== 0)),
-      notes: Array.from({ length: size }, () => Array(size).fill(0)),
-      solution: g.solution,
-      mistakes: 0,
-      elapsed: 0,
-      won: false,
-      hintsLeft: HINT_LIMIT,
-    };
-  }
+  // Shared engine: no platform-specific copy of the generator.
+  const { shuffle, findEmpty, isValidPlacement, solveGrid, countSolutions, lastEmptySolvable, generatePuzzle, buildUnits, ensureEasyEntry, clueCountFor, makeGame } = rules;
 
   // ---------- 计时 ----------
   function formatTime(s) {
@@ -251,6 +62,7 @@
   }
   function startTimer() {
     if (timerId) return;
+    session.resume();
     timerId = setInterval(tick, 1000);
   }
   function stopTimer() {
@@ -258,7 +70,7 @@
   }
   function tick() {
     if (!state || state.won) return;
-    state.elapsed++;
+    session.tick(1000); syncSession();
     timerEl.textContent = formatTime(state.elapsed);
     save();
   }
@@ -278,8 +90,8 @@
 
   // ---------- 持久化 ----------
   function save() {
-    if (!state) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    if (!state || invalidSave !== null) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({
       mode: state.mode,
       size: state.size,
       level: state.level,
@@ -291,75 +103,41 @@
       elapsed: state.elapsed,
       won: state.won,
       hintsLeft: state.hintsLeft,
-    }));
+    })); } catch (_) { toast('暂时无法保存，请检查存储空间', 'soft'); }
   }
   function load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
-      const d = JSON.parse(raw);
-      if (!d || !d.board || !d.solution || !d.givens) return null;
+      invalidSave = raw;
+      const d = window.SudokuState.normalize(JSON.parse(raw), rules);
+      if (!d) return null;
+      invalidSave = null;
       return d;
     } catch (e) { return null; }
   }
 
-  // ---------- 撤销 ----------
-  function pushUndo() {
-    history.push({
-      board: state.board.map((r) => r.slice()),
-      notes: state.notes.map((r) => r.slice()),
+  // Shared commands and validation; DOM is a presentation adapter only.
+  function findDuplicates() { return session.duplicates(); }
+  function isComplete() { return session.complete(); }
+  function applyCommand(command) {
+    if (!command()) return;
+    syncSession(); render(); save();
+    session.drainEvents().forEach(event => {
+      if (event.type === 'entered' && state.mode === 'kids') {
+        toast(event.correct ? pick(event.lineDone ? LINE_PRAISE : PRAISE) : '再想想～🤔', event.correct ? '' : 'soft');
+        if (event.correct) {
+          const el = boardEl.querySelector('.cell[data-r="' + event.r + '"][data-c="' + event.c + '"]');
+          if (el) { el.classList.add('cell--pop'); setTimeout(() => el.classList.remove('cell--pop'), 450); }
+        }
+      }
+      if (event.type === 'won') checkWin();
     });
-    if (history.length > MAX_UNDO) history.shift();
   }
-  function undo() {
-    const snap = history.pop();
-    if (!snap || state.won) return;
-    state.board = snap.board;
-    state.notes = snap.notes;
-    render();
-    save();
-  }
-
-  // ---------- 判定 ----------
-  function findDuplicates() {
-    const N = state.size;
-    const s = SIZES[N];
-    const dup = new Set();
-    const b = state.board;
-    for (let r = 0; r < N; r++) {
-      for (let c = 0; c < N; c++) {
-        const v = b[r][c];
-        if (!v) continue;
-        for (let i = 0; i < N; i++) {
-          if (i !== c && b[r][i] === v) { dup.add(r + ',' + c); dup.add(r + ',' + i); }
-          if (i !== r && b[i][c] === v) { dup.add(r + ',' + c); dup.add(i + ',' + c); }
-        }
-        const R = Math.floor(r / s.br) * s.br, C = Math.floor(c / s.bc) * s.bc;
-        for (let rr = R; rr < R + s.br; rr++) {
-          for (let cc = C; cc < C + s.bc; cc++) {
-            if ((rr !== r || cc !== c) && b[rr][cc] === v) {
-              dup.add(r + ',' + c); dup.add(rr + ',' + cc);
-            }
-          }
-        }
-      }
-    }
-    return dup;
-  }
-
-  function isComplete() {
-    const N = state.size;
-    for (let r = 0; r < N; r++) {
-      for (let c = 0; c < N; c++) {
-        if (state.board[r][c] !== state.solution[r][c]) return false;
-      }
-    }
-    return true;
-  }
+  function undo() { applyCommand(session.undo); }
 
   function checkWin() {
-    if (!isComplete()) return;
-    state.won = true;
+    if (!state.won) return;
     stopTimer();
     const prev = getBest();
     if (!prev || state.elapsed < prev) setBest(state.elapsed);
@@ -395,99 +173,11 @@
   }
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-  function lineJustDone(r, c) {
-    const N = state.size;
-    const s = SIZES[N];
-    let rowDone = true, colDone = true, boxDone = true;
-    for (let i = 0; i < N; i++) {
-      if (state.board[r][i] !== state.solution[r][i]) rowDone = false;
-      if (state.board[i][c] !== state.solution[i][c]) colDone = false;
-    }
-    const R = Math.floor(r / s.br) * s.br, C = Math.floor(c / s.bc) * s.bc;
-    for (let rr = R; rr < R + s.br; rr++) {
-      for (let cc = C; cc < C + s.bc; cc++) {
-        if (state.board[rr][cc] !== state.solution[rr][cc]) boxDone = false;
-      }
-    }
-    return rowDone || colDone || boxDone;
-  }
-
-  // ---------- 输入操作 ----------
-  function enterNumber(n) {
-    if (!selected || !state || state.won) return;
-    if (n > state.size) return;
-    const r = selected.r, c = selected.c;
-    if (state.givens[r][c]) return;
-    if (notesMode) {
-      if (state.board[r][c] !== 0) return; // 有数字时不做笔记
-      pushUndo();
-      state.notes[r][c] ^= (1 << (n - 1));
-    } else {
-      pushUndo();
-      state.notes[r][c] = 0;
-      state.board[r][c] = n;
-      if (n !== state.solution[r][c]) {
-        state.mistakes++;
-        if (state.mode === 'kids') toast('再想想～🤔', 'soft');
-      } else if (state.mode === 'kids') {
-        toast(lineJustDone(r, c) ? pick(LINE_PRAISE) : pick(PRAISE));
-        const cellEl = boardEl.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
-        if (cellEl) {
-          cellEl.classList.add('cell--pop');
-          setTimeout(() => cellEl.classList.remove('cell--pop'), 450);
-        }
-      }
-    }
-    render();
-    save();
-    checkWin();
-  }
-
-  function erase() {
-    if (!selected || !state || state.won) return;
-    const r = selected.r, c = selected.c;
-    if (state.givens[r][c]) return;
-    if (state.board[r][c] === 0 && state.notes[r][c] === 0) return;
-    pushUndo();
-    state.board[r][c] = 0;
-    state.notes[r][c] = 0;
-    render();
-    save();
-  }
-
-  function hint() {
-    if (!state || state.won) return;
-    if (state.hintsLeft <= 0) return;
-    const N = state.size;
-    let target = null;
-    if (selected && !state.givens[selected.r][selected.c] &&
-        state.board[selected.r][selected.c] !== state.solution[selected.r][selected.c]) {
-      target = selected;
-    }
-    if (!target) {
-      outer:
-      for (let r = 0; r < N; r++) {
-        for (let c = 0; c < N; c++) {
-          if (state.board[r][c] === 0) { target = { r, c }; break outer; }
-        }
-      }
-    }
-    if (!target) return;
-    const r = target.r, c = target.c;
-    pushUndo();
-    state.notes[r][c] = 0;
-    state.board[r][c] = state.solution[r][c];
-    state.hintsLeft--;
-    selected = { r, c };
-    render();
-    save();
-    checkWin();
-  }
-
-  function select(r, c) {
-    selected = { r, c };
-    render();
-  }
+  function lineJustDone(r, c) { return session.lineDone(r, c); }
+  function enterNumber(n) { applyCommand(() => session.enter(n)); }
+  function erase() { applyCommand(session.erase); }
+  function hint() { applyCommand(session.hint); }
+  function select(r, c) { session.select(r, c); syncSession(); render(); }
 
   function moveSelection(key) {
     if (!state) return;
@@ -660,11 +350,15 @@
   }
 
   // ---------- 新游戏 / 初始化 ----------
-  function newGame(mode, size, level) {
-    state = makeGame(mode, size, level);
-    history = [];
-    selected = null;
-    notesMode = false;
+  function newGame(mode, size, level, preserveInvalid) {
+    if (invalidSave !== null && !preserveInvalid) {
+      try { localStorage.setItem(STORAGE_KEY + '_invalid_backup', invalidSave); invalidSave = null; }
+      catch (_) { toast('无法备份原存档，请检查存储空间', 'soft'); return; }
+    }
+    session.start(mode, size, level);
+    resumeImport = false;
+    resumeAlternative = null;
+    syncSession();
     overlayEl.hidden = true;
     resumeOverlayEl.hidden = true;
     buildNumpad(state.size);
@@ -686,27 +380,59 @@
     newGame('classic', 9, level);
   }
 
+  function filledCount(saved) {
+    return saved.board.reduce((count, row, r) => count + row.filter((n, c) => n && !saved.givens[r][c]).length, 0);
+  }
+  function hasProgress(saved) { return filledCount(saved) > 0 || saved.notes.some(row => row.some(Boolean)); }
+  function readCanvasSave() {
+    try { return window.SudokuState.normalize(JSON.parse(localStorage.getItem('sudoku_canvas_save_v1')), rules); }
+    catch (_) { return null; }
+  }
+  function prepareResume(saved, source, alternative) {
+    session.restore(saved);
+    syncSession();
+    resumeImport = source === 'canvas';
+    resumeSource = resumeImport ? '试用界面进度' : '原版进度';
+    resumeAlternative = alternative;
+    buildNumpad(state.size);
+    render();
+    showResume();
+  }
+  function continueResume() {
+    // The experimental Canvas entry deliberately has its own save. Import
+    // only after an explicit Continue; preserve both original records.
+    if (resumeImport) {
+      try {
+        const original = localStorage.getItem(STORAGE_KEY);
+        if (original !== null) localStorage.setItem(STORAGE_KEY + '_before_canvas_import', original);
+        if (invalidSave !== null) localStorage.setItem(STORAGE_KEY + '_invalid_backup', invalidSave);
+      } catch (_) { toast('无法备份原版进度，暂未切换存档', 'soft'); return; }
+      invalidSave = null;
+      resumeImport = false;
+    }
+    resumeOverlayEl.hidden = true;
+    startTimer();
+    render();
+    save();
+  }
   function init() {
-    const saved = load();
-    if (saved && !saved.won) {
-      state = saved;
-      if (typeof state.hintsLeft !== 'number') state.hintsLeft = HINT_LIMIT;
-      if (typeof state.size !== 'number') state.size = 9;
-      if (typeof state.level !== 'string') state.level = 'easy';
-      if (state.mode !== 'kids') state.mode = 'classic';
-      history = [];
-      selected = null;
-      notesMode = false;
-      buildNumpad(state.size);
-      render();
-      showResume();
+    const saved = load(), canvas = readCanvasSave();
+    const other = canvas && !canvas.won && hasProgress(canvas) && (!saved || JSON.stringify([canvas.board, canvas.notes, canvas.solution]) !== JSON.stringify([saved.board, saved.notes, saved.solution])) ? canvas : null;
+    if (other && (!saved || saved.won || !hasProgress(saved))) {
+      prepareResume(other, 'canvas', saved && !saved.won ? {state: saved, source: 'legacy'} : null);
+    } else if (saved && !saved.won) {
+      prepareResume(saved, 'legacy', other ? {state: other, source: 'canvas'} : null);
     } else {
-      newGame('classic', 9, 'easy');
+      newGame('classic', 9, 'easy', true);
+      if (invalidSave !== null) toast('旧存档无法恢复，已保留；点击新局后才保存新题', 'soft');
     }
   }
 
   function showResume() {
-    resumeMetaEl.textContent = modeLabel() + ' · 用时 ' + formatTime(state.elapsed);
+    resumeMetaEl.textContent = (resumeImport || resumeAlternative ? resumeSource + ' · ' : '') + modeLabel() + ' · 已填 ' + filledCount(state) + ' 格 · 用时 ' + formatTime(state.elapsed);
+    btnResumeContinue.textContent = resumeImport ? '继续已填写的进度' : '继续上次';
+    btnResumeOther.hidden = !resumeAlternative;
+    if (resumeAlternative) btnResumeOther.textContent = '继续' + (resumeAlternative.source === 'canvas' ? '试用界面' : '原版') + '进度（已填 ' + filledCount(resumeAlternative.state) + ' 格）';
     resumeOverlayEl.hidden = false;
   }
 
@@ -742,7 +468,7 @@
   });
 
   btnNotes.addEventListener('click', () => {
-    notesMode = !notesMode;
+    setNotes(!notesMode);
     btnNotes.classList.toggle('is-active', notesMode);
     btnNotes.setAttribute('aria-pressed', String(notesMode));
   });
@@ -753,10 +479,12 @@
   btnNewTop.addEventListener('click', () => newGame(state.mode, state.size, state.level));
   btnPlayAgain.addEventListener('click', () => newGame(state.mode, state.size, state.level));
 
-  btnResumeContinue.addEventListener('click', () => {
-    resumeOverlayEl.hidden = true;
-    startTimer();
-    render();
+  btnResumeContinue.addEventListener('click', continueResume);
+  btnResumeOther.addEventListener('click', () => {
+    if (!resumeAlternative) return;
+    const candidate = resumeAlternative;
+    prepareResume(candidate.state, candidate.source, null);
+    continueResume();
   });
 
   btnResumeNew.addEventListener('click', () => {
@@ -771,7 +499,7 @@
       e.preventDefault();
       erase();
     } else if (e.key === 'n' || e.key === 'N') {
-      notesMode = !notesMode;
+      setNotes(!notesMode);
       btnNotes.classList.toggle('is-active', notesMode);
       btnNotes.setAttribute('aria-pressed', String(notesMode));
     } else if (e.key === 'h' || e.key === 'H') {
