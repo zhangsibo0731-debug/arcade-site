@@ -22,14 +22,14 @@ function fixture(options) {
       sources.push(node); return node;
     },
     decodeAudioData(data, resolve) { if (config.delayed) callbacks.decode = () => resolve({ duration: 160.22225 }); else resolve({ duration: 160.22225 }); },
-    resume() { this.state = 'running'; return Promise.resolve(); },
+    resume() { if(config.delayedResume)return new Promise(resolve=>{callbacks.resume=()=>{this.state='running';resolve();};});this.state = 'running'; return Promise.resolve(); },
     close() { this.closed = true; return Promise.resolve(); },
   };
   const wx = {
     createWebAudioContext: config.native ? undefined : () => ctx,
     getFileSystemManager: () => ({ readFile({ success, fail }) { if (config.failRead) fail(new Error('read failed')); else success({ data: new ArrayBuffer(8) }); } }),
     createInnerAudioContext() {
-      const player = { play() { this.plays = (this.plays || 0) + 1; }, pause() { this.paused = true; }, stop() { this.stopped = true; }, destroy() { this.destroyed = true; }, onError(fn) { this.error = fn; }, onCanplay(fn) { this.ready = fn; } };
+      const player = { play() { this.plays = (this.plays || 0) + 1; }, pause() { this.paused = true; this.pauseCalls = (this.pauseCalls || 0) + 1; }, stop() { this.stopped = true; this.stopCalls = (this.stopCalls || 0) + 1; }, destroy() { this.destroyed = true; }, onPlay(fn) { this.started = fn; }, onError(fn) { this.error = fn; }, onCanplay(fn) { this.ready = fn; } };
       native.push(player); return player;
     },
     onAudioInterruptionBegin: (fn) => { callbacks.begin = fn; },
@@ -114,6 +114,47 @@ function fixture(options) {
   restored.audio.resume(); await flush();
   assert.strictEqual(restored.sources.length, 1, 'resuming a restored run works even without an earlier start call');
   restored.audio.destroy();
+
+  const stoppedWhileLoading = fixture({delayed: true});
+  stoppedWhileLoading.audio.start(); await flush();
+  stoppedWhileLoading.audio.stop(); stoppedWhileLoading.callbacks.decode(); await flush();
+  stoppedWhileLoading.audio.show(); stoppedWhileLoading.audio.toggle(); stoppedWhileLoading.audio.toggle();
+  stoppedWhileLoading.audio.cycle('music'); await flush();
+  assert.strictEqual(stoppedWhileLoading.sources.length, 0, 'leaving while decoding cannot restart music through late decode, foreground or settings');
+  stoppedWhileLoading.audio.resume(); await flush();
+  assert.strictEqual(stoppedWhileLoading.sources.length, 1, 'explicitly continuing a saved game can start music again');
+  assert.strictEqual(stoppedWhileLoading.sources[0].offset, 0, 'leaving clears the previous BGM position');
+  stoppedWhileLoading.audio.destroy();
+
+  const suspended = fixture({delayedResume: true});
+  suspended.ctx.state = 'suspended'; suspended.audio.start(); await flush();
+  suspended.audio.stop(); suspended.callbacks.resume(); await flush();
+  assert.strictEqual(suspended.sources.length, 0, 'late WebAudio context resume cannot play after leaving');
+  suspended.audio.destroy();
+
+  const nativeLate = fixture({native: true});
+  nativeLate.audio.start(); await flush();
+  const player = nativeLate.native[0];
+  nativeLate.audio.pause(); const pauseCalls = player.pauseCalls;
+  player.started();
+  assert.strictEqual(player.pauseCalls, pauseCalls + 1, 'late native onPlay is paused again without losing its player');
+  assert.strictEqual(player.destroyed, undefined, 'normal pause retains the native player');
+  nativeLate.audio.resume(); await flush();
+  nativeLate.audio.stop();
+  assert.strictEqual(player.destroyed, true, 'leaving destroys the native player and its queued playback');
+  const stopCalls = player.stopCalls;
+  player.started();
+  assert.strictEqual(player.stopCalls, stopCalls + 1, 'retired native onPlay is explicitly silenced');
+  nativeLate.audio.show(); nativeLate.audio.toggle(); nativeLate.audio.toggle(); await flush();
+  assert.strictEqual(nativeLate.native.length, 1, 'foreground and unmute cannot recreate playback in the lobby');
+  nativeLate.audio.resume(); await flush();
+  const replacement = nativeLate.native[1];
+  assert.strictEqual(replacement.plays, 1, 'explicit continue uses a fresh native player');
+  player.error();
+  assert.strictEqual(nativeLate.audio.settings().error, '', 'retired player errors cannot poison a new run');
+  player.started();
+  assert.strictEqual(replacement.destroyed, undefined, 'late old callbacks do not stop the current player');
+  nativeLate.audio.destroy();
 
   for (const options of [{ native: true }, { failRead: true }]) {
     const fallback = fixture(options);

@@ -437,7 +437,7 @@ class PuyoGame {
 
   perform(action) {
     if (action === 'openPuyo') { this.mode = 'menu'; return; }
-    if (action === 'lobby') { this.controller.pause(); this.save(); this.mode = 'lobby'; this.audio.pause(); this.hold = null; return; }
+    if (action === 'lobby') { this.controller.pause(); this.save(); this.mode = 'lobby'; this.audio.stop(); this.hold = null; return; }
     if (action === 'startChallenge') return this.newGame('challenge');
     if (action === 'startClassic') return this.newGame('classic');
     if (action === 'restore') return this.restore();

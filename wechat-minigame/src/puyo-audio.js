@@ -59,11 +59,23 @@ function create(options) {
     if (nativePlayer || disposed || !options.bgmUrl) return nativePlayer;
     try {
       nativePlayer = wxApi.createInnerAudioContext();
+      const player = nativePlayer;
       nativePlayer.loop = true;
       nativePlayer.autoplay = false;
       nativePlayer.volume = .17 * gainFor(settings.music);
-      if (nativePlayer.onError) nativePlayer.onError(() => { musicError = '音乐暂不可用，可点击重试'; nativePlaying = false; });
-      if (nativePlayer.onCanplay) nativePlayer.onCanplay(() => { musicError = ''; });
+      if (player.onPlay) player.onPlay(() => {
+        // A native play request can finish after navigation or suspension.
+        // Never let a retired player or an inactive game become audible.
+        if (player !== nativePlayer || disposed || !wanted) {
+          try { player.stop(); } catch (_) {}
+          if (player === nativePlayer) nativePlaying = false;
+        } else if (!canPlayMusic()) {
+          try { player.pause(); } catch (_) { try { player.stop(); } catch (_) {} }
+          nativePlaying = false;
+        } else nativePlaying = true;
+      });
+      if (player.onError) player.onError(() => { if (player !== nativePlayer || disposed) return; musicError = '音乐暂不可用，可点击重试'; nativePlaying = false; });
+      if (player.onCanplay) player.onCanplay(() => { if (player === nativePlayer && !disposed) musicError = ''; });
       nativePlayer.src = options.bgmUrl;
     } catch (_) { nativePlayer = null; musicError = '当前环境无法播放音乐'; }
     return nativePlayer;
@@ -148,7 +160,15 @@ function create(options) {
   function pause() { paused = true; stopMusic(true); sfx.stop(); }
   function start() { stopMusic(false); wanted = true; paused = false; playMusic(); }
   function resume() { wanted = true; paused = false; playMusic(); }
-  function stop() { wanted = false; paused = true; stopMusic(false); sfx.stop(); }
+  function stop() {
+    wanted = false; paused = true; stopMusic(false);
+    // Leaving the game cancels queued native playback as well as the current
+    // voice. Ordinary pause/hide still keep the player and its position.
+    const previous = nativePlayer;
+    nativePlayer = null; nativePlaying = false;
+    if (previous) { try { previous.destroy(); } catch (_) {} }
+    sfx.stop();
+  }
   function play(name, chain) {
     try { sfx.play(name, chain); } catch (_) { /* Audio must not block gameplay. */ }
   }

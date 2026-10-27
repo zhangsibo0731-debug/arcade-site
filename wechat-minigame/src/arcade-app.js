@@ -13,7 +13,10 @@ class ArcadeApp {
   }
   resetCanvas(){const i=this.platform.systemInfo();this.info=i;this.canvas.width=Math.round(i.width*i.pixelRatio);this.canvas.height=Math.round(i.height*i.pixelRatio);this.ctx.setTransform(i.pixelRatio,0,0,i.pixelRatio,0,0);}
   open(name){
-    if(this.scene==='puyo')this.puyo.onHide();
+    if(this.scene==='puyo'){
+      try { this.puyo.onHide(); }
+      finally { this.puyo.audio.stop(); }
+    }
     if(this.scene==='sudoku')this.sudoku.leave();
     this.scene=name;this.last=0;this.pointer=null;
     if(name==='sudoku'){if(!this.sudoku)this.sudoku=new SudokuGame(this.canvas,this.platform,()=>this.open('lobby'));this.sudoku.enter();}
