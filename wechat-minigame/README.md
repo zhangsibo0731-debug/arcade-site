@@ -19,6 +19,7 @@ node sudoku/rules.test.js
 node sudoku/migration.test.js
 node sudoku/web-platform.test.js
 node sudoku/resume-bridge.test.js
+node sudoku/layout.test.js
 node wechat-minigame/src/arcade-app.test.js
 node wechat-minigame/src/sudoku-game.test.js
 node wechat-minigame/src/bootstrap.test.js
@@ -64,6 +65,7 @@ node wechat-minigame/scripts/check-audio-assets.js
 - 唯一共享源码在 `sudoku/`，不要直接修改 `vendor/sudoku/`。修改后同步，并运行上述四项数独/路由测试。
 - `src/arcade-app.js` 统一分发触控、动画帧和生命周期；`src/sudoku-game.js` 只负责微信画布、安全区与平台连接。
 - 微信开发者工具已有工程直接编译，主页点击“数独”，无需重新导入。微信胶囊区域会额外预留，空间不足时可上下拖动页面。
+- 数独 Canvas 新界面采用左上标题、右上胶囊局部避让、配置/新局/暂停工具条；小屏只滚动棋盘和数字键区，顶栏固定。点击“原版 · 简单”等配置入口选择模式、难度或大小，应用后仍需确认新题；取消保留原进度。
 - 网页共用界面测试入口：`http://127.0.0.1:8417/sudoku/canvas.html`；原 DOM 页面 `/sudoku/` 保留，已接同一玩法核心。
 - Canvas 使用独立存档 `sudoku_canvas_save_v1` 和纪录 `sudoku_canvas_best_v1`，不覆盖原 DOM 存档；微信与浏览器存储各自独立，不自动互通。
 - 原网页 `/sudoku/` 会识别同浏览器 Canvas 试用进度：原版尚未填数时优先预览已填写的试用局；两份都有进度时提供明确选择。点击继续后才恢复到原版，并先备份原版存档到 `sudoku_save_v1_before_canvas_import`；试用原档不删除，不自动合并两道题。

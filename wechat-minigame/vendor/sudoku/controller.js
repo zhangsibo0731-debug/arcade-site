@@ -7,13 +7,14 @@
     const SAVE = 'sudoku_canvas_save_v1', BEST = 'sudoku_canvas_best_v1';
     let size = {width: 390, height: 844, safe: {top: 0, bottom: 844}}, scroll = 0, modal = null, pending = null, pointer = null, hidden = false;
     let dirty = true, warning = '', toast = '', toastLeft = 0, feedback = null, bests = {}, invalidRaw = null;
+    let settingsDraft = null;
     const read = (key, fallback) => {try {return platform.storage.get(key, fallback);} catch (_) {return fallback;}};
     function write(key, value) {try {if (platform.storage.set(key, value) === false) throw Error('storage'); return true;} catch (_) {warning = '无法保存，请检查可用存储空间'; dirty = true; return false;} }
     const bestKey = () => {const s = session.snapshot(); return s.size + '-' + s.level;};
     function save() { if (invalidRaw !== null || !session.snapshot()) return false; return write(SAVE, session.snapshot()); }
     function generate(config) {
       if (invalidRaw !== null) {if (!write(SAVE + '_invalid_backup', invalidRaw)) return; invalidRaw = null;}
-      session.start(config.mode, config.size, config.level); modal = null; pending = null; scroll = 0; feedback = null; toast = ''; save(); dirty = true;
+      session.start(config.mode, config.size, config.level); modal = null; pending = null; settingsDraft = null; scroll = 0; feedback = null; toast = ''; save(); dirty = true;
     }
     function config() {const s = session.snapshot(); return {mode: s.mode, size: s.size, level: s.level};}
     bests = read(BEST, {}); if (!bests || typeof bests !== 'object' || Array.isArray(bests)) bests = {};
@@ -24,7 +25,12 @@
     function view() {
       const best = bests[bestKey()], m = presentation.model(session, rules, Number.isInteger(best) && best >= 0 ? best : null);
       const layout = geometry.create(size.width, size.height, size.safe, m.state, scroll); scroll = layout.scroll;
-      return {model: m, layout, overlay: overlays.model(modal, m, layout), warning, toast, feedback};
+      let message;
+      if (modal === 'confirm' && pending) {
+        const next = pending.config, label = next.mode === 'kids' ? '儿童版 · ' + next.size + '宫' : '原版 · ' + rules.LEVELS[next.level].label;
+        message = '将开始“' + label + '”新题。当前进度会被替换，取消可保留。';
+      }
+      return {model: m, layout, overlay: overlays.model(modal, m, layout, message, settingsDraft), warning, toast, feedback};
     }
     function events() {
       session.drainEvents().forEach(event => {
@@ -41,12 +47,26 @@
     }
     function action(command) {
       if (hidden) return;
+      if (modal === 'settings') {
+        const [type, value] = command.split(':');
+        if (type === 'draftMode' && ['classic','kids'].includes(value)) {
+          if (settingsDraft.mode !== value) settingsDraft = {mode:value,size:value === 'kids' ? 4 : 9,level:'easy'};
+        } else if (type === 'draftSize' && settingsDraft.mode === 'kids' && [4,6,9].includes(+value)) settingsDraft.size = +value;
+        else if (type === 'draftLevel' && settingsDraft.mode === 'classic' && ['easy','medium','hard'].includes(value)) settingsDraft.level = value;
+        else if (command === 'settingsClose' || command === 'settingsApply' && JSON.stringify(settingsDraft) === JSON.stringify(config())) {
+          settingsDraft = null; modal = null; session.resume();
+        } else if (command === 'settingsApply') {
+          pending = {config:{...settingsDraft},previous:'settings'}; modal = 'confirm';
+        }
+        dirty = true; return;
+      }
       if (modal && !['resume', 'confirmNew', 'cancel', 'back'].includes(command)) return;
       if (command === 'back') {session.pause(); save(); platform.back(); return;}
       if (command === 'resume') {if (modal === 'invalid' || modal === 'confirm') return; modal = null; session.resume();}
       else if (command === 'cancel') {if (modal !== 'confirm') return; modal = pending.previous; pending = null; if (!modal) session.resume();}
       else if (command === 'confirmNew') {generate(pending ? pending.config : config());}
       else if (command === 'pause') {session.pause(); modal = 'paused'; save();}
+      else if (command === 'settings') {settingsDraft = config(); session.pause(); modal = 'settings';}
       else if (command === 'new' || /^(mode|size|level):/.test(command)) {
         const next = config(), [type, value] = command.split(':');
         if (type === 'mode') Object.assign(next, {mode: value, size: value === 'kids' ? 4 : 9, level: 'easy'});
@@ -75,7 +95,7 @@
     function touchMove(x, y) {
       if (!pointer || modal) return;
       if (Math.hypot(x - pointer.x, y - pointer.y) > 8) pointer.dragged = true;
-      if (pointer.dragged) {scroll = Math.max(0, Math.min(view().layout.maxScroll, scroll + pointer.last - y)); pointer.last = y; dirty = true;}
+      if (pointer.dragged && pointer.y >= view().layout.bodyTop) {scroll = Math.max(0, Math.min(view().layout.maxScroll, scroll + pointer.last - y)); pointer.last = y; dirty = true;}
     }
     function touchEnd(x, y) {
       const p = pointer; pointer = null;
@@ -87,7 +107,7 @@
       else if (hit) action('cell:' + Math.floor(hit.y * v.model.state.size) + ':' + Math.floor(hit.x * v.model.state.size));
     }
     function key(key, ctrl) {
-      if (modal) {if (key === 'Enter' && ['paused','resume'].includes(modal)) action('resume'); if (key === 'Escape' && modal === 'confirm') action('cancel'); return;}
+      if (modal) {if (key === 'Enter' && ['paused','resume'].includes(modal)) action('resume'); if (key === 'Escape' && modal === 'confirm') action('cancel'); if (key === 'Escape' && modal === 'settings') action('settingsClose'); return;}
       if (ctrl && key.toLowerCase() === 'z') action('undo');
       else if (/^[1-9]$/.test(key)) action('number:' + key);
       else if (['Delete', 'Backspace', '0'].includes(key)) action('erase');

@@ -11,13 +11,21 @@ class SudokuGame {
     const area = info.safeArea || {left: 0, right: info.width, bottom: info.height};
     const areaTop = Number.isFinite(area.top) ? Math.max(0, area.top) : 0;
     const statusTop = Number.isFinite(info.statusBarHeight) ? Math.max(0, info.statusBarHeight) : 0;
-    const top = Math.max(areaTop, statusTop);
+    // DevTools draws its own capsule but no OS status bar in the game canvas.
+    // On real devices keep the OS safe inset; neither inherits capsule height.
+    const top = info.platform === 'devtools' ? 0 : Math.max(areaTop, statusTop);
     const menuBottom = info.menuButton && info.menuButton.bottom;
-    // DevTools may return {}. undefined + 8 must not turn safe.top into NaN.
-    const contentTop = Number.isFinite(menuBottom) && menuBottom > top && menuBottom < info.height
-      ? menuBottom + 8
-      : top + 48; // Reserve a 32px capsule and spacing without valid geometry.
-    this.controller.resize(info.width, info.height, {...area, top: contentTop});
+    const validBottom = Number.isFinite(menuBottom) && menuBottom > top && menuBottom < info.height;
+    const menu = info.menuButton || {};
+    const obstruction = {
+      x: Number.isFinite(menu.left) && menu.left >= info.width / 2 && menu.left < info.width ? menu.left : info.width - 112,
+      y: validBottom ? (Number.isFinite(menu.top) && menu.top >= top && menu.top < menuBottom ? menu.top : Math.max(top, menuBottom - 32)) : top + 8,
+      w: 104,
+      h: 32,
+    };
+    if (validBottom) obstruction.h = menuBottom - obstruction.y;
+    obstruction.w = info.width - obstruction.x;
+    this.controller.resize(info.width, info.height, {...area, top, obstruction});
   }
   enter(){this.resize();this.active=true;this.controller.show();}
   leave(){this.active=false;this.controller.hide();}

@@ -4,13 +4,13 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>数独 · 共用 Canvas 体验</title>
   <style>
-    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f5f3ee;font-family:sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}canvas:focus-visible{outline:2px solid #4a6b60;outline-offset:-3px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.sr-only:focus-within{width:auto;height:auto;clip:auto;white-space:normal;inset:auto 12px 12px;margin:0;padding:12px;background:white;max-height:50vh;overflow:auto}.safe{position:absolute;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}</style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f3f4f7;font-family:sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}canvas:focus-visible{outline:2px solid #2e4ee0;outline-offset:-3px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.sr-only:focus-within{width:auto;height:auto;clip:auto;white-space:normal;inset:auto 12px 12px;margin:0;padding:12px;background:white;max-height:50vh;overflow:auto}.safe{position:absolute;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}</style>
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="数独棋盘。方向键选格，数字填入，N 笔记，H 提示，退格擦除，Ctrl 或 Command Z 撤销，P 暂停" aria-describedby="status"></canvas>
   <p id="status" class="sr-only" role="status" aria-live="polite"></p>
   <div id="accessible" class="sr-only" aria-label="数独辅助操作"></div><div id="safe" class="safe"></div>
   <script src="rules.js?v=1"></script><script src="session-state.js?v=1"></script><script src="game-session.js?v=1"></script>
-  <script src="presentation.js?v=1"></script><script src="layout.js?v=1"></script><script src="overlays.js?v=1"></script><script src="controller.js?v=1"></script><script src="renderer.js?v=1"></script><script src="web-platform.js?v=1"></script>
+  <script src="presentation.js?v=1"></script><script src="layout.js?v=2"></script><script src="overlays.js?v=2"></script><script src="controller.js?v=2"></script><script src="renderer.js?v=2"></script><script src="web-platform.js?v=2"></script>
 </body>
 </html>

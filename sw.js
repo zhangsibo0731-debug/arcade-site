@@ -1,5 +1,5 @@
 /* 游戏厅 · Service Worker：联网优先（始终最新），断网回退缓存 */
-const CACHE = 'arcade-v169';
+const CACHE = 'arcade-v170';
 const ASSETS = [
   './',
   './index.html',
@@ -17,11 +17,11 @@ const ASSETS = [
   './sudoku/game-session.js?v=1',
   './sudoku/canvas.html',
   './sudoku/presentation.js?v=1',
-  './sudoku/layout.js?v=1',
-  './sudoku/overlays.js?v=1',
-  './sudoku/controller.js?v=1',
-  './sudoku/renderer.js?v=1',
-  './sudoku/web-platform.js?v=1',
+  './sudoku/layout.js?v=2',
+  './sudoku/overlays.js?v=2',
+  './sudoku/controller.js?v=2',
+  './sudoku/renderer.js?v=2',
+  './sudoku/web-platform.js?v=2',
   './sudoku/game.js?v=3',
   './breakout/index.html',
   './breakout/styles.css',

@@ -16,16 +16,27 @@ for (const [width, height] of [[320, 568], [366, 809], [390, 844], [430, 932]]) 
     }, () => {});
     game.enter();
     const layout = game.controller.view().layout;
-    assert.equal(layout.top, 87, 'empty/invalid responses reserve the navigation band');
+    assert.equal(layout.top, 39, 'capsule height no longer shifts the entire left header');
+    assert.equal(layout.title.y, 69);
     const capsule = {x: width - 106, y: 43, w: 96, h: 36};
     layout.boxes.filter(b => ['new', 'pause', 'back'].includes(b.action)).forEach(b => assert.equal(intersects(b, capsule), false));
     game.draw();
     game.controller.action('cell:0:0');
     const before = game.controller.view().model.state;
     game.onHide(); info.menuButton = {bottom: 90}; game.onShow();
-    assert.equal(game.controller.view().layout.top, 98, 'foreground return remeasures capsule geometry');
+    assert.equal(game.controller.view().layout.top, 39, 'left header remains at the real safe inset');
+    assert.equal(game.controller.view().layout.obstruction.y + game.controller.view().layout.obstruction.h, 90, 'foreground return remeasures only the capsule exclusion');
     assert.deepEqual(game.controller.view().model.state, before, 'remeasure never replaces progress');
     assert.equal(game.controller.view().overlay.kind, 'paused');
   }
 }
+const devtools = new SudokuGame({getContext: () => ctx}, {
+  systemInfo: () => ({platform:'devtools',width:366,height:809,pixelRatio:2,statusBarHeight:39,safeArea:{top:39,bottom:809,left:0,right:366},menuButton:{}}),
+  storage: () => ({get:(_key,fallback)=>fallback,set:()=>true}),
+}, () => {});
+devtools.enter();
+assert.equal(devtools.controller.view().layout.top,0,'DevTools has no OS status bar drawn inside the game canvas');
+assert.equal(devtools.controller.view().layout.title.y,30,'left title starts at the canvas top rather than an empty navigation band');
+assert.equal(devtools.controller.view().layout.obstruction.y,8);
+assert.ok(devtools.controller.view().layout.boxes.find(b=>b.action==='new').y>=52,'right tools remain below the fallback capsule');
 console.log('Sudoku WeChat safe area: 32 geometry/device cases, header exclusion and foreground remeasurement passed');

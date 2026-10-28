@@ -45,6 +45,7 @@ function systemInfo() {
   return {
     width: info.windowWidth,
     height: info.windowHeight,
+    platform: info.platform,
     pixelRatio: Math.min(info.pixelRatio || 1, 2),
     statusBarHeight: Number.isFinite(info.statusBarHeight) ? Math.max(0, info.statusBarHeight) : 0,
     safeArea: info.safeArea || { left: 0, top: 0, right: info.windowWidth, bottom: info.windowHeight },
